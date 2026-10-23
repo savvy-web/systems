@@ -34,9 +34,10 @@ describe("e2e: bundleNodeModules force-bundles node_modules JS deps (deps.skipNo
 		// tarball defect this test guards against — see the tsdown-plugins `unbundle` TSDoc for
 		// the full finding). No node_modules dir may exist in the built package at all.
 		expect(existsSync(join(OUT, "node_modules"))).toBe(false);
-		// tinyrainbow's recognizable source (a region header sourced from its node_modules path,
-		// plus its ANSI color table) is inlined directly into the single entry file.
-		expect(js).toMatch(/#region.*node_modules.*\/tinyrainbow\//);
+		// tinyrainbow's recognizable source (the `// <path>` comment rolldown writes above each
+		// inlined module, sourced from its node_modules path, plus its ANSI color table) is
+		// inlined directly into the single entry file.
+		expect(js).toMatch(/^\/\/ .*node_modules.*\/tinyrainbow\//m);
 		expect(js).toMatch(/bold:/);
 		// Our own entry still exports its surface against the bundled implementation.
 		expect(js).toMatch(/export\s*\{[^}]*\blabel\b/);
@@ -52,7 +53,7 @@ describe("e2e: bundleNodeModules force-bundles node_modules JS deps (deps.skipNo
 		// With tinyrainbow now externalized, the bare import survives and the dep is
 		// NOT inlined into the entry — the externals list still wins.
 		expect(hasBareReference(js, "tinyrainbow")).toBe(true);
-		expect(js).not.toMatch(/#region.*node_modules.*\/tinyrainbow\//);
+		expect(js).not.toMatch(/^\/\/ .*node_modules.*\/tinyrainbow\//m);
 		expect(existsSync(join(OUT, "node_modules"))).toBe(false);
 	}, 120_000);
 });

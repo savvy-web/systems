@@ -59,4 +59,41 @@ describe("runBuild multi-target", () => {
 		expect(groups).toEqual([{ id: "dev", name: "base" }]);
 		expect(writeTargetsBinding).not.toHaveBeenCalled();
 	});
+
+	it("records a config warning when every prod target is prerelease-only", async () => {
+		const reports: unknown[] = [];
+		await runBuild(defineBuild({ meta: false }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: vi.fn(async () => {}),
+			writeTargetsBinding: vi.fn(() => "x"),
+			writeIssues: ({ reports: r }) => {
+				reports.push(r);
+				return "x";
+			},
+			readPublishTargets: () => ({ npm: { releases: "prerelease" } }),
+			...base,
+		});
+		const rendered = JSON.stringify(reports);
+		expect(rendered).toContain('"source":"config"');
+		expect(rendered).toContain("targets-no-final-release");
+	});
+
+	it("records no config warning when a target still receives final versions", async () => {
+		const reports: unknown[] = [];
+		await runBuild(defineBuild({ meta: false }), {
+			cwd: "/abs/pkg",
+			argv: ["--target", "prod"],
+			buildTargetGroups: vi.fn(async () => {}),
+			writeTargetsBinding: vi.fn(() => "x"),
+			writeIssues: ({ reports: r }) => {
+				reports.push(r);
+				return "x";
+			},
+			readPublishTargets: () => ({ npm: { releases: "stable" }, pnpr: { from: "npm", registry: "https://r.test" } }),
+			...base,
+		});
+		expect(reports).toHaveLength(1);
+		expect(JSON.stringify(reports)).not.toContain("targets-no-final-release");
+	});
 });

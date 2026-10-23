@@ -34,7 +34,7 @@
 		"@effected/git": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
-		"@savvy-web/silk-effects": "workspace:*",
+		"@savvy-web/silk-effects": "workspace:^",
 		"effect": "catalog:effect"
 	},
 	"devDependencies": {

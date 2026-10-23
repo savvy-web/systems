@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/silk-core/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-28T19:31:10Z
+  at: 2026-10-23T15:37:52Z
 integrity:
   generated:
-    body: ec6d67c55c3614e0
+    body: 1a3f4f7cc1d69927
 ---
 
 # silk-core
@@ -23,7 +23,7 @@ integrity:
 
 `@savvy-web/silk-core` (`packages/silk-core`) is the bottom layer (L1) of the Silk package graph: Effect `Schema` value objects, `Data.TaggedError` classes, and pure contracts, with nothing else. Nothing under `src/` may import `node:*`, `@effect/platform*`, or `effect/process`, or touch the `process` identifier at all — there is no directory carve-out, unlike the engine layer above it.[^arch] `__test__/boundaries.test.ts` enforces this by tokenizing `src/` (rather than pattern-matching) and failing on the first file that touches `process` or names a forbidden module, with no exception list (`packages/silk-core/__test__/boundaries.test.ts`).[^arch] [`silk-effects`](silk-effects.md) imports this package's shared scanner by computed-path `import()` rather than duplicating it, so its own engine-boundary gate cannot drift from this one.[^arch]
 
-It ships as a documented API surface (`meta: true`, API Extractor runs on prod builds) with a single root export, ESM-only, built through the `@savvy-web/bundler` front door.[^arch] `@savvy-web/silk-effects` depends on it as a `workspace:*` dependency and re-exports every symbol under the same name, with the same type-only/value split, so downstream consumers of silk-effects see no change.[^arch]
+It ships as a documented API surface (`meta: true`, API Extractor runs on prod builds) with a single root export, ESM-only, built through the `@savvy-web/bundler` front door.[^arch] `@savvy-web/silk-effects` depends on it as a `workspace:^` dependency (published as `^<version>`, so a silk-core release bumps silk-effects only when it leaves that range — any minor while silk-core is 0.x) and re-exports every symbol under the same name, with the same type-only/value split, so downstream consumers of silk-effects see no change.[^arch]
 
 ## Owner
 
@@ -35,7 +35,7 @@ The domain model extracted from silk-effects' `errors/`, `schemas/`, `pr-body/`,
 
 | Directory | Contents |
 | --- | --- |
-| `errors/` | `BiomeSyncError`, `ChangesetConfigError`, `ConfigNotFoundError`, `PublishTargetBindingError`, `WorkspaceAnalysisError` |
+| `errors/` | `BiomeSyncError`, `ChangesetConfigError`, `ConfigNotFoundError`, `PublishTargetBindingError`, `ReleaseChannelError`, `WorkspaceAnalysisError` |
 | `schemas/` | `BiomeConfig`, `ConfigDiscoverySchemas`, `SavvyInstallSection`, `SavvySections`, `VersioningSchemas`, `WorkspaceAnalysisSchemas` |
 | `pr-body/` | `body`, `diagnostics`, `index`, `linked-issue`, `markers`, `references`, `region` — the [PR body contract](../interfaces/pr-body-contract.md) |
 | `utils/` | `TrailingSlash` (`trimTrailingSlashes`, a public export here) |
@@ -47,7 +47,7 @@ The rule for future moves: a candidate that imports a silk-effects sibling stays
 - **No platform, no `process`, no allowlist** under `src/`, enforced by `__test__/boundaries.test.ts`.[^arch]
 - **`PrBody.Markers` is frozen.** The `silk-release:` token names the contract, not the emitting action; byte-parity with `silk-release-action` is pinned by fixture and drift-lint tests. See [pr-body-contract](../interfaces/pr-body-contract.md).[^arch]
 - **`@effected/workspaces` and `@effected/templates` are required peers (`catalog:effected:peers`), not regular dependencies.** `SilkPublishConfig` extends workspaces' `PublishConfig` class and `AnalyzedWorkspace` carries its value classes; `SavvySections`, `SavvyOkfSection`, and `SavvyInstallSection` build on templates' nominal `Section`, `CommentStyle`, and `SectionId` classes. If silk-core held its own copy of either, silk-core and silk-effects could resolve two instances and `instanceof`/Schema identity would break across the layer edge. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). `@effected/github-references` stays a regular dependency because `parseBareLines` returns a plain interface — only functions and structural types cross the boundary there.[^arch]
-- **`prepare: turbo run build:dev` stays** — silk-effects consumes this package as `workspace:*` through a `link:` into `dist/dev/pkg`. See [workspace-prepare-scripts](../conventions/workspace-prepare-scripts.md).[^arch]
+- **`prepare: turbo run build:dev` stays** — silk-effects consumes this package as `workspace:^` through a `link:` into `dist/dev/pkg`. See [workspace-prepare-scripts](../conventions/workspace-prepare-scripts.md).[^arch]
 - **Cross-package `{@link}` targets are plain backticks, never `{@link}`.** API Extractor cannot resolve a link through a re-export, so a silk-effects doc comment naming a silk-core symbol (and vice versa) uses a code span instead.[^arch]
 
 [^arch]: `../../packages/silk-core/src`

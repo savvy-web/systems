@@ -20,6 +20,7 @@ export {
 	ChangesetConfigError,
 	ConfigNotFoundError,
 	PublishTargetBindingError,
+	ReleaseChannelError,
 	WorkspaceAnalysisError,
 } from "@savvy-web/silk-core";
 /**
@@ -119,6 +120,8 @@ export type {
 	RawPublishTargets,
 	RawTargetObject,
 	RawTargetValue,
+	ReleaseChannel,
+	ReleaseTarget,
 	TargetBinding,
 	TargetGroupBinding,
 	TargetsBinding,

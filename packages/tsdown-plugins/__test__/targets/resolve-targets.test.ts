@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveTargets } from "../../src/targets/resolve-targets.js";
+import { releaseWarnings, resolveTargets } from "../../src/targets/resolve-targets.js";
 
 describe("resolveTargets", () => {
 	it("collapses npm:true + github:true into one canonical base-name group (scoped base)", () => {
@@ -118,5 +118,80 @@ describe("resolveTargets", () => {
 		expect(r.groups[0]?.id).toBe("github");
 		expect(r.targets.find((t) => t.id === "mirror")?.group).toBe("github");
 		expect(r.targets.find((t) => t.id === "mirror")?.name).toBe("@scope/x");
+	});
+
+	describe("releases and provenance", () => {
+		it("defaults releases to all on every target form and omits an undeclared provenance", () => {
+			const r = resolveTargets({
+				targets: { npm: true, github: "@s/x", pnpr: { registry: "https://r.test" } },
+				baseName: "x",
+			});
+			expect(r.targets.map((t) => t.releases)).toEqual(["all", "all", "all"]);
+			expect(r.targets.every((t) => !("provenance" in t))).toBe(true);
+		});
+
+		it("carries a declared releases and provenance onto the resolved target", () => {
+			const r = resolveTargets({
+				targets: {
+					npm: { releases: "stable" },
+					pnpr: { registry: "https://r.test", releases: "all", provenance: false },
+				},
+				baseName: "x",
+			});
+			expect(r.targets.find((t) => t.id === "npm")).toMatchObject({ releases: "stable" });
+			expect(r.targets.find((t) => t.id === "npm")).not.toHaveProperty("provenance");
+			expect(r.targets.find((t) => t.id === "pnpr")).toMatchObject({ releases: "all", provenance: false });
+		});
+
+		it("resolves a from target's filter from its own object, not the group it reuses", () => {
+			const r = resolveTargets({
+				targets: { npm: { releases: "stable" }, pnpr: { from: "npm", registry: "https://r.test", releases: "all" } },
+				baseName: "x",
+			});
+			expect(r.groups).toHaveLength(1);
+			expect(r.targets.find((t) => t.id === "npm")?.releases).toBe("stable");
+			expect(r.targets.find((t) => t.id === "pnpr")).toMatchObject({ group: "npm", releases: "all" });
+		});
+
+		it("throws a ConfigValidationError on an unknown releases value", () => {
+			try {
+				resolveTargets({ targets: { npm: { releases: "beta" as never } }, baseName: "x" });
+				expect.unreachable("should have thrown");
+			} catch (e) {
+				expect((e as { _tag?: string })._tag).toBe("ConfigValidationError");
+				expect((e as { path?: string }).path).toBe("publishConfig.targets.npm.releases");
+			}
+		});
+
+		it("throws on a non-boolean provenance", () => {
+			expect(() => resolveTargets({ targets: { npm: { provenance: "yes" as never } }, baseName: "x" })).toThrow(
+				/non-boolean provenance/,
+			);
+		});
+	});
+
+	describe("releaseWarnings", () => {
+		it("warns when every target is prerelease-only", () => {
+			const r = resolveTargets({
+				targets: {
+					npm: { releases: "prerelease" },
+					pnpr: { from: "npm", registry: "https://r.test", releases: "prerelease" },
+				},
+				baseName: "x",
+			});
+			expect(releaseWarnings(r)).toHaveLength(1);
+			expect(releaseWarnings(r)[0]).toMatch(/final versions publish nowhere/);
+		});
+
+		it("stays quiet when any target still receives final versions", () => {
+			const r = resolveTargets({
+				targets: {
+					npm: { releases: "stable" },
+					pnpr: { from: "npm", registry: "https://r.test", releases: "prerelease" },
+				},
+				baseName: "x",
+			});
+			expect(releaseWarnings(r)).toEqual([]);
+		});
 	});
 });

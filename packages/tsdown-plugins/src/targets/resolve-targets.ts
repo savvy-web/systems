@@ -1,6 +1,13 @@
 import { ConfigValidationError } from "../errors.js";
-import type { PublishTargetObject, PublishTargets, TargetResolution } from "./config.js";
-import { isTargetObject } from "./config.js";
+import type {
+	PublishTargetObject,
+	PublishTargetValue,
+	PublishTargets,
+	ReleaseChannel,
+	ResolvedTarget,
+	TargetResolution,
+} from "./config.js";
+import { RELEASE_CHANNELS, isTargetObject } from "./config.js";
 
 /** Default registry endpoints for the well-known target keys. */
 const DEFAULT_REGISTRIES: Record<string, string> = {
@@ -37,12 +44,31 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 		return registry;
 	};
 
+	// The per-target publish options: `releases` is always resolved (default "all"), `provenance` only when declared.
+	const optionsFor = (id: string, value: PublishTargetValue): { releases: ReleaseChannel; provenance?: boolean } => {
+		if (!isTargetObject(value)) return { releases: "all" };
+		const { releases, provenance } = value;
+		if (releases !== undefined && !RELEASE_CHANNELS.includes(releases)) {
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}.releases`,
+				reason: `Target "${id}" has releases "${String(releases)}"; expected one of ${RELEASE_CHANNELS.map((c) => `"${c}"`).join(", ")}`,
+			});
+		}
+		if (provenance !== undefined && typeof provenance !== "boolean") {
+			throw new ConfigValidationError({
+				path: `publishConfig.targets.${id}.provenance`,
+				reason: `Target "${id}" has a non-boolean provenance; expected true or false`,
+			});
+		}
+		return { releases: releases ?? "all", ...(provenance !== undefined ? { provenance } : {}) };
+	};
+
 	const groups = new Map<string, { id: string; name: string; dir: string }>();
 	const addGroup = (id: string, name: string): void => {
 		if (!groups.has(id)) groups.set(id, { id, name, dir: `dist/prod/${id}/pkg` });
 	};
 
-	const resolved: Array<{ id: string; group: string; name: string; registry: string }> = [];
+	const resolved: Array<ResolvedTarget> = [];
 	const deferredFrom: Array<{ id: string; obj: PublishTargetObject }> = [];
 
 	for (const id of ids) {
@@ -62,7 +88,7 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 			}
 			const gid = canonicalId as string; // non-null: this branch implies a true target exists
 			addGroup(gid, baseName);
-			resolved.push({ id, group: gid, name: baseName, registry: registryFor(id, undefined) });
+			resolved.push({ id, group: gid, name: baseName, registry: registryFor(id, undefined), ...optionsFor(id, value) });
 		} else if (typeof value === "string") {
 			if (DEFAULT_REGISTRIES[id] === undefined) {
 				throw new ConfigValidationError({
@@ -71,7 +97,7 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 				});
 			}
 			addGroup(id, value);
-			resolved.push({ id, group: id, name: value, registry: registryFor(id, undefined) });
+			resolved.push({ id, group: id, name: value, registry: registryFor(id, undefined), ...optionsFor(id, value) });
 		} else if (isTargetObject(value)) {
 			if (value.from !== undefined && value.name !== undefined) {
 				throw new ConfigValidationError({
@@ -83,10 +109,22 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 				deferredFrom.push({ id, obj: value });
 			} else if (value.name !== undefined) {
 				addGroup(id, value.name);
-				resolved.push({ id, group: id, name: value.name, registry: registryFor(id, value.registry) });
+				resolved.push({
+					id,
+					group: id,
+					name: value.name,
+					registry: registryFor(id, value.registry),
+					...optionsFor(id, value),
+				});
 			} else {
 				addGroup(id, baseName);
-				resolved.push({ id, group: id, name: baseName, registry: registryFor(id, value.registry) });
+				resolved.push({
+					id,
+					group: id,
+					name: baseName,
+					registry: registryFor(id, value.registry),
+					...optionsFor(id, value),
+				});
 			}
 		}
 	}
@@ -113,8 +151,34 @@ export function resolveTargets(options: { targets: PublishTargets; baseName: str
 				reason: `Target "${id}" has a dangling "from: ${fromId}" (no such target)`,
 			});
 		}
-		resolved.push({ id, group: ref.group, name: ref.name, registry: registryFor(id, obj.registry) });
+		resolved.push({
+			id,
+			group: ref.group,
+			name: ref.name,
+			registry: registryFor(id, obj.registry),
+			...optionsFor(id, obj),
+		});
 	}
 
 	return { groups: [...groups.values()], targets: resolved };
+}
+
+/**
+ * Advisory warnings for a resolved target set that is valid but probably not what was meant.
+ *
+ * @remarks
+ * Today the only one is a set whose every target is `releases: "prerelease"`, which leaves final
+ * versions with nowhere to publish. A warning rather than a {@link ConfigValidationError}, since a
+ * prerelease-only package is a legitimate if unusual setup. Pure; returns one message per finding.
+ *
+ * @public
+ */
+export function releaseWarnings(resolution: TargetResolution): ReadonlyArray<string> {
+	const { targets } = resolution;
+	if (targets.length > 0 && targets.every((t) => t.releases === "prerelease")) {
+		return [
+			`Every publish target sets releases: "prerelease", so final versions publish nowhere; set "all" or "stable" on at least one target`,
+		];
+	}
+	return [];
 }

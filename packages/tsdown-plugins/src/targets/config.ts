@@ -1,4 +1,23 @@
 /**
+ * Which release versions a target receives: every version, only final versions, or only prereleases.
+ *
+ * @remarks
+ * A prerelease is any version carrying a SemVer prerelease suffix (`1.2.0-beta.1`). The filter is
+ * applied per target at publish time, never at build time, so a `from` target that shares a group
+ * with a differently-filtered target still reuses the same bytes.
+ *
+ * @public
+ */
+export type ReleaseChannel = "all" | "stable" | "prerelease";
+
+/**
+ * Every {@link ReleaseChannel} value, in declaration order.
+ *
+ * @public
+ */
+export const RELEASE_CHANNELS: ReadonlyArray<ReleaseChannel> = ["all", "stable", "prerelease"];
+
+/**
  * A single object-form publish target. Uses `from` XOR `name` (never both).
  *
  * @public
@@ -10,6 +29,10 @@ export interface PublishTargetObject {
 	readonly name?: string | undefined;
 	/** Reuse another target's group bytes (deploy them to this registry). Mutually exclusive with `name`. */
 	readonly from?: string | undefined;
+	/** Which release versions this target receives. Defaults to `"all"`. */
+	readonly releases?: ReleaseChannel | undefined;
+	/** Force the provenance attestation on or off, overriding the registry-derived default. */
+	readonly provenance?: boolean | undefined;
 }
 
 /**
@@ -54,6 +77,10 @@ export interface ResolvedTarget {
 	readonly name: string;
 	/** The resolved registry endpoint. */
 	readonly registry: string;
+	/** Which release versions this target receives; always written, `"all"` when undeclared. */
+	readonly releases: ReleaseChannel;
+	/** The declared provenance override; absent when the target leaves it to the registry default. */
+	readonly provenance?: boolean;
 }
 
 /**

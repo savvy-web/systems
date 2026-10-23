@@ -33,7 +33,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@savvy-web/bundler": "workspace:*",
+		"@savvy-web/bundler": "workspace:^",
 		"@tsdown/css": "catalog:build"
 	},
 	"devDependencies": {

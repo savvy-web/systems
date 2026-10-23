@@ -10,16 +10,17 @@ describe("writeTargetsBinding", () => {
 		const path = writeTargetsBinding(cwd, {
 			groups: [{ id: "npm", name: "x", dir: "dist/prod/npm/pkg" }],
 			targets: [
-				{ id: "npm", group: "npm", name: "x", registry: "https://registry.npmjs.org" },
-				{ id: "mirror", group: "npm", name: "x", registry: "https://mirror.test" },
+				{ id: "npm", group: "npm", name: "x", registry: "https://registry.npmjs.org", releases: "all" },
+				{ id: "mirror", group: "npm", name: "x", registry: "https://mirror.test", releases: "prerelease" },
 			],
 		});
 		expect(path).toBe(join(cwd, "dist", "prod", "targets.json"));
 		const parsed = JSON.parse(readFileSync(path, "utf-8")) as {
 			groups: Array<{ id: string }>;
-			targets: Array<{ id: string; group: string }>;
+			targets: Array<{ id: string; group: string; releases: string }>;
 		};
 		expect(parsed.groups.map((g) => g.id)).toEqual(["npm"]);
 		expect(parsed.targets.find((t) => t.id === "mirror")?.group).toBe("npm");
+		expect(parsed.targets.map((t) => t.releases)).toEqual(["all", "prerelease"]);
 	});
 });

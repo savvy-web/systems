@@ -6,7 +6,7 @@ status: stable
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
+  at: 2026-10-23T15:37:52Z
 sources:
   - id: install-orchestration
     resource: ../../package.json
@@ -17,7 +17,7 @@ verified:
     at: 2026-10-13T17:19:17Z
 integrity:
   generated:
-    body: 9f3b2d4e8b300176
+    body: 4a873a220c6367ff
   verified:
     by: human:spencer
     at: 2026-10-13T17:19:17Z
@@ -38,7 +38,8 @@ which does not exist until something builds it.
 
 ## Decision
 
-Every package that is a `workspace:*` dependency of ANY other
+Every package that is a `workspace:` dependency (`workspace:*` or
+`workspace:^`) of ANY other
 `package.json` in the repo — root, a sibling package, or an `e2e/*`
 fixture — carries its own `"prepare": "turbo run build:dev"` script. pnpm
 runs each package's `prepare` for that package during `pnpm install`, so
@@ -54,7 +55,7 @@ separately.
 Re-derive the set of packages that need `prepare` with:
 
 ```bash
-grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json e2e/*/package.json
+grep -rlE '"@savvy-web/<name>": "workspace:[*^]"' package.json packages/*/package.json e2e/*/package.json
 ```
 
 rather than trusting any list written down in a doc.
@@ -92,7 +93,8 @@ is [conventions/workspace-prepare-scripts.md](../conventions/workspace-prepare-s
 - Nine packages (today: `bundler`, `changelog`, `cli`, `mcp`,
   `pnpm-plugin-silk`, `silk`, `silk-core`, `silk-effects`,
   `tsdown-plugins`) carry the `prepare` script because something depends
-  on them as `workspace:*`; `rspress-builder` and `templates` have no
+  on them through a `workspace:` protocol edge (`workspace:*` or
+  `workspace:^`); `rspress-builder` and `templates` have no
   in-repo consumer today and carry none — one must be added the moment
   something starts depending on either.
 - The scripts read as redundant next to turbo's task graph and are

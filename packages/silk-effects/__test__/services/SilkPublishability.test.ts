@@ -132,6 +132,40 @@ describe("SilkPublishability.layer — silk rules", () => {
 		}),
 	);
 
+	it.effect("a binding without provenance takes the provenance declared on publishConfig.targets", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@scope/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { provenance: false }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@scope/x"));
+			const targets = yield* runSilk(
+				Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
+			);
+			expect(targets.map((t) => t.provenance)).toEqual([false, true]);
+		}),
+	);
+
+	it.effect("a provenance value written into the binding wins over the declaration", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@scope/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { provenance: false }, github: true } },
+			});
+			const binding = dualRegistryBinding("@scope/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "npm" ? { ...t, provenance: true } : t)),
+			});
+			const targets = yield* runSilk(
+				Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
+			);
+			expect(targets.map((t) => t.provenance)).toEqual([true, true]);
+		}),
+	);
+
 	it.effect("object-form targets, no binding (pre-build) → one placeholder per declared key", () =>
 		Effect.gen(function* () {
 			// Before the prod build writes targets.json, publishability and the target COUNT must
@@ -608,6 +642,287 @@ describe("SilkPublishability.resolveTargets — prod-binding guard", () => {
 			const exit = yield* runResolve(makeWsPkg(tmpDir, "pre-build"), tmpDir);
 
 			expect(exit._tag).toBe("Success");
+		}),
+	);
+});
+
+describe("SilkPublishability release helpers", () => {
+	it("distTagFor: latest for a final version, the first prerelease identifier otherwise", () => {
+		expect(SilkPublishability.distTagFor("1.2.0")).toBe("latest");
+		expect(SilkPublishability.distTagFor("1.2.0+build.7")).toBe("latest");
+		expect(SilkPublishability.distTagFor("2.0.0-beta.3")).toBe("beta");
+		expect(SilkPublishability.distTagFor("2.0.0-rc.1+sha.abc")).toBe("rc");
+		expect(SilkPublishability.distTagFor("2.0.0-next")).toBe("next");
+	});
+
+	it("distTagFor: next for a latest identifier, so a prerelease never takes the latest tag", () => {
+		expect(SilkPublishability.distTagFor("2.0.0-latest.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-latest")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-latestish.1")).toBe("latestish");
+	});
+
+	it("distTagFor: next for a purely numeric or empty first identifier", () => {
+		expect(SilkPublishability.distTagFor("2.0.0-0")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-12.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-")).toBe("next");
+	});
+
+	it("distTagFor: next for a first identifier npm would parse as a range (x, v<digits>)", () => {
+		expect(SilkPublishability.distTagFor("2.0.0-x.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-X.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-v2.1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-vx")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-vv1")).toBe("next");
+		expect(SilkPublishability.distTagFor("2.0.0-v")).toBe("v");
+		expect(SilkPublishability.distTagFor("2.0.0-x1.0")).toBe("x1");
+	});
+
+	it("isPrerelease ignores a hyphen inside build metadata", () => {
+		expect(SilkPublishability.isPrerelease("1.0.0+build-7")).toBe(false);
+		expect(SilkPublishability.isPrerelease("1.0.0-alpha+build-7")).toBe(true);
+	});
+
+	it("receives: all takes every version, stable and prerelease split on the suffix", () => {
+		expect(SilkPublishability.receives("all", "1.0.0")).toBe(true);
+		expect(SilkPublishability.receives("all", "1.0.0-rc.1")).toBe(true);
+		expect(SilkPublishability.receives("stable", "1.0.0")).toBe(true);
+		expect(SilkPublishability.receives("stable", "1.0.0-rc.1")).toBe(false);
+		expect(SilkPublishability.receives("prerelease", "1.0.0")).toBe(false);
+		expect(SilkPublishability.receives("prerelease", "1.0.0-rc.1")).toBe(true);
+	});
+});
+
+describe("SilkPublishability.detect — provenance override", () => {
+	it("a binding target's provenance overrides the registry default", () => {
+		const targets = SilkPublishability.detect(
+			"@s/x",
+			{
+				publishConfig: {
+					targets: { npm: { provenance: false }, pnpr: { registry: "https://r.test", provenance: true } },
+				},
+			},
+			{
+				groups: [{ id: "npm", name: "@s/x", dir: "dist/prod/npm/pkg" }],
+				targets: [
+					{
+						id: "npm",
+						group: "npm",
+						name: "@s/x",
+						registry: "https://registry.npmjs.org",
+						releases: "all",
+						provenance: false,
+					},
+					{ id: "pnpr", group: "npm", name: "@s/x", registry: "https://r.test", releases: "all", provenance: true },
+				],
+			},
+		);
+		expect(targets.map((t) => t.provenance)).toEqual([false, true]);
+	});
+
+	it("pre-build, the declared object's provenance overrides the registry default", () => {
+		const targets = SilkPublishability.detect(
+			"@s/x",
+			{ publishConfig: { targets: { npm: { provenance: false }, github: true } } },
+			null,
+		);
+		expect(targets.map((t) => t.provenance)).toEqual([false, true]);
+	});
+});
+
+describe("SilkPublishability.resolveReleaseTargets", () => {
+	let tmpDir: string;
+	beforeEach(() => {
+		tmpDir = mkdtempSync(join(tmpdir(), "pub-release-"));
+	});
+
+	// Per-test provide: the package and its binding are per-test tmpdir fixtures.
+	const runRelease = (pkg: WorkspacePackage, version: string) =>
+		SilkPublishability.resolveReleaseTargets(pkg, version).pipe(
+			Effect.provide(SilkPublishability.layer),
+			Effect.provide(NodeServices.layer),
+		);
+
+	/** OPS-142's shape: npm takes finals only, pnpr reuses the npm bytes and takes everything. */
+	const writeStablePlusMirror = (dir: string) => {
+		writePkg(dir, {
+			name: "@s/x",
+			version: "1.0.0",
+			publishConfig: {
+				access: "public",
+				targets: {
+					npm: { releases: "stable" },
+					pnpr: { from: "npm", registry: "https://registry.savvyweb.systems/npm/" },
+				},
+			},
+		});
+		writeBinding(dir, {
+			groups: [{ id: "npm", name: "@s/x", dir: "dist/prod/npm/pkg" }],
+			targets: [
+				{ id: "npm", group: "npm", name: "@s/x", registry: "https://registry.npmjs.org", releases: "stable" },
+				{ id: "pnpr", group: "npm", name: "@s/x", registry: "https://registry.savvyweb.systems/npm/", releases: "all" },
+			],
+		});
+	};
+
+	it.effect("a final version goes to every target under latest", () =>
+		Effect.gen(function* () {
+			writeStablePlusMirror(tmpDir);
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0");
+			expect(out.map((r) => [r.id, r.releases, r.receives, r.distTag])).toEqual([
+				["npm", "stable", true, "latest"],
+				["pnpr", "all", true, "latest"],
+			]);
+		}),
+	);
+
+	it.effect("a prerelease marks the stable target as not receiving it, and every entry carries the dist-tag", () =>
+		Effect.gen(function* () {
+			writeStablePlusMirror(tmpDir);
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "1.1.0-beta.2");
+			expect(out.map((r) => [r.id, r.target.registry, r.releases, r.receives, r.distTag])).toEqual([
+				["npm", "https://registry.npmjs.org", "stable", false, "beta"],
+				["pnpr", "https://registry.savvyweb.systems/npm/", "all", true, "beta"],
+			]);
+		}),
+	);
+
+	it.effect("a binding without releases (an older bundler) reads as all", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: true, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@s/x"));
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "2.0.0-rc.1");
+			expect(out.map((r) => [r.id, r.releases, r.receives])).toEqual([
+				["npm", "all", true],
+				["github", "all", true],
+			]);
+		}),
+	);
+
+	it.effect("a binding without releases takes the filter declared on publishConfig.targets", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "stable" }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@s/x"));
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "2.0.0-rc.1");
+			expect(out.map((r) => [r.id, r.releases, r.receives])).toEqual([
+				["npm", "stable", false],
+				["github", "all", true],
+			]);
+		}),
+	);
+
+	it.effect("a releases value written into the binding wins over the declaration", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "stable" }, github: true } },
+			});
+			const binding = dualRegistryBinding("@s/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "npm" ? { ...t, releases: "all" } : t)),
+			});
+			const out = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "2.0.0-rc.1");
+			expect(out.map((r) => [r.id, r.releases])).toEqual([
+				["npm", "all"],
+				["github", "all"],
+			]);
+		}),
+	);
+
+	it.effect("an unknown declared releases fails even behind a binding without releases", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: "final" }, github: true } },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("@s/x"));
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", id: "npm", value: '"final"' });
+		}),
+	);
+
+	it.effect("pre-build, the filter is read from publishConfig.targets by key", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: {
+					access: "public",
+					targets: { npm: { releases: "stable" }, pnpr: { registry: "https://r.test", releases: "prerelease" } },
+				},
+			});
+			const pre = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0-rc.1");
+			expect(pre.map((r) => [r.id, r.receives])).toEqual([
+				["npm", false],
+				["pnpr", true],
+			]);
+			const final = yield* runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0");
+			expect(final.map((r) => [r.id, r.receives])).toEqual([
+				["npm", true],
+				["pnpr", false],
+			]);
+		}),
+	);
+
+	it.effect("a package with no keyed targets has no filter and no id", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, { name: "plain", version: "1.0.0", publishConfig: { access: "public" } });
+			const out = yield* runRelease(makeWsPkg(tmpDir, "plain"), "1.0.0-alpha.1");
+			expect(out).toHaveLength(1);
+			expect(out[0]).toMatchObject({ id: undefined, releases: "all", receives: true, distTag: "alpha" });
+		}),
+	);
+
+	it.effect("keeps the binding-integrity failure of resolveTargets", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "yaml-effect",
+				version: "0.7.1",
+				publishConfig: { access: "public", directory: "dist/dev/pkg" },
+			});
+			writeBinding(tmpDir, dualRegistryBinding("yaml-effect"));
+			const exit = yield* Effect.exit(runRelease(makeWsPkg(tmpDir, "yaml-effect"), "0.7.1"));
+			expect(exit._tag).toBe("Failure");
+			expect(JSON.stringify(exit)).toContain("PublishTargetBindingError");
+		}),
+	);
+
+	it.effect("rejects an unknown releases value in the binding instead of defaulting it", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: true, github: true } },
+			});
+			const binding = dualRegistryBinding("@s/x");
+			writeBinding(tmpDir, {
+				...binding,
+				targets: binding.targets.map((t) => (t.id === "github" ? { ...t, releases: "final" } : t)),
+			});
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", pkg: "@s/x", id: "github", value: '"final"' });
+		}),
+	);
+
+	it.effect("rejects an unknown releases value in publishConfig.targets before the build", () =>
+		Effect.gen(function* () {
+			writePkg(tmpDir, {
+				name: "@s/x",
+				version: "1.0.0",
+				publishConfig: { access: "public", targets: { npm: { releases: 1 } } },
+			});
+			const err = yield* Effect.flip(runRelease(makeWsPkg(tmpDir, "@s/x"), "1.0.0"));
+			expect(err).toMatchObject({ _tag: "ReleaseChannelError", id: "npm", value: "1" });
 		}),
 	);
 });

@@ -12,20 +12,20 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:50:36Z
+  at: 2026-10-23T15:37:52Z
 integrity:
   generated:
-    body: 1cba528f84218a7e
+    body: c185741a0b376100
 ---
 
 # Keep prepare:turbo run build:dev on every workspace:* dependency
 
-Build a package via its own `prepare` script whenever it is a `workspace:*` dependency of ANY `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. pnpm runs `prepare` for each workspace package during `pnpm install`; a consumer resolves the dependency through a `link:` symlink into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it before consumers need it — nothing upstream does it for them. See [per-package-prepare-builds](../decisions/per-package-prepare-builds.md) for why this shape was chosen over a root-level build.[^install-orchestration]
+Build a package via its own `prepare` script whenever it is a `workspace:` dependency (`workspace:*` or `workspace:^`) of ANY `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. pnpm runs `prepare` for each workspace package during `pnpm install`; a consumer resolves the dependency through a `link:` symlink into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it before consumers need it — nothing upstream does it for them. See [per-package-prepare-builds](../decisions/per-package-prepare-builds.md) for why this shape was chosen over a root-level build.[^install-orchestration]
 
 Re-derive the current set rather than trusting a list written down anywhere:
 
 ```bash
-grep -rl '"@savvy-web/<name>": "workspace:\*"' package.json packages/*/package.json plugin/package.json e2e/*/package.json
+grep -rlE '"@savvy-web/<name>": "workspace:[*^]"' package.json packages/*/package.json plugin/package.json e2e/*/package.json
 ```
 
 ## DO NOT delete these scripts
