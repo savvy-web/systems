@@ -1,5 +1,27 @@
 # @savvy-web/silk-core
 
+## 0.5.0
+
+### Features
+
+- New `ReleaseChannelError` tagged error (`pkg`, `id`, `value`), raised when a publish target declares a `releases` value that is not `"all"`, `"stable"` or `"prerelease"`. [#809][#809]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/templates | peerDependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/workspaces | peerDependency | updated | ^0.35.0 | ^0.36.0 |
+
+[#809][#809]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#809]: https://github.com/savvy-web/systems/pull/809
+
 ## 0.4.14
 
 ### Dependencies
