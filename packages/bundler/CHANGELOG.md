@@ -1,5 +1,27 @@
 # @savvy-web/bundler
 
+## 2.6.0
+
+### Features
+
+- `runBuild` now records a warning (source `config`, code `targets-no-final-release`) when every prod publish target is `releases: "prerelease"`, since final versions would then publish nowhere. The build still succeeds; the warning appears in the build report. [#809][#809]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.9.4 | 2.10.0 |
+| effect | dependency | updated | ^4.0.5 | ^4.0.6 |
+| rolldown | dependency | updated | ^1.2.14 | ^1.2.15 |
+
+[#809][#809]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#809]: https://github.com/savvy-web/systems/pull/809
+
 ## 2.5.4
 
 ### Dependencies

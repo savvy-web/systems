@@ -1,5 +1,21 @@
 # @savvy-web/rspress-builder
 
+## 1.3.30
+
+### Build System
+
+- `@savvy-web/bundler` is now published as a caret range (`^<version>`) instead of an exact pin, so consumers pick up compatible bundler releases, including the per-target release filter in bundler 2.6.0, without waiting for an rspress-builder release.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/bundler | dependency | updated | 2.5.4 | 2.6.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 1.3.29
 
 ### Dependencies

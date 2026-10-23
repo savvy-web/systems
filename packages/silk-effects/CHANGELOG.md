@@ -1,5 +1,53 @@
 # @savvy-web/silk-effects
 
+## 9.6.0
+
+### Features
+
+#### Per-target release filter
+
+- `RawTargetObject` and `TargetBinding` gain `releases` (`"all" | "stable" | "prerelease"`) and `provenance` (boolean). A `targets.json` from an older bundler, which writes no `releases`, takes the filter declared on `publishConfig.targets`, so upgrading the publisher first never widens it. A `provenance` declared on a binding or target object now overrides the registry-derived default in `SilkPublishability.detect`, with the same fallback to `publishConfig.targets` when the binding predates the field.
+
+- New `SilkPublishability` statics:
+
+- `resolveReleaseTargets(pkg, version)` — every resolved publish target judged against a specific version, each with its target key, `releases` channel, whether it `receives` the version, and the dist-tag. A filtered target is returned with `receives: false`, not dropped; no `receives: true` entry means the version publishes nowhere, which is not an error. A declared `releases` that is not a known channel fails with `ReleaseChannelError` instead of being defaulted.
+
+- `distTagFor(version)` — `latest` for a final version, otherwise the first prerelease identifier, or `next` when that identifier is empty, is `latest`, or would parse as a SemVer range (`0`, `x`, `v2`), which npm refuses as a dist-tag; a prerelease never takes `latest`
+
+- `isPrerelease(version)`
+
+- `receives(releases, version)`
+
+- New exported types: `ReleaseChannel` and `ReleaseTarget`. `ReleaseChannelError` is re-exported from `@savvy-web/silk-core`.
+
+- The filter deliberately runs outside `PublishabilityDetector`, so a package whose only target skips a given version still counts as publishable for the kit's `VersioningStrategy`. [#809][#809]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/glob | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/jsonc | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/markdown | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/package-json | dependency | updated | ^0.23.0 | ^0.24.1 |
+| @effected/toml | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/walker | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/yaml | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @savvy-web/silk-core | dependency | updated | 0.4.14 | 0.5.0 |
+| @effected/commands | peerDependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/git | peerDependency | updated | ^0.23.0 | ^0.24.0 |
+| @effected/templates | peerDependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/workspaces | peerDependency | updated | ^0.35.0 | ^0.36.0 |
+
+[#809][#809]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#809]: https://github.com/savvy-web/systems/pull/809
+
 ## 9.5.5
 
 ### Refactoring
