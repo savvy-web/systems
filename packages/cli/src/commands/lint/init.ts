@@ -7,7 +7,12 @@ import { chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { Block } from "@effected/cli";
-import type { JsoncFormattingOptions, JsoncModificationError, JsoncParseError } from "@effected/jsonc";
+import type {
+	JsoncFormattingOptions,
+	JsoncModificationError,
+	JsoncParseError,
+	JsoncStringifyError,
+} from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import type { SectionFileError, SectionParseError, SectionRenderError } from "@effected/templates";
 import { ManagedSection } from "@effected/templates";
@@ -371,6 +376,7 @@ export function runLintInit(opts: {
 	| CommandError
 	| JsoncParseError
 	| JsoncModificationError
+	| JsoncStringifyError
 	| SectionParseError
 	| SectionRenderError
 	| SectionFileError
