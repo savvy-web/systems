@@ -2,7 +2,7 @@
  * Changelog transform: insert a Maintenance note into an empty version block.
  *
  * @remarks
- * Kit twin of `MaintenanceNotePlugin`. When the targeted version block is empty
+ * When the targeted version block is empty
  * (or holds only the engine's empty-release placeholder sentence), inserts a
  * `### Maintenance` heading and a one-item list describing why the package
  * released. Idempotent: once the note exists the block is non-empty.

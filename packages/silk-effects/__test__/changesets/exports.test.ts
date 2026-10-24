@@ -103,36 +103,9 @@ describe("Changesets namespace (src/changesets/index.ts)", () => {
 	});
 });
 
-describe("remark exports via Changesets namespace", () => {
-	it("exports lint rules", async () => {
+describe("maintenance exports via Changesets namespace", () => {
+	it("exports the maintenance-reason API", async () => {
 		const mod = await import("../../src/changesets/index.js");
-		expect(mod.HeadingHierarchyRule).toBeDefined();
-		expect(mod.RequiredSectionsRule).toBeDefined();
-		expect(mod.ContentStructureRule).toBeDefined();
-		expect(mod.UncategorizedContentRule).toBeDefined();
-		expect(mod.DependencyTableFormatRule).toBeDefined();
-	});
-
-	it("exports transform plugins", async () => {
-		const mod = await import("../../src/changesets/index.js");
-		expect(mod.AggregateDependencyTablesPlugin).toBeDefined();
-		expect(mod.MergeSectionsPlugin).toBeDefined();
-		expect(mod.ReorderSectionsPlugin).toBeDefined();
-		expect(mod.DeduplicateItemsPlugin).toBeDefined();
-		expect(mod.ContributorFootnotesPlugin).toBeDefined();
-		expect(mod.IssueLinkRefsPlugin).toBeDefined();
-		expect(mod.NormalizeFormatPlugin).toBeDefined();
-	});
-
-	it("exports presets", async () => {
-		const mod = await import("../../src/changesets/index.js");
-		expect(mod.SilkChangesetPreset).toHaveLength(5);
-		expect(mod.SilkChangesetTransformPreset).toHaveLength(7);
-	});
-
-	it("exports the maintenance-note API", async () => {
-		const mod = await import("../../src/changesets/index.js");
-		expect(mod.MaintenanceNotePlugin).toBeDefined();
 		expect(mod.deriveMaintenanceReason).toBeDefined();
 		expect(mod.MaintenanceReasonSchema).toBeDefined();
 		expect(mod.MaintenanceTriggerSchema).toBeDefined();

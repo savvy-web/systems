@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 import { contributorFootnotes } from "../../src/changesets/transforms/contributor-footnotes.js";
-import { deduplicateItems } from "../../src/changesets/transforms/deduplicate-items.js";
-import { issueLinkRefs } from "../../src/changesets/transforms/issue-link-refs.js";
-import { mergeSections } from "../../src/changesets/transforms/merge-sections.js";
-import { normalizeFormat } from "../../src/changesets/transforms/normalize-format.js";
-import { reorderSections } from "../../src/changesets/transforms/reorder-sections.js";
-import type { ChangelogTransform } from "../../src/changesets/transforms/types.js";
 import { emitKitMarkdown, parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 
 const transform = (md: string) => emitKitMarkdown(contributorFootnotes()(parseKitMarkdown(md)));
@@ -13,19 +8,8 @@ const transform = (md: string) => emitKitMarkdown(contributorFootnotes()(parseKi
 const transformNoThanks = (md: string) =>
 	emitKitMarkdown(contributorFootnotes({ thanks: false })(parseKitMarkdown(md)));
 
-// The kit twin of SilkChangesetTransformPreset's order, minus
-// aggregate-dependency-tables (not yet ported; a no-op on these inputs).
-const PIPELINE: ReadonlyArray<ChangelogTransform> = [
-	mergeSections,
-	reorderSections,
-	deduplicateItems,
-	contributorFootnotes(),
-	issueLinkRefs,
-	normalizeFormat,
-];
-
-const transformFull = (md: string) =>
-	emitKitMarkdown(PIPELINE.reduce((root, step) => step(root), parseKitMarkdown(md)));
+// The real changelog transform pipeline.
+const transformFull = (md: string) => ChangelogTransformer.transformContent(md);
 
 describe("contributor-footnotes", () => {
 	it("is a no-op when no attributions exist", () => {

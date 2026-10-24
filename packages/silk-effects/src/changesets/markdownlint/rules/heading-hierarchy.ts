@@ -27,7 +27,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * ```
  *
  * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH001.md | CSH001 rule documentation}
- * @see `src/remark/rules/heading-hierarchy.ts` for the corresponding remark-lint rule
+ * @see `src/changesets/rules/heading-hierarchy.ts` for the corresponding kit-node rule
  *
  * @public
  */

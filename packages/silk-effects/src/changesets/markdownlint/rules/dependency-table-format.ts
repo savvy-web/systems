@@ -52,7 +52,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  * ```
  *
  * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH005.md | CSH005 rule documentation}
- * @see `src/remark/rules/dependency-table-format.ts` for the corresponding remark-lint rule
+ * @see `src/changesets/rules/dependency-table-format.ts` for the corresponding kit-node rule
  *
  * @public
  */

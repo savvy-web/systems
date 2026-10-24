@@ -2,8 +2,7 @@
  * Version-block helpers over `@effected/markdown` trees.
  *
  * @remarks
- * Kit twin of `version-blocks.ts`: an h2 opens a version block, an h3 opens a
- * section inside it. Functions take a `children` array rather than a `Root`
+ * An h2 opens a version block, an h3 opens a section inside it. Functions take a `children` array rather than a `Root`
  * so a transform can pass its mutable working copy of `root.children`.
  *
  * @internal
