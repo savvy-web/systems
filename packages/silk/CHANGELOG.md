@@ -1,5 +1,15 @@
 # @savvy-web/silk
 
+## 4.4.0
+
+### Performance
+
+- Changes Biome rules to fix momory pressure.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 4.3.14
 
 ### Bug Fixes

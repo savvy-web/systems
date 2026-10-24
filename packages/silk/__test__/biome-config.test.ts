@@ -50,29 +50,13 @@ const loadAsset = (): SilkBiomeConfig => {
 
 describe("biome asset", () => {
 	const config = loadAsset();
-	const rule = config.linter.rules.correctness.useImportExtensions;
 
-	it("keeps useImportExtensions enabled at error level", () => {
-		expect(rule.level).toBe("error");
+	it("useImportExtensions is off", () => {
+		expect(config.linter.rules.correctness.useImportExtensions).toBe("off");
 	});
 
 	it("never uses forceJsExtensions (rewrites correct .json imports to .js — systems#359)", () => {
-		expect(rule.options?.forceJsExtensions).toBeUndefined();
-	});
-
-	it("maps every TypeScript source extension to its emitted JS extension", () => {
-		expect(rule.options?.extensionMappings).toMatchObject({
-			cts: "cjs",
-			mts: "mjs",
-			ts: "js",
-			tsx: "js",
-		});
-	});
-
-	it("leaves asset extensions (json, css) unmapped so they keep their real extension", () => {
-		const mappings = rule.options?.extensionMappings ?? {};
-		expect(mappings).not.toHaveProperty("json");
-		expect(mappings).not.toHaveProperty("css");
+		expect(config.linter.rules.correctness.useImportExtensions.options?.forceJsExtensions).toBeUndefined();
 	});
 
 	it("has no override re-configuring useImportExtensions", () => {
