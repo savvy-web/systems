@@ -2,7 +2,7 @@
  * Changelog transform: remove empty sections and empty lists.
  *
  * @remarks
- * Kit twin of `NormalizeFormatPlugin`. Within each version block, drops empty
+ * Kit transform. Within each version block, drops empty
  * lists and h3 sections with no content before the next h2/h3 (or the end of
  * the block), along with whitespace-only paragraphs that trail them.
  *

@@ -2,7 +2,7 @@
  * Shared section-scanning decision for the CSH005 dependency-table rule.
  *
  * @remarks
- * CSH005 has two implementations — a remark-lint rule over the mdast tree and
+ * CSH005 has two implementations — a kit rule over the @effected/markdown tree and
  * a markdownlint rule over micromark tokens. Both must agree on ONE question:
  * given the blocks of a `## Dependencies` section, which block (if any) is the
  * dependency table? Issues #456/#457 arose because each rule answered it with

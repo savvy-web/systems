@@ -4,7 +4,7 @@
  * @remarks
  * These schemas define the canonical representation of changeset data
  * consumed by the changelog formatter (Layer 2) and validated by the
- * remark-lint pre-validation layer (Layer 1). They enforce constraints
+ * lint pre-validation layer (Layer 1). They enforce constraints
  * such as summary length limits and valid dependency types at system
  * boundaries.
  *

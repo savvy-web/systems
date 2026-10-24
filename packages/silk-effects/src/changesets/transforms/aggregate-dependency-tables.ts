@@ -2,7 +2,7 @@
  * Changelog transform: aggregate dependency tables.
  *
  * @remarks
- * Kit twin of `AggregateDependencyTablesPlugin`. Consolidates every
+ * Kit transform. Consolidates every
  * `### Dependencies` section within a version block into one section holding
  * a single collapsed and sorted table:
  *

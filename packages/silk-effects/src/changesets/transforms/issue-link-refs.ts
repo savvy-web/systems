@@ -2,7 +2,7 @@
  * Changelog transform: convert `[#N](url)` links to reference-style links.
  *
  * @remarks
- * Kit twin of `IssueLinkRefsPlugin`. Within each version block, links whose
+ * Kit transform. Within each version block, links whose
  * sole text child is `#<digits>` become full `linkReference` nodes and one
  * `definition` per distinct issue is appended after the block, ordered
  * numerically.

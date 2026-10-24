@@ -2,7 +2,7 @@
  * Changelog transform: merge duplicate h3 section headings.
  *
  * @remarks
- * Kit twin of `MergeSectionsPlugin`. Groups h3 sections within each version
+ * Kit transform. Groups h3 sections within each version
  * block by normalized heading text (via the category system's `fromHeading`)
  * and moves the content of duplicates under the first occurrence, then drops
  * the duplicate headings. Runs after dependency-table aggregation and before

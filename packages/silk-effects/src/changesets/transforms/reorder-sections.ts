@@ -2,7 +2,7 @@
  * Changelog transform: reorder h3 sections by category priority.
  *
  * @remarks
- * Kit twin of `ReorderSectionsPlugin`. Sorts sections within each version
+ * Kit transform. Sorts sections within each version
  * block so Breaking Changes come first and Other last; unknown headings sort
  * after every category and a `Thanks` section is pinned to the very end.
  *

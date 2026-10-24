@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 describe("Changesets namespace (src/changesets/index.ts)", () => {
 	it("exports class-based API", async () => {
 		const mod = await import("../../src/changesets/index.js");
+		expect((mod as Record<string, unknown>).SilkChangesetTransformPreset).toBeUndefined();
 		expect(mod.Categories).toBeDefined();
 		expect(mod.ChangesetLinter).toBeDefined();
 		expect(mod.ChangelogTransformer).toBeDefined();

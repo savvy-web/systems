@@ -2,7 +2,7 @@
  * Changelog transform: drop duplicate list items within a section.
  *
  * @remarks
- * Kit twin of `DeduplicateItemsPlugin`. Seen item text is tracked across every
+ * Kit transform. Seen item text is tracked across every
  * list in a section, not per list, because merging sections can leave
  * duplicate content as sibling lists. Lists left empty are removed.
  *
