@@ -61,6 +61,9 @@
  * @public
  */
 
+import type { Table as KitTable } from "@effected/markdown";
+import { Mdast } from "@effected/markdown";
+import { Result } from "effect";
 import type { Heading, Root, RootContent, Table } from "mdast";
 import { toString as nodeToString } from "mdast-util-to-string";
 import { lintRule } from "unified-lint-rule";
@@ -68,6 +71,27 @@ import { visit } from "unist-util-visit";
 import { RULE_DOCS } from "../../constants.js";
 import { scanDependencySection } from "../../utils/dependency-section.js";
 import { parseDependencyTable } from "../../utils/dependency-table.js";
+
+/**
+ * Bridge a plain mdast table into a kit `Table` for the kit-typed dependency
+ * table parser. Temporary: deleted with the remark pipeline.
+ *
+ * @param table - The mdast table
+ * @returns The equivalent kit table
+ *
+ * @internal
+ */
+function toKitTable(table: Table): KitTable {
+	const result = Mdast.fromMdastResult({ type: "root", children: [table] });
+	if (Result.isFailure(result)) {
+		throw new Error(result.failure.message, { cause: result.failure });
+	}
+	const kit = result.success.children.find((n): n is KitTable => n.type === "table");
+	if (kit === undefined) {
+		throw new Error("mdast table did not decode to a kit table");
+	}
+	return kit;
+}
 
 /** @internal */
 const EM_DASH = "\u2014";
@@ -106,7 +130,7 @@ export const DependencyTableFormatRule = lintRule(
 			// types, and actions via Schema.decodeUnknownSync). Then do semantic
 			// validation for from/to em-dash rules which the schema cannot enforce.
 			try {
-				const rows = parseDependencyTable(table);
+				const rows = parseDependencyTable(toKitTable(table));
 
 				// Semantic validation: from/to must match action
 				for (const row of rows) {

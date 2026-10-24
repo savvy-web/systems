@@ -72,6 +72,9 @@
  * @public
  */
 
+import type { Table as KitTable } from "@effected/markdown";
+import { Root as KitRoot, Mdast } from "@effected/markdown";
+import { Result } from "effect";
 import type { Heading, List, Root, RootContent, Table } from "mdast";
 import type { Plugin } from "unified";
 
@@ -83,6 +86,54 @@ import {
 	sortDependencyRows,
 } from "../../utils/dependency-table.js";
 import { getBlockSections, getHeadingText, getVersionBlocks } from "../../utils/version-blocks.js";
+
+/**
+ * Bridge a plain mdast table into a kit `Table` for the kit-typed dependency
+ * table parser. Temporary: deleted with the remark pipeline.
+ *
+ * @param table - The mdast table
+ * @returns The equivalent kit table
+ *
+ * @internal
+ */
+function toKitTable(table: Table): KitTable {
+	const result = Mdast.fromMdastResult({ type: "root", children: [table] });
+	if (Result.isFailure(result)) {
+		throw new Error(result.failure.message, { cause: result.failure });
+	}
+	const kit = result.success.children.find((n): n is KitTable => n.type === "table");
+	if (kit === undefined) {
+		throw new Error("mdast table did not decode to a kit table");
+	}
+	return kit;
+}
+
+/**
+ * Narrow a plain mdast projection node to an mdast table.
+ *
+ * @internal
+ */
+function isMdastTable(node: unknown): node is Table {
+	return typeof node === "object" && node !== null && "type" in node && node.type === "table";
+}
+
+/**
+ * Bridge a kit `Table` back into a plain mdast table for the remark tree.
+ * Temporary: deleted with the remark pipeline.
+ *
+ * @param table - The kit table
+ * @returns The equivalent mdast table
+ *
+ * @internal
+ */
+function toMdastTable(table: KitTable): Table {
+	const projected = Mdast.toMdast(new KitRoot({ children: [table] }));
+	const first = Array.isArray(projected.children) ? projected.children[0] : undefined;
+	if (!isMdastTable(first)) {
+		throw new Error("kit table did not project to an mdast table");
+	}
+	return first;
+}
 
 /**
  * Unwrap dependency tables that an earlier (broken) formatter nested inside
@@ -113,7 +164,7 @@ function extractTablesFromList(list: List): { rows: DependencyTableRow[]; rest: 
 		for (const child of item.children) {
 			if (child.type === "table") {
 				try {
-					rows.push(...parseDependencyTable(child as Table));
+					rows.push(...parseDependencyTable(toKitTable(child)));
 					continue;
 				} catch {
 					// fall through: keep the unparseable table, still bullet-wrapped
@@ -148,7 +199,7 @@ export const AggregateDependencyTablesPlugin: Plugin<[], Root> = () => {
 				for (const node of section.contentNodes) {
 					if (node.type === "table") {
 						try {
-							const rows = parseDependencyTable(node as Table);
+							const rows = parseDependencyTable(toKitTable(node));
 							allRows.push(...rows);
 						} catch {
 							// If table doesn't parse, treat as legacy content
@@ -204,7 +255,7 @@ export const AggregateDependencyTablesPlugin: Plugin<[], Root> = () => {
 
 			// Add table if there are rows
 			if (collapsed.length > 0) {
-				newNodes.push(serializeDependencyTable(collapsed));
+				newNodes.push(toMdastTable(serializeDependencyTable(collapsed)));
 			}
 
 			// Add legacy content after the table

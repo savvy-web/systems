@@ -1,16 +1,13 @@
-import type { Table } from "mdast";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import { unified } from "unified";
+import type { Table } from "@effected/markdown";
 import { describe, expect, it } from "vitest";
 import { DependencyTable } from "../../src/changesets/api/dependency-table.js";
+import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 
-/** Parse markdown into MDAST and extract first table node. */
+/** Parse markdown into kit nodes and extract the first table node. */
 function getTable(md: string): Table {
-	const tree = unified().use(remarkParse).use(remarkGfm).parse(md);
-	const table = tree.children.find((n) => n.type === "table");
+	const table = parseKitMarkdown(md).children.find((n): n is Table => n.type === "table");
 	if (!table) throw new Error("No table found in markdown");
-	return table as Table;
+	return table;
 }
 
 const VALID_TABLE = `| Dependency | Type | Action | From | To |
@@ -20,6 +17,12 @@ const VALID_TABLE = `| Dependency | Type | Action | From | To |
 | old-pkg | dependency | removed | ^2.0.0 | — |`;
 
 describe("DependencyTable.parse", () => {
+	it("throws on a header-only table", () => {
+		expect(() =>
+			DependencyTable.parse(getTable("| Dependency | Type | Action | From | To |\n| - | - | - | - | - |\n")),
+		).toThrow("Dependency table must have at least one data row");
+	});
+
 	it("returns rows from a valid mdast Table node", () => {
 		const rows = DependencyTable.parse(getTable(VALID_TABLE));
 		expect(rows).toHaveLength(3);

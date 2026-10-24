@@ -1,4 +1,4 @@
-import type { Table } from "mdast";
+import type { Table } from "@effected/markdown";
 import remarkGfm from "remark-gfm";
 import remarkParse from "remark-parse";
 import remarkStringify from "remark-stringify";
@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { AggregateDependencyTablesPlugin } from "../../src/changesets/remark/plugins/aggregate-dependency-tables.js";
 import { parseDependencyTable } from "../../src/changesets/utils/dependency-table.js";
+import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 
 function transform(md: string): string {
 	return unified()
@@ -54,11 +55,7 @@ ${TABLE_HEADER}
 ${TABLE_HEADER}
 | some_pkg | dependency | updated | ~0.2.1 | ~0.3.0 |
 `;
-		const tables = unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.parse(transform(md))
-			.children.filter((node): node is Table => node.type === "table");
+		const tables = parseKitMarkdown(transform(md)).children.filter((node): node is Table => node.type === "table");
 		expect(tables).toHaveLength(1);
 		expect(parseDependencyTable(tables[0])).toEqual([
 			{ dependency: "some_pkg", type: "dependency", action: "updated", from: "~0.2.0", to: "~0.3.0" },
