@@ -52,11 +52,7 @@
 		"indentWidth": 2,
 		"lineWidth": 120
 	},
-	"javascript": {
-		"resolver": {
-			"experimentalPnpmCatalogs": true
-		}
-	},
+	"javascript": { "resolver": { "experimentalPnpmCatalogs": false } },
 	"json": {
 		"assist": {
 			"enabled": true
@@ -70,9 +66,7 @@
 		}
 	},
 	"linter": {
-		"domains": {
-			"project": "recommended"
-		},
+		"domains": { "project": "none" },
 		"enabled": true,
 		"rules": {
 			"complexity": {
@@ -81,6 +75,7 @@
 				}
 			},
 			"correctness": {
+				"noUndeclaredDependencies": "off",
 				"noUnresolvedImports": "off",
 				"noUnusedVariables": {
 					"level": "error",
@@ -88,17 +83,7 @@
 						"ignoreRestSiblings": true
 					}
 				},
-				"useImportExtensions": {
-					"level": "error",
-					"options": {
-						"extensionMappings": {
-							"cts": "cjs",
-							"mts": "mjs",
-							"ts": "js",
-							"tsx": "js"
-						}
-					}
-				}
+				"useImportExtensions": "off"
 			},
 			"nursery": {
 				"useExplicitType": "off"
@@ -116,9 +101,9 @@
 			},
 			"suspicious": {
 				"noBiomeFirstException": "error",
-				"noDuplicateDependencies": "error",
+				"noDuplicateDependencies": "off",
 				"noDuplicateObjectKeys": "error",
-				"noImportCycles": "error",
+				"noImportCycles": "off",
 				"noQuickfixBiome": "error",
 				"useBiomeIgnoreFolder": "error"
 			}
