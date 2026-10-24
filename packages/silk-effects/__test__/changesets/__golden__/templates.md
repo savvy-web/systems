@@ -1,0 +1,731 @@
+# @savvy-web/templates
+
+## 1.2.14
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.23.0 | ^0.24.1 |
+| @effected/yaml | dependency | updated | ^0.22.0 | ^0.23.0 |
+
+[#809][#809]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#809]: https://github.com/savvy-web/systems/pull/809
+
+## 1.2.13
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/yaml | dependency | updated | ^0.21.0 | ^0.22.0 |
+
+[#797][#797]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#797]: https://github.com/savvy-web/systems/pull/797
+
+## 1.2.12
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.21.0 | ^0.22.0 |
+| @effected/yaml | dependency | updated | ^0.20.0 | ^0.21.0 |
+
+[#791][#791]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#791]: https://github.com/savvy-web/systems/pull/791
+
+## 1.2.11
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.20.1 | ^0.21.0 |
+| @effected/yaml | dependency | updated | ^0.19.1 | ^0.20.0 |
+
+[#783][#783]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#783]: https://github.com/savvy-web/systems/pull/783
+
+## 1.2.10
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.20.0 | ^0.20.1 |
+
+[#764][#764]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#764]: https://github.com/savvy-web/systems/pull/764
+
+## 1.2.9
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/yaml | dependency | updated | ^0.19.0 | ^0.19.1 |
+
+[#746][#746]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#746]: https://github.com/savvy-web/systems/pull/746
+
+## 1.2.8
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.19.1 | ^0.20.0 |
+| @effected/yaml | dependency | updated | ^0.18.0 | ^0.19.0 |
+| effect | peerDependency | updated | 4.0.0-rc.118 | ^4.0.0 |
+
+[#736][#736]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#736]: https://github.com/savvy-web/systems/pull/736
+
+## 1.2.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.19.0 | ^0.19.1 |
+
+[#718][#718]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#718]: https://github.com/savvy-web/systems/pull/718
+
+## 1.2.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/yaml | dependency | updated | ^0.17.0 | ^0.18.0 |
+| effect | peerDependency | updated | 4.0.0-rc.117 | 4.0.0-rc.118 |
+
+[#711][#711]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#711]: https://github.com/savvy-web/systems/pull/711
+
+## 1.2.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.17.0 | ^0.18.0 |
+
+[#703][#703]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#703]: https://github.com/savvy-web/systems/pull/703
+
+## 1.2.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/yaml | dependency | updated | ^0.16.0 | ^0.17.0 |
+| effect | peerDependency | updated | 4.0.0-rc.116 | 4.0.0-rc.117 |
+
+[#689][#689]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#689]: https://github.com/savvy-web/systems/pull/689
+
+## 1.2.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.15.1 | ^0.16.0 |
+| @effected/yaml | dependency | updated | ^0.15.2 | ^0.16.0 |
+| effect | peerDependency | updated | 4.0.0-rc.115 | 4.0.0-rc.116 |
+
+[#672][#672]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#672]: https://github.com/savvy-web/systems/pull/672
+
+## 1.2.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.15.0 | ^0.15.1 |
+| @effected/yaml | dependency | updated | ^0.15.1 | ^0.15.2 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+## 1.2.1
+
+### Maintenance
+
+- Republished with no source change; the suite is now uniformly ESM-only. [#664][#664]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#664]: https://github.com/savvy-web/systems/pull/664
+
+## 1.2.0
+
+### Bug Fixes
+
+- Force releasing all packages to fix pnpm v12 flakiness.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+## 1.1.9
+
+### Bug Fixes
+
+- Force bumping all public packages due to npm flakiness in releasing tooling. [#651][#651]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#651]: https://github.com/savvy-web/systems/pull/651
+
+## 1.1.8
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/yaml | dependency | updated | ^0.15.0 | ^0.15.1 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+## 1.1.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/yaml | dependency | updated | ^0.14.0 | ^0.15.0 |
+| effect | peerDependency | updated | 4.0.0-rc.112 | 4.0.0-rc.115 |
+
+[#634][#634]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#634]: https://github.com/savvy-web/systems/pull/634
+
+## 1.1.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/yaml | dependency | updated | ^0.13.0 | ^0.14.0 |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+## 1.1.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/yaml | dependency | updated | ^0.12.0 | ^0.13.0 |
+
+[#612][#612]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#612]: https://github.com/savvy-web/systems/pull/612
+
+## 1.1.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.12.0 | ^0.13.0 |
+
+[#565][#565]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#565]: https://github.com/savvy-web/systems/pull/565
+
+## 1.1.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/yaml | dependency | updated | ^0.11.0 | ^0.12.0 |
+
+[#552][#552]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#552]: https://github.com/savvy-web/systems/pull/552
+
+## 1.1.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.10.2 | ^0.11.0 |
+
+[#550][#550]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#550]: https://github.com/savvy-web/systems/pull/550
+
+## 1.1.1
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/yaml | dependency | updated | ^0.10.0 | ^0.11.0 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#542]: https://github.com/savvy-web/systems/pull/542
+
+## 1.1.0
+
+### Bug Fixes
+
+- The `biomeVersion` default used when scaffolding a workspace was pinned at `2.3.3`, two minor lines behind the suite. Because the generated `biome.jsonc` `$schema` URL is what CI reads to install the Biome binary, every scaffolded repo was provisioning a stale toolchain. The default is now `2.5.9`. [#534][#534]
+
+### Minor Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#534]: https://github.com/savvy-web/systems/pull/534
+
+## 1.0.20
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.10.1 | ^0.10.2 | [#513][#513] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#513]: https://github.com/savvy-web/systems/pull/513
+
+## 1.0.19
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.10.0 | ^0.10.1 | [#511][#511] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#511]: https://github.com/savvy-web/systems/pull/511
+
+## 1.0.18
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.9.0 | ^0.10.0 | |
+  | @effected/yaml | dependency | updated | ^0.9.0 | ^0.10.0 | |
+  | effect | peerDependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#502]: https://github.com/savvy-web/systems/pull/502
+
+## 1.0.17
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#498]: https://github.com/savvy-web/systems/pull/498
+
+## 1.0.16
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.8.0 | ^0.9.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#490]: https://github.com/savvy-web/systems/pull/490
+
+## 1.0.15
+
+### Maintenance
+
+- Changeset config templates now reference the stable `@changesets/config@4.0.0` schema instead of the `4.0.0-next.6` prerelease [#483][#483]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#483]: https://github.com/savvy-web/systems/pull/483
+
+## 1.0.14
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/yaml | dependency | updated | ^0.7.0 | ^0.8.0 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#467]: https://github.com/savvy-web/systems/pull/467
+
+## 1.0.13
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.7.3 | ^0.8.0 | |
+  | @effected/yaml | dependency | updated | ^0.6.1 | ^0.7.0 | |
+  | effect | peerDependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#449]: https://github.com/savvy-web/systems/pull/449
+
+## 1.0.12
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.7.2 | ^0.7.3 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#427]: https://github.com/savvy-web/systems/pull/427
+
+## 1.0.11
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.7.1 | ^0.7.2 | |
+  | @effected/yaml | dependency | updated | ^0.6.0 | ^0.6.1 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#416]: https://github.com/savvy-web/systems/pull/416
+
+## 1.0.10
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.6.1 | ^0.7.1 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#400]: https://github.com/savvy-web/systems/pull/400
+
+## 1.0.9
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.6.0 | ^0.6.1 | [#396][#396] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#396]: https://github.com/savvy-web/systems/pull/396
+
+## 1.0.8
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.5.2 | ^0.6.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#382]: https://github.com/savvy-web/systems/pull/382
+
+## 1.0.7
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.5.1 | ^0.5.2 | |
+  | @effected/yaml | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#375]: https://github.com/savvy-web/systems/pull/375
+
+## 1.0.6
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.5.0 | ^0.5.1 | |
+  | @effected/yaml | dependency | updated | ^0.5.0 | ^0.5.1 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#364]: https://github.com/savvy-web/systems/pull/364
+
+## 1.0.5
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.4.2 | ^0.5.0 | [#351][#351] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#351]: https://github.com/savvy-web/systems/pull/351
+
+## 1.0.4
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/package-json | dependency | updated | ^0.4.1 | ^0.4.2 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#342]: https://github.com/savvy-web/systems/pull/342
+
+## 1.0.3
+
+### Refactoring
+
+- Replaced `sort-package-json` with `@effected/package-json`'s `PackageJsonFormat.sortValue` for scaffolded `package.json` sorting (byte-identical output) [#336][#336]
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | sort-package-json | dependency | removed | ^4.0.0 | — | |
+  | @effected/yaml | dependency | updated | ^0.4.0 | ^0.5.0 | |
+  | @effected/package-json | dependency | added | — | ^0.4.1 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#336]: https://github.com/savvy-web/systems/pull/336
+
+## 1.0.2
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/yaml | dependency | updated | ^0.3.1 | ^0.4.0 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
+
+### Patch Changes
+
+[#326]: https://github.com/savvy-web/systems/pull/326
+
+## 1.0.1
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | @effected/yaml | dependency | updated | ^0.2.0 | ^0.3.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+## 1.0.0
+
+### Breaking Changes
+
+- The package peers on `effect@4` (`catalog:effectPeers`); consumers must provide the v4 runtime.
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | yaml-effect | dependency | removed | ^0.7.2 | — | |
+  | effect | peerDependency | updated | ^3.21.0 | catalog:effectPeers | |
+  | @effected/yaml | dependency | added | — | ^0.2.0 | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Other
+
+- YAML serialization adopts `@effected/yaml`. [#312][#312]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#312]: https://github.com/savvy-web/systems/pull/312
+
+## 0.1.8
+
+### Dependencies
+
+- | Dependency | Type | Action | From | To | |
+  | --- | --- | --- | --- | --- | --- |
+  | yaml-effect | dependency | updated | ^0.7.0 | ^0.7.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
+
+### Patch Changes
+
+[#232]: https://github.com/savvy-web/systems/pull/232
+
+## 0.1.7
+
+### Maintenance
+
+- The changeset config template now writes the `$schema` URL `https://unpkg.com/@changesets/config@4.0.0-next.6/schema.json` (was `@changesets/config@3.1.1`), keeping generated `.changeset/config.json` output in sync with the v3 config schema. [#218][#218]
+
+### Patch Changes
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#218]: https://github.com/savvy-web/systems/pull/218
+
+## 0.1.6
+
+### Dependencies
+
+- [`5ada627`](https://github.com/savvy-web/systems/commit/5ada627c7e8b959036f0a7e1bf9ecaf4978136c8) \| Dependency \| Type \| Action \| From \| To \|
+  \| ----------- \| ---------- \| ------- \| ------ \| ------ \|
+  \| js-yaml \| dependency \| removed \| ^4.2.0 \| — \|
+  \| yaml-effect \| dependency \| added \| — \| ^0.7.0 \|
+
+## 0.1.5
+
+### Maintenance
+
+- [`8941f4c`](https://github.com/savvy-web/systems/commit/8941f4c8c54f2020d00689269fb16ea05ea94fcb) Coordinated re-release alongside the `@savvy-web/pnpm-plugin-silk` monorepo migration so the package picks up the refreshed `catalog:silkPeers` peer-dependency ranges. Also adds a `LICENSE` file and minor `tsconfig.json` corrections. No runtime behavior changes.
+
+## 0.1.4
+
+### Documentation
+
+- [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) Added `@public` release tags to all public-surface exports across the templates library (`BiomeOptions`, `ChangesetOptions`, `GitignoreOptions`, `PackageJsonOptions`, `PnpmOptions`, `ReadmeOptions`, `TsconfigOptions`, `TurboOptions`, `VscodeOptions`, `WorkspaceOptions`, and supporting types). Clears 36 `ae-missing-release-tag` diagnostics from the API Extractor pass without changing any runtime behavior.
+
+## 0.1.3
+
+### Dependencies
+
+- | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type | Action | From | To |
+  | :-- | :-- | :-- | :-- | :-- | --- |
+  | js-yaml | dependency | updated | ^4.1.1 | ^4.2.0 | |
+  | sort-package-json | dependency | updated | ^3.6.1 | ^4.0.0 | |
+
+## 0.1.2
+
+### Build System
+
+- [`8543348`](https://github.com/savvy-web/systems/commit/85433481b31cfa35ddfe2669dc6217efde327b9e) Now built with `@savvy-web/bundler`.
+
+## 0.1.1
+
+### Other
+
+- [`6511053`](https://github.com/savvy-web/systems/commit/651105346f97d6e486106c4a2f992e0b2cbbac0f) Upgrades to pnpm v11 deployments
+
+## 0.1.0
+
+### Features
+
+- [`590e079`](https://github.com/savvy-web/systems/commit/590e0799efb47f5a70f091487f266042bbb7e5b9) Initial release of @savvy-web/templates — pure TypeScript library for Silk Suite project scaffolding. Includes 10 template functions for generating package.json, tsconfig, biome, turbo, pnpm workspace, gitignore, changeset config, VS Code settings, README, and full workspace compositions. All templates use Effect Schema validation with no runtime I/O.
