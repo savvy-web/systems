@@ -930,7 +930,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.2 | ^0.18.0 | [#547][#547] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -942,7 +942,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.1 | ^0.17.2 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -954,9 +954,9 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/workspaces | dependency | updated | ^0.17.0 | ^0.17.1 | |
+  | @effected/workspaces | dependency | updated | ^0.17.0 | ^0.17.1 |  |
   | @microsoft/api-extractor | dependency | updated | ^7.58.12 | ^7.59.0 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -967,7 +967,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.16.0 | ^0.17.0 | [#532][#532] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -979,9 +979,9 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.11.0 | ^0.11.1 | |
+  | @effected/npm | dependency | updated | ^0.11.0 | ^0.11.1 |  |
   | @effected/workspaces | dependency | updated | ^0.15.1 | ^0.16.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ## 2.5.0
@@ -996,7 +996,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.15.0 | ^0.15.1 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1010,7 +1010,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.2 | ^0.15.0 | [#522][#522] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1022,9 +1022,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/package-json | dependency | updated | ^0.10.1 | ^0.10.2 | |
+  | @effected/package-json | dependency | updated | ^0.10.1 | ^0.10.2 |  |
   | @effected/workspaces | dependency | updated | ^0.14.1 | ^0.14.2 | [#513][#513] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1035,10 +1035,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.10.0 | ^0.11.0 | |
-  | @effected/package-json | dependency | updated | ^0.10.0 | ^0.10.1 | |
+  | @effected/npm | dependency | updated | ^0.10.0 | ^0.11.0 |  |
+  | @effected/package-json | dependency | updated | ^0.10.0 | ^0.10.1 |  |
   | @effected/workspaces | dependency | updated | ^0.14.0 | ^0.14.1 | [#511][#511] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1049,13 +1049,13 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | |
-  | @effected/npm | dependency | updated | ^0.9.0 | ^0.10.0 | |
-  | @effected/package-json | dependency | updated | ^0.9.0 | ^0.10.0 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.5.0 | ^0.6.0 | |
-  | @effected/workspaces | dependency | updated | ^0.13.1 | ^0.14.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 |  |
+  | @effected/npm | dependency | updated | ^0.9.0 | ^0.10.0 |  |
+  | @effected/package-json | dependency | updated | ^0.9.0 | ^0.10.0 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.5.0 | ^0.6.0 |  |
+  | @effected/workspaces | dependency | updated | ^0.13.1 | ^0.14.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1066,7 +1066,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.13.0 | ^0.13.1 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1078,9 +1078,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/package-json | dependency | updated | ^0.8.0 | ^0.9.0 | |
+  | @effected/package-json | dependency | updated | ^0.8.0 | ^0.9.0 |  |
   | @effected/workspaces | dependency | updated | ^0.12.0 | ^0.13.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1097,7 +1097,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | :-- | :-- | :-- | :-- | :-- | --- |
   | @changesets/get-release-plan | dependency | updated | ^5.0.0-next.9 | ^5.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1113,7 +1113,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.2 | ^0.12.0 | [#475][#475] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1125,7 +1125,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.1 | ^0.11.2 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1137,7 +1137,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.0 | ^0.11.1 | [#453][#453] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1149,13 +1149,13 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | |
-  | @effected/npm | dependency | updated | ^0.8.3 | ^0.9.0 | |
-  | @effected/package-json | dependency | updated | ^0.7.3 | ^0.8.0 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.4.1 | ^0.5.0 | |
-  | @effected/workspaces | dependency | updated | ^0.10.2 | ^0.11.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 |  |
+  | @effected/npm | dependency | updated | ^0.8.3 | ^0.9.0 |  |
+  | @effected/package-json | dependency | updated | ^0.7.3 | ^0.8.0 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.4.1 | ^0.5.0 |  |
+  | @effected/workspaces | dependency | updated | ^0.10.2 | ^0.11.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1166,7 +1166,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.10.0 | ^0.10.2 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1178,9 +1178,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.8.2 | ^0.8.3 | |
+  | @effected/npm | dependency | updated | ^0.8.2 | ^0.8.3 |  |
   | @effected/workspaces | dependency | updated | ^0.9.5 | ^0.10.0 | [#429][#429] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1191,10 +1191,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.8.1 | ^0.8.2 | |
-  | @effected/package-json | dependency | updated | ^0.7.2 | ^0.7.3 | |
+  | @effected/npm | dependency | updated | ^0.8.1 | ^0.8.2 |  |
+  | @effected/package-json | dependency | updated | ^0.7.2 | ^0.7.3 |  |
   | @effected/workspaces | dependency | updated | ^0.9.4 | ^0.9.5 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1205,11 +1205,11 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.8.0 | ^0.8.1 | |
-  | @effected/package-json | dependency | updated | ^0.7.1 | ^0.7.2 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.4.0 | ^0.4.1 | |
+  | @effected/npm | dependency | updated | ^0.8.0 | ^0.8.1 |  |
+  | @effected/package-json | dependency | updated | ^0.7.1 | ^0.7.2 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.4.0 | ^0.4.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.3 | ^0.9.4 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1220,7 +1220,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @changesets/get-release-plan | dependency | updated | ^5.0.0-next.7 | ^5.0.0-next.9 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1229,9 +1229,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Breaking Changes
 
 - ### Layer statics replace `XLive` exports
-
   `ConfigValidatorLive`, `EnvironmentDetectorLive`, `ExecutorResolverLive`, `FormatSelectorLive`, and `OutputRendererLive` are removed. Each now lives as a `.layer` static on its own service class, and the five standalone module files that defined them are deleted.
-
   ```typescript
   // Before
   import { ConfigValidatorLive } from "@savvy-web/tsdown-plugins";
@@ -1241,9 +1239,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   import { ConfigValidator } from "@savvy-web/tsdown-plugins";
   Effect.provide(ConfigValidator.layer);
   ```
-
   `ReportPipelineLive` is renamed to `ReportPipeline` — it composes multiple services via `Layer.mergeAll` rather than belonging to one, so it has no owning class to attach a static to.
-
   ```typescript
   // Before
   import { ReportPipelineLive, renderReport } from "@savvy-web/tsdown-plugins";
@@ -1253,7 +1249,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   import { ReportPipeline, renderReport } from "@savvy-web/tsdown-plugins";
   renderReport(reports, options).pipe(Effect.provide(ReportPipeline));
   ```
-
   This is a genuine breaking change to the package's export surface, released as a minor bump rather than a major: consumption of `@savvy-web/tsdown-plugins` is effectively in-house across the Silk Suite, so the migration cost is contained and immediate.
 
 ### Tests
@@ -1262,10 +1257,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.6.0 | ^0.8.0 | |
-  | @effected/package-json | dependency | updated | ^0.6.1 | ^0.7.1 | |
+  | @effected/npm | dependency | updated | ^0.6.0 | ^0.8.0 |  |
+  | @effected/package-json | dependency | updated | ^0.6.1 | ^0.7.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.1 | ^0.9.3 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1284,7 +1279,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   Align rspress-builder's public options with the bundler's own names. dtsBundledPackages becomes bundledPackages, apiModel becomes meta, and dtsExternals plus bundleNodeModules are exposed at both the build-wide and per-bundle levels.
 
-- The portable tsconfig resolver now gets `types` from `@effected/tsconfig-json@0.4.0`'s new `includeTypes` opt-in on `PortableTsconfig.make`, instead of a local merge-back step that re-added `types` after the kit's allow-list filter dropped it. The resolver bumps to `^0.4.0` and passes `{ includeTypes: true }` into `make`, and the destructure-and-reassign workaround is gone.
+* The portable tsconfig resolver now gets `types` from `@effected/tsconfig-json@0.4.0`'s new `includeTypes` opt-in on `PortableTsconfig.make`, instead of a local merge-back step that re-added `types` after the kit's allow-list filter dropped it. The resolver bumps to `^0.4.0` and passes `{ includeTypes: true }` into `make`, and the destructure-and-reassign workaround is gone.
 
   The emitted meta tsconfig carries the same keys and values as before, still `types: ["node"]` with `typeRoots` dropped. The only observed change is that `types` now sits in the position the kit's own allow-list places it rather than being appended last by the old mutation, so the JSON key order shifted; no consumer of this JSON reads it positionally. [#398][#398]
 
@@ -1294,7 +1289,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   As a result, `RunOptions.copyAmbientDts` is removed from `@savvy-web/bundler`. Nothing outside this suite consumed the injectable, so the removal ships as minor rather than major, consistent with the rest of this branch. `runBuild` still runs the early `extractAmbientDts`/`assertNoEntryCollisions` fast-fail validation before any build branch; only the copy step moved. [#398][#398]
 
-- The meta tsconfig shipped at dist/prod/npm/meta/tsconfig.json now carries the resolved `types` array. The kit's PortableTsconfig allow-list classifies `types` as path-dependent and drops it, but it holds `@types/*` package names, not filesystem paths, and it is the only signal telling a downstream virtual TypeScript environment which ambient type packages to load. Without it, consumers building virtual environments got no `@types/node`, so `console`, `process` and `Buffer` were all missing. `types` is now merged back in from the resolved compiler options whenever the source config declares it; `typeRoots` stays dropped since those are genuinely absolute, machine-specific paths. [#398][#398]
+* The meta tsconfig shipped at dist/prod/npm/meta/tsconfig.json now carries the resolved `types` array. The kit's PortableTsconfig allow-list classifies `types` as path-dependent and drops it, but it holds `@types/*` package names, not filesystem paths, and it is the only signal telling a downstream virtual TypeScript environment which ambient type packages to load. Without it, consumers building virtual environments got no `@types/node`, so `console`, `process` and `Buffer` were all missing. `types` is now merged back in from the resolved compiler options whenever the source config declares it; `typeRoots` stays dropped since those are genuinely absolute, machine-specific paths. [#398][#398]
 
 - Removes the TsconfigResolver enum-conversion class, which nothing consumed, in favor of the tsconfig-json kit. Corrects a false doc comment on EntryOverride that implied an omitted option falls back to the base build's value, when in fact each partition builds from its own values only.
 
@@ -1302,7 +1297,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   A package tsconfig that exists but cannot be resolved, whether from malformed JSON or an extends target that cannot be located, now fails the build with package context instead of silently falling back to synthesized defaults. Falling back emitted declarations compiled under the wrong options while still reporting success, because the generated declaration-pass config never references the broken source. A package with no tsconfig at all remains a supported case and still uses the defaults.
 
-- Guard against missing version endpoints on changesets releases typed as none. The changesets types package only guarantees oldVersion and newVersion on the major, minor and patch arms of ComprehensiveRelease, so an entry typed none may carry neither.
+* Guard against missing version endpoints on changesets releases typed as none. The changesets types package only guarantees oldVersion and newVersion on the major, minor and patch arms of ComprehensiveRelease, so an entry typed none may carry neither.
 
   The dependency changelog table now drops entries missing either endpoint rather than rendering an empty From or To cell. Maintenance-reason derivation no longer names a none co-member as a release trigger, which printed an unchanged version as the cause of the release. Next-version resolution skips releases with no newVersion instead of overwriting the seeded current version with undefined. [#398][#398]
 
@@ -1322,10 +1317,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.5.0 | ^0.6.0 | |
-  | @effected/package-json | dependency | updated | ^0.6.0 | ^0.6.1 | |
+  | @effected/npm | dependency | updated | ^0.5.0 | ^0.6.0 |  |
+  | @effected/package-json | dependency | updated | ^0.6.0 | ^0.6.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.0 | ^0.9.1 | [#396][#396] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1336,7 +1331,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/tsconfig-json | dependency | updated | ^0.3.2 | ^0.3.3 | [#385][#385] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1348,10 +1343,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.4.0 | ^0.5.0 | |
-  | @effected/package-json | dependency | updated | ^0.5.2 | ^0.6.0 | |
+  | @effected/npm | dependency | updated | ^0.4.0 | ^0.5.0 |  |
+  | @effected/package-json | dependency | updated | ^0.5.2 | ^0.6.0 |  |
   | @effected/workspaces | dependency | updated | ^0.8.0 | ^0.9.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1367,11 +1362,11 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.3.1 | ^0.4.0 | |
-  | @effected/package-json | dependency | updated | ^0.5.1 | ^0.5.2 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.3.1 | ^0.3.2 | |
+  | @effected/npm | dependency | updated | ^0.3.1 | ^0.4.0 |  |
+  | @effected/package-json | dependency | updated | ^0.5.1 | ^0.5.2 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.3.1 | ^0.3.2 |  |
   | @effected/workspaces | dependency | updated | ^0.7.0 | ^0.8.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1386,7 +1381,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.6.2 | ^0.7.0 | [#369][#369] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1398,13 +1393,13 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | |
-  | @effected/npm | dependency | updated | ^0.3.0 | ^0.3.1 | |
-  | @effected/package-json | dependency | updated | ^0.5.0 | ^0.5.1 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.3.0 | ^0.3.1 | |
-  | @effected/workspaces | dependency | updated | ^0.6.1 | ^0.6.2 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 |  |
+  | @effected/npm | dependency | updated | ^0.3.0 | ^0.3.1 |  |
+  | @effected/package-json | dependency | updated | ^0.5.0 | ^0.5.1 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.3.0 | ^0.3.1 |  |
+  | @effected/workspaces | dependency | updated | ^0.6.1 | ^0.6.2 |  |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1415,9 +1410,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/package-json | dependency | updated | ^0.4.2 | ^0.5.0 | |
+  | @effected/package-json | dependency | updated | ^0.4.2 | ^0.5.0 |  |
   | @effected/workspaces | dependency | updated | ^0.6.0 | ^0.6.1 | [#351][#351] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1428,7 +1423,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @microsoft/api-extractor | dependency | updated | ^7.58.11 | ^7.58.12 | [#349][#349] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1440,12 +1435,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/npm | dependency | updated | ^0.2.3 | ^0.3.0 | |
-  | @effected/package-json | dependency | updated | ^0.4.1 | ^0.4.2 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.2.7 | ^0.3.0 | |
-  | @effected/workspaces | dependency | updated | ^0.5.2 | ^0.6.0 | |
+  | @effected/npm | dependency | updated | ^0.2.3 | ^0.3.0 |  |
+  | @effected/package-json | dependency | updated | ^0.4.1 | ^0.4.2 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.2.7 | ^0.3.0 |  |
+  | @effected/workspaces | dependency | updated | ^0.5.2 | ^0.6.0 |  |
   | tsdown | dependency | updated | ^0.22.9 | ^0.22.12 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1460,12 +1455,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | sort-package-json | dependency | removed | ^4.0.0 | — | |
-  | @effected/npm | dependency | updated | ^0.2.1 | ^0.2.3 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.2.4 | ^0.2.7 | |
-  | @effected/workspaces | dependency | updated | ^0.4.1 | ^0.5.2 | |
+  | sort-package-json | dependency | removed | ^4.0.0 | — |  |
+  | @effected/npm | dependency | updated | ^0.2.1 | ^0.2.3 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.2.4 | ^0.2.7 |  |
+  | @effected/workspaces | dependency | updated | ^0.4.1 | ^0.5.2 |  |
   | @effected/package-json | dependency | added | — | ^0.4.1 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1478,12 +1473,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | |
-  | @effected/npm | dependency | updated | ^0.2.0 | ^0.2.1 | |
-  | @effected/tsconfig-json | dependency | updated | ^0.2.3 | ^0.2.4 | |
-  | @effected/workspaces | dependency | updated | ^0.4.0 | ^0.4.1 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 |  |
+  | @effected/npm | dependency | updated | ^0.2.0 | ^0.2.1 |  |
+  | @effected/tsconfig-json | dependency | updated | ^0.2.3 | ^0.2.4 |  |
+  | @effected/workspaces | dependency | updated | ^0.4.0 | ^0.4.1 |  |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1494,7 +1489,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | tsdown | dependency | updated | ^0.22.7 | ^0.22.9 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1502,9 +1497,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/tsconfig-json | dependency | updated | ^0.2.0 | ^0.2.2 | |
+  | @effected/tsconfig-json | dependency | updated | ^0.2.0 | ^0.2.2 |  |
   | @effected/workspaces | dependency | updated | ^0.3.0 | ^0.3.1 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ## 2.1.0
@@ -1515,7 +1510,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.2.0 | ^0.3.0 | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1530,37 +1525,31 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Breaking Changes
 
 - ### Effect v4
-
   The package's entire Effect surface moves from v3 to v4 (`effect@4.0.0-beta.98`). Every exported service tag (`ConfigValidator`, `EnvironmentDetector`, `ExecutorResolver`, `FormatSelector`, `OutputRenderer`, `BuildCollectorTag`), layer, `Effect`, `Schema` class, and tagged error is now a v4 value — v3 consumers cannot compose them into an existing v3 Effect program. `Schema.Class` instances also now validate on construction, so passing an explicit `undefined` for an optional field throws where v3 silently accepted it.
 
   Consumers on `catalog:silk` (Effect v3) need to migrate to `catalog:effect` (v4) before upgrading.
-
   ### Catalog and manifest errors renamed and restructured
-
   `CatalogResolutionError` is removed. `resolveManifest()` now rejects with one of four typed errors re-exported from `@effected/npm`:
-
   ```ts
   import { resolveManifest, UnresolvedDependencyError, ManifestDecodeError } from "@savvy-web/tsdown-plugins";
 
   try {
-   await resolveManifest(pkg);
+  	await resolveManifest(pkg);
   } catch (error) {
-   if (error instanceof UnresolvedDependencyError) {
-    // error.field, error.dependency, error.specifier, error.reason
-    // reason: "catalog-entry-missing" | "workspace-package-missing"
-   }
-   if (error instanceof ManifestDecodeError) {
-    // a dependency field wasn't a string-to-string record
-   }
+  	if (error instanceof UnresolvedDependencyError) {
+  		// error.field, error.dependency, error.specifier, error.reason
+  		// reason: "catalog-entry-missing" | "workspace-package-missing"
+  	}
+  	if (error instanceof ManifestDecodeError) {
+  		// a dependency field wasn't a string-to-string record
+  	}
   }
   ```
-
   - `UnresolvedDependencyError` replaces `CatalogResolutionError`, with a different `_tag` and a different field shape (`field`, `dependency`, `specifier`, `reason`).
   - `CatalogAssemblyError` is now the `@effected/npm` re-export — same `_tag`, but its fields changed (`source: "manifest" | "catalog" | "hooks"`, `path`, `cause`), so cross-package `instanceof` checks against the old class break.
   - `ManifestDecodeError` and `DependencyResolutionError` are new exports. `resolveManifest`'s full rejection set is now these four errors.
 
   ### Dependency graph
-
   The sealed v3 peer closure (`@effect/cluster`, `@effect/experimental`, `@effect/platform`, `@effect/rpc`, `@effect/sql`, `@effect/workflow`) is removed — v4's closure is just `effect`. `workspaces-effect`, `json-schema-effect`, and `@manypkg/get-packages` are replaced by `@effected/workspaces`, `@effected/npm`, and `@effected/tsconfig-json`. `typescript` stays pinned at `^6.0.3` (still used for dts AST work and api-extractor).
 
 ### Bug Fixes
@@ -1572,21 +1561,21 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/cluster | dependency | removed | ^0.59.0 | — | |
-  | @effect/experimental | dependency | removed | ^0.60.0 | — | |
-  | @effect/platform | dependency | removed | ^0.96.2 | — | |
-  | @effect/rpc | dependency | removed | ^0.75.1 | — | |
-  | @effect/sql | dependency | removed | ^0.51.1 | — | |
-  | @effect/workflow | dependency | removed | ^0.18.2 | — | |
-  | @manypkg/get-packages | dependency | removed | ^3.1.0 | — | |
-  | json-schema-effect | dependency | removed | ^0.3.0 | — | |
-  | workspaces-effect | dependency | removed | ^2.1.0 | — | |
-  | @effect/platform-node | dependency | updated | ^0.107.0 | 4.0.0-beta.98 | |
-  | effect | dependency | updated | ^3.21.4 | 4.0.0-beta.98 | |
-  | @effected/npm | dependency | added | — | ^0.2.0 | |
-  | @effected/tsconfig-json | dependency | added | — | ^0.2.0 | |
+  | @effect/cluster | dependency | removed | ^0.59.0 | — |  |
+  | @effect/experimental | dependency | removed | ^0.60.0 | — |  |
+  | @effect/platform | dependency | removed | ^0.96.2 | — |  |
+  | @effect/rpc | dependency | removed | ^0.75.1 | — |  |
+  | @effect/sql | dependency | removed | ^0.51.1 | — |  |
+  | @effect/workflow | dependency | removed | ^0.18.2 | — |  |
+  | @manypkg/get-packages | dependency | removed | ^3.1.0 | — |  |
+  | json-schema-effect | dependency | removed | ^0.3.0 | — |  |
+  | workspaces-effect | dependency | removed | ^2.1.0 | — |  |
+  | @effect/platform-node | dependency | updated | ^0.107.0 | 4.0.0-beta.98 |  |
+  | effect | dependency | updated | ^3.21.4 | 4.0.0-beta.98 |  |
+  | @effected/npm | dependency | added | — | ^0.2.0 |  |
+  | @effected/tsconfig-json | dependency | added | — | ^0.2.0 |  |
   | @effected/workspaces | dependency | added | — | ^0.2.0 | [#309][#309] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1599,7 +1588,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | tsdown | dependency | updated | ^0.22.5 | ^0.22.7 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1607,7 +1596,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.3 | ^2.1.0 | [#304][#304] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1619,7 +1608,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | tsdown | dependency | updated | ^0.22.4 | ^0.22.5 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1639,7 +1628,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | std-env | dependency | updated | ^4.1.0 | ^4.2.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1651,7 +1640,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.2 | ^2.0.3 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1677,7 +1666,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.1 | ^2.0.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1704,7 +1693,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @changesets/get-release-plan | dependency | updated | ^4.0.16 | ^5.0.0-next.7 | [#218][#218] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1746,9 +1735,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - [`b2c530d`](https://github.com/savvy-web/systems/commit/b2c530da08cdcfb87422f7c616d3a1dc3b1d2955) Threaded a new `emitDts?: boolean` option through the public build interfaces so `@savvy-web/bundler` can skip declaration generation on prod builds:
 
-- `BuildTargetGroupsOptions`, `EmitManifestOptions`, `BuildEmittedManifestOptions`, and `TransformManifestOptions` all accept `emitDts`
-- `transformExports` accepts the flag and, when dts is skipped, omits the `types` condition from generated `exports` entries so they never point at declarations that were never written
-- Default is `true`, matching today's behavior when the option is omitted
+* `BuildTargetGroupsOptions`, `EmitManifestOptions`, `BuildEmittedManifestOptions`, and `TransformManifestOptions` all accept `emitDts`
+* `transformExports` accepts the flag and, when dts is skipped, omits the `types` condition from generated `exports` entries so they never point at declarations that were never written
+* Default is `true`, matching today's behavior when the option is omitted
 
 See #198.
 
@@ -1756,8 +1745,8 @@ See #198.
 
 - [`b2c530d`](https://github.com/savvy-web/systems/commit/b2c530da08cdcfb87422f7c616d3a1dc3b1d2955) `buildEmittedManifest` now skips the `resolveManifest(pkg)` call — a full `workspaces-effect` `CatalogResolver` plus pnpm-workspace and lockfile assembly — when the manifest has no `catalog:`/`workspace:` specifiers in any dependency field. A new `manifestNeedsCatalogResolution` guard gates the call.
 
-- Behavior-preserving: `resolveManifest` already returned such manifests unchanged, so this is a pure speedup on every prod build of a catalog-free package
-- Removes host-workspace coupling from in-process unit tests
+* Behavior-preserving: `resolveManifest` already returned such manifests unchanged, so this is a pure speedup on every prod build of a catalog-free package
+* Removes host-workspace coupling from in-process unit tests
 
 See #196.
 
@@ -1864,7 +1853,7 @@ The declaration pass now emits one self-contained `.d.ts` per public entry inste
 
 - [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) The API Extractor doc model now sets `includeForgottenExports: true`, so declarations that are referenced but not exported are retained in the emitted `.api.json` instead of being dropped. The motivating case is the synthetic `*_base` class TypeScript hoists when emitting declarations for Effect class mixins (`Schema.Class`, `Data.TaggedError`, `Context.Tag`, `Effect.Service`): its name is not exportable from source, so it was always a forgotten export and the model lost it — leaving a dangling `extends *_base` over an empty class body and corrupting downstream `.d.ts` reconstruction. The `ae-forgotten-export` diagnostic is unchanged (a warning locally, CI-fatal by default, suppressible per package); it now flags a genuinely forgotten public export rather than guarding against model corruption.
 
-- [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) Removed the non-functional `jsx` field from `BuildTargetGroupsOptions`, `DeriveOptions`, and the three derived pass-option interfaces. The field was being forwarded into rolldown's `inputOptions`, which rejected it on every JSX build pass with an "Invalid input options ... Expected never but received "jsx"" warning. JSX compilation was already applied correctly via the generated tsconfig, so the forward had no effect on emitted output.
+* [`577d242`](https://github.com/savvy-web/systems/commit/577d242edd260dc75a04d6b95e3ffc33a3e040c0) Removed the non-functional `jsx` field from `BuildTargetGroupsOptions`, `DeriveOptions`, and the three derived pass-option interfaces. The field was being forwarded into rolldown's `inputOptions`, which rejected it on every JSX build pass with an "Invalid input options ... Expected never but received "jsx"" warning. JSX compilation was already applied correctly via the generated tsconfig, so the forward had no effect on emitted output.
 
 - `JsxConfig`, `resolveJsxConfig`, and `readTsconfigJsx` remain exported and unchanged
 
@@ -1930,18 +1919,18 @@ Because location no longer distinguishes entries, two diagnostics with identical
 
 - [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) Forgotten exports now fail the build in CI. A forgotten export silently drops the symbol from the generated API model, so in CI (`CI` or `GITHUB_ACTIONS` set) an unsuppressed `ae-forgotten-export` is a hard error. Locally it stays a warning, tagged so the build log can warn that it will fail CI.
 
-- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
 
 ### Features
 
 - [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) API Extractor diagnostics now surface in the unified build log. Forgotten exports, missing release tags, and TSDoc issues were previously dropped because API Extractor's default message routing silenced them; they are now reported as warnings during the meta-generation pass.
 - Suppressed messages are now accounted for. The build log summarizes how many messages each `suppressWarnings` rule hid, grouped by message id, and `--verbose` lists them in full.
 
-- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) The self-hosting build libraries now generate their own API model on the prod build. The meta-generation orchestration is unified into a single runMetaPass, exported from @savvy-web/tsdown-plugins and used by both the front-door runBuild and the two escape-hatch self-host builds. @savvy-web/bundler and @savvy-web/tsdown-plugins now emit a dist/prod/issues.json, are API Extractor validated, and publish their API model into the documentation corpus.
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) The self-hosting build libraries now generate their own API model on the prod build. The meta-generation orchestration is unified into a single runMetaPass, exported from @savvy-web/tsdown-plugins and used by both the front-door runBuild and the two escape-hatch self-host builds. @savvy-web/bundler and @savvy-web/tsdown-plugins now emit a dist/prod/issues.json, are API Extractor validated, and publish their API model into the documentation corpus.
 
 - [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### Issues artifact
 
-- [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
+* [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) generateBuildReportSchema is no longer exported from @savvy-web/tsdown-plugins. Its Effect signature pulled @effect/platform's FileSystem type (a devDependency) into the published declarations, and the function is internal build tooling with no package-level consumer. If you need it, import it from its source module and provide the FileSystem layer yourself.
 
 Three new exports — `flattenIssues`, `serializeIssues`, and `writeIssuesArtifact` — write an aggregated `dist/<target>/issues.json` file at the end of every dev/prod build. The artifact collects all warnings, errors, and suppressed diagnostics from the full build report in a stable, de-duplicated JSON format that downstream tooling (agents, CI scripts) can read without parsing terminal output.
 
@@ -2131,7 +2120,7 @@ The portable tsconfig resolver now maps `ScriptTarget.ES2025` to `"es2025"`. Pre
 
 - | [`56fc55a`](https://github.com/savvy-web/systems/commit/56fc55aceb389c10ab8da1c962a464c758a936fc) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @microsoft/api-extractor | dependency | updated | ^7.58.8 | ^7.58.9 | |
+  | @microsoft/api-extractor | dependency | updated | ^7.58.8 | ^7.58.9 |  |
 
 ## 0.4.1
 
@@ -2139,7 +2128,7 @@ The portable tsconfig resolver now maps `ScriptTarget.ES2025` to `"es2025"`. Pre
 
 - | [`e6e3ee4`](https://github.com/savvy-web/systems/commit/e6e3ee464b9e5ae56e45acbf03b583e1bc11d7c3) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @microsoft/api-extractor | dependency | updated | ^7.58.8 | ^7.58.9 | |
+  | @microsoft/api-extractor | dependency | updated | ^7.58.8 | ^7.58.9 |  |
 
 ### Other
 
@@ -2179,7 +2168,7 @@ The injection runs before any user-supplied `transform`, so a custom transform c
 
 - | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | sort-package-json | dependency | updated | ^3.6.1 | ^4.0.0 | |
+  | sort-package-json | dependency | updated | ^3.6.1 | ^4.0.0 |  |
 
 ## 0.2.0
 

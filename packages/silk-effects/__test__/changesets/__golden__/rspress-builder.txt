@@ -564,7 +564,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/bundler | dependency | updated | 2.1.12 | 2.1.13 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -640,7 +640,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/bundler | dependency | updated | 2.1.5 | 2.1.6 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @savvy-web/bundler | dependency | updated | 2.1.4 | 2.1.5 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -698,7 +698,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   The tsconfig/plugin.json preset is now self-contained rather than extending the local ecma base, since a relative extends out of the published path is a resolution hazard for consumers.
 
-- Resolve each package's own tsconfig for the declaration pass instead of synthesizing one that extends nothing, so declarations compile under the real effective compiler options rather than TypeScript defaults.
+* Resolve each package's own tsconfig for the declaration pass instead of synthesizing one that extends nothing, so declarations compile under the real effective compiler options rather than TypeScript defaults.
 
   Align rspress-builder's public options with the bundler's own names. dtsBundledPackages becomes bundledPackages, apiModel becomes meta, and dtsExternals plus bundleNodeModules are exposed at both the build-wide and per-bundle levels.
 
@@ -706,7 +706,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - The published tsconfig presets (bundler's ecma.json, and rspress-builder's ecma.json and plugin.json) now set `composite: false` instead of `composite: true`. Nothing in this repo uses project references, and both tsconfigs the suite emits already force `composite: false` independently, so this changes no emitted build artifact. It only removes the console warnings consumer `tsc` runs produce when a non-referenced project inherits `composite: true`. [#398][#398]
 
-- Move tsdown-plugins from a dependency to a devDependency of rspress-builder. Its types reach consumers through the bundler, which declares it as a regular dependency, so the direct entry was redundant.
+* Move tsdown-plugins from a dependency to a devDependency of rspress-builder. Its types reach consumers through the bundler, which declares it as a regular dependency, so the direct entry was redundant.
 
   The shared ecma.json base now globs types/*.d.ts rather than types/*.ts and additionally includes src/\*.d.ts, so hand-authored ambient declarations under src are part of the program. [#398][#398]
 
@@ -720,7 +720,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - Both the TsconfigResolver removal and the rspress-builder option renames are released as minor rather than major, a deliberate SemVer deviation, because nothing outside this suite consumes either surface yet. [#398][#398]
 
-- The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
+* The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
 
   ecma.json in bundler and rspress-builder, plugin.json in rspress-builder, and action.json in github-action-builder each carry a top-level note key documenting this. The bundler README also gains a short section explaining the behavior and pointing at plugin.json as the working example, since it already re-lists node alongside react and react-dom. [#398][#398]
 
@@ -811,7 +811,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | @savvy-web/bundler | dependency | updated | 2.0.5 | 2.0.6 |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.4 | 2.1.5 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @tsdown/css | dependency | updated | ^0.22.9 | ^0.22.12 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -846,7 +846,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | @savvy-web/bundler | dependency | updated | 2.0.2 | 2.0.3 |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.1 | 2.1.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @tsdown/css | dependency | updated | ^0.22.7 | ^0.22.9 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -886,7 +886,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | @savvy-web/bundler | dependency | updated | 1.1.13 | 1.1.14 |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.12 | 1.1.13 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @tsdown/css | dependency | updated | ^0.22.5 | ^0.22.7 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -908,7 +908,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | @savvy-web/bundler | dependency | updated | 1.1.11 | 1.1.12 |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.10 | 1.1.11 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @tsdown/css | dependency | updated | ^0.22.4 | ^0.22.5 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -930,10 +930,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | @savvy-web/bundler | dependency | updated | 1.1.9 | 1.1.10 |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.8 | 1.1.9 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — | |
-  | @tsdown/css | dependency | updated | ^0.22.3 | ^0.22.4 | |
+  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — |  |
+  | @tsdown/css | dependency | updated | ^0.22.3 | ^0.22.4 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1141,10 +1141,10 @@ Options pass straight through to `definePlugin` — `await build({ runtime: fals
 
 - | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @types/react-dom | dependency | added | — | ^19.2.0 | |
-  | react-dom | dependency | added | — | ^19.2.0 | |
-  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 | |
-  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 | |
+  | @types/react-dom | dependency | added | — | ^19.2.0 |  |
+  | react-dom | dependency | added | — | ^19.2.0 |  |
+  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |  |
+  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 |  |
 
 ## 0.8.0
 

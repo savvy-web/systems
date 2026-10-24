@@ -681,7 +681,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.16 | 2.5.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | rolldown | dependency | updated | ^1.2.4 | ^1.2.5 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -721,7 +721,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.12 | 2.4.13 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -737,9 +737,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.11 | 2.4.12 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | rolldown | dependency | updated | ^1.2.1 | ^1.2.4 | |
+  | rolldown | dependency | updated | ^1.2.1 | ^1.2.4 |  |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -794,7 +794,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.5 | 2.4.6 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -810,7 +810,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.4 | 2.4.5 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @savvy-web/tsdown-plugins | dependency | updated | 2.4.3 | 2.4.4 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -850,7 +850,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.4.0 | 2.4.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | rolldown | dependency | updated | ^1.2.0 | ^1.2.1 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -884,13 +884,13 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   As a result, `RunOptions.copyAmbientDts` is removed from `@savvy-web/bundler`. Nothing outside this suite consumed the injectable, so the removal ships as minor rather than major, consistent with the rest of this branch. `runBuild` still runs the early `extractAmbientDts`/`assertNoEntryCollisions` fast-fail validation before any build branch; only the copy step moved. [#398][#398]
 
-- The published tsconfig presets (bundler's ecma.json, and rspress-builder's ecma.json and plugin.json) now set `composite: false` instead of `composite: true`. Nothing in this repo uses project references, and both tsconfigs the suite emits already force `composite: false` independently, so this changes no emitted build artifact. It only removes the console warnings consumer `tsc` runs produce when a non-referenced project inherits `composite: true`. [#398][#398]
+* The published tsconfig presets (bundler's ecma.json, and rspress-builder's ecma.json and plugin.json) now set `composite: false` instead of `composite: true`. Nothing in this repo uses project references, and both tsconfigs the suite emits already force `composite: false` independently, so this changes no emitted build artifact. It only removes the console warnings consumer `tsc` runs produce when a non-referenced project inherits `composite: true`. [#398][#398]
 
 - Move tsdown-plugins from a dependency to a devDependency of rspress-builder. Its types reach consumers through the bundler, which declares it as a regular dependency, so the direct entry was redundant.
 
   The shared ecma.json base now globs types/*.d.ts rather than types/*.ts and additionally includes src/\*.d.ts, so hand-authored ambient declarations under src are part of the program. [#398][#398]
 
-- Move the ambient RSPress declarations from the public asset rspress-env.d.ts to src/env.d.ts, published as the types-only ./env export. Consumers reference them with a triple-slash types directive pointing at savvy-web/rspress-builder/env, and the builder copies the file verbatim into every target directory through its zero-config ambient-dts path. The old ./rspress-env.d.ts export is removed.
+* Move the ambient RSPress declarations from the public asset rspress-env.d.ts to src/env.d.ts, published as the types-only ./env export. Consumers reference them with a triple-slash types directive pointing at savvy-web/rspress-builder/env, and the builder copies the file verbatim into every target directory through its zero-config ambient-dts path. The old ./rspress-env.d.ts export is removed.
 
   The declarations augment ImportMeta by declaring the interface at top level rather than wrapping it in declare global. A global script cannot carry a declare global block, and under skipLibCheck the resulting error is suppressed while the augmentation is silently discarded, leaving consumers with no import.meta.env at all.
 
@@ -972,7 +972,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.7 | 2.1.8 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1004,9 +1004,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.4 | 2.1.5 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @tsdown/exe | dependency | updated | ^0.22.9 | ^0.22.12 | |
+  | @tsdown/exe | dependency | updated | ^0.22.9 | ^0.22.12 |  |
   | tsdown | dependency | updated | ^0.22.9 | ^0.22.12 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1029,7 +1029,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.2 | 2.1.3 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1045,10 +1045,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 2.1.1 | 2.1.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @tsdown/exe | dependency | updated | ^0.22.7 | ^0.22.9 | |
-  | rolldown | dependency | updated | ^1.1.5 | ^1.2.0 | |
+  | @tsdown/exe | dependency | updated | ^0.22.7 | ^0.22.9 |  |
+  | rolldown | dependency | updated | ^1.1.5 | ^1.2.0 |  |
   | tsdown | dependency | updated | ^0.22.7 | ^0.22.9 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ## 2.0.2
@@ -1081,7 +1081,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.13 | 2.0.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | ^3.21.4 | 4.0.0-beta.98 | [#309][#309] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1099,9 +1099,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.12 | 1.1.13 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @tsdown/exe | dependency | updated | ^0.22.5 | ^0.22.7 | |
+  | @tsdown/exe | dependency | updated | ^0.22.5 | ^0.22.7 |  |
   | tsdown | dependency | updated | ^0.22.5 | ^0.22.7 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ## 1.1.13
@@ -1120,9 +1120,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.10 | 1.1.11 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @tsdown/exe | dependency | updated | ^0.22.4 | ^0.22.5 | |
+  | @tsdown/exe | dependency | updated | ^0.22.4 | ^0.22.5 |  |
   | tsdown | dependency | updated | ^0.22.4 | ^0.22.5 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ## 1.1.11
@@ -1141,12 +1141,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/tsdown-plugins | dependency | updated | 1.1.8 | 1.1.9 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — | |
-  | @tsdown/exe | dependency | updated | ^0.22.3 | ^0.22.4 | |
-  | rolldown | dependency | updated | ^1.1.4 | ^1.1.5 | |
-  | tsdown | dependency | updated | ^0.22.3 | ^0.22.4 | |
+  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — |  |
+  | @tsdown/exe | dependency | updated | ^0.22.3 | ^0.22.4 |  |
+  | rolldown | dependency | updated | ^1.1.4 | ^1.1.5 |  |
+  | tsdown | dependency | updated | ^0.22.3 | ^0.22.4 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1369,7 +1369,7 @@ The declaration pass now emits one self-contained `.d.ts` per public entry inste
 
 - | [`689a1aa`](https://github.com/savvy-web/systems/commit/689a1aa25f72a4521ff8e21c3fd610862247a0ce) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | rolldown | dependency | updated | ^1.1.2 | ^1.1.3 | |
+  | rolldown | dependency | updated | ^1.1.2 | ^1.1.3 |  |
 
 ## 0.11.0
 
@@ -1455,7 +1455,7 @@ const config = defineBuild({
 
 - [`356ed32`](https://github.com/savvy-web/systems/commit/356ed32ce08bb1e2971e0522ad7db4144cfa8858) API Extractor diagnostics now surface in the build log when you run `runBuild`. Forgotten exports, missing release tags, and TSDoc issues that were previously dropped by API Extractor's default message routing are now reported as warnings during the meta-generation pass. Suppressed messages are accounted for: the build log summarizes how many messages each `suppressWarnings` rule hid, grouped by message id, with `--verbose` listing them in full.
 
-- [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### Issues artifact written on every build
+* [`81f90f3`](https://github.com/savvy-web/systems/commit/81f90f3e6acc11c0b70be856c676292578fdc7c2) ### Issues artifact written on every build
 
 `runBuild` now writes `dist/<target>/issues.json` at the end of every dev and prod build. The file contains all warnings, errors, and suppressed diagnostics from the build in a stable, de-duplicated JSON format.
 
@@ -1484,13 +1484,13 @@ await runBuild(config, {
 
 - | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | effect | dependency | updated | ^3.21.3 | ^3.21.4 | |
-  | @effect/platform | devDependency | updated | ^0.96.1 | ^0.96.2 | |
-  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 | |
-  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 | |
-  | Dependency | Type | Action | From | To | |
-  | ------------------------- | ---------- | ------- | ----- | ----- | |
-  | @savvy-web/tsdown-plugins | dependency | updated | 0.8.0 | 0.9.0 | |
+  | effect | dependency | updated | ^3.21.3 | ^3.21.4 |  |
+  | @effect/platform | devDependency | updated | ^0.96.1 | ^0.96.2 |  |
+  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |  |
+  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 |  |
+  | Dependency | Type | Action | From | To |  |
+  | ------------------------- | ---------- | ------- | ----- | ----- |  |
+  | @savvy-web/tsdown-plugins | dependency | updated | 0.8.0 | 0.9.0 |  |
 
 ## 0.8.0
 
@@ -1569,9 +1569,9 @@ will be removed in a later change.
 
 - | [`c0ae4b9`](https://github.com/savvy-web/systems/commit/c0ae4b95ef2a581445c51b3a78e17590be612951) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | tsdown | dependency | updated | ^0.22.2 | ^0.22.3 | |
-  | @typescript/native-preview | devDependency | updated | 7.0.0-dev.20260614.1 | 7.0.0-dev.20260618.1 | |
-  | vitest | devDependency | updated | ^4.1.8 | ^4.1.9 | |
+  | tsdown | dependency | updated | ^0.22.2 | ^0.22.3 |  |
+  | @typescript/native-preview | devDependency | updated | 7.0.0-dev.20260614.1 | 7.0.0-dev.20260618.1 |  |
+  | vitest | devDependency | updated | ^4.1.8 | ^4.1.9 |  |
 
 ## 0.6.0
 

@@ -423,7 +423,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | :-- | :-- | :-- | :-- | :-- | --- |
   | rolldown-pnpm-config | devDependency | updated | ^0.6.3 | ^0.7.0 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -462,7 +462,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Breaking Changes
 
 - ### The `silk` catalog no longer carries the Effect closure or the toolchain packages
-
   `silk` and `silk:peers` drop from 63 entries to 13. The catalog now holds only
   what has no more specific home — type packages, `husky`, `lint-staged`,
   `markdownlint-cli2`, `react`, `react-dom`, `tsx` and `typescript`. A manifest
@@ -471,7 +470,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   **37 Effect-family entries** — `effect` and every `@effect/*` package — are gone
   from this plugin entirely. They are supplied by `@effected/pnpm-plugin-effect`
   instead, which must be installed as a config dependency alongside this one:
-
   ```jsonc
   {
     "dependencies": {
@@ -484,7 +482,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
     }
   }
   ```
-
   **13 toolchain entries** move to the purpose-specific catalogs this plugin
   already ships:
 
@@ -497,9 +494,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
   The peer-range equivalents move the same way — `catalog:silk:peers` becomes
   `catalog:build:peers`, `catalog:lint:peers`, and so on.
-
   ### The `<name>Peers` catalogs are removed — use `<name>:peers`
-
   Peer-range catalogs are named with a `:peers` suffix instead of a `Peers`
   camelCase suffix. The old spellings are gone, not deprecated:
 
@@ -514,12 +509,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   Both spellings resolved during the transition; this release drops the old one so
   a single naming convention holds across every catalog the plugin distributes. A
   repo-wide sweep is safe, since the removed names no longer resolve to anything:
-
   ```bash
   grep -rl 'catalog:[a-z]*Peers' --include=package.json . \
     | xargs sed -i '' -E 's/catalog:([a-z]+)Peers/catalog:\1:peers/g'
   ```
-
   The rename comes from upgrading the underlying `rolldown-pnpm-config` to
   `0.6.0`, which emits the colon-delimited form.
 
@@ -541,7 +534,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | :-- | :-- | :-- | :-- | :-- | --- |
   | @changesets/cli | config | updated | ^3.0.0-next.10 | ^3.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -624,7 +617,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### Adds @types/bun to silkPeers
-
   You can now access Bun module types directly from the shared `@savvy-web/pnpm-plugin-silk` peer dependencies.
 
 ### Patch Changes
@@ -658,13 +650,11 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Bug Fixes
 
 - The `catalog:silk` and `catalog:silkPeers` `typescript` entries move from `^6.0.3`/`^6.0.0` to `^7.0.2`/`^7.0.0`, so every consumer picks up TypeScript 7 on install. `@microsoft/api-extractor` pins TypeScript `~5.9` and has no stable compiler API until TypeScript 7.1, so a new managed override pins its `typescript` resolution to `^6.0.3`:
-
   ```json
   "overrides": {
-   "@microsoft/api-extractor>typescript": "^6.0.3"
+  	"@microsoft/api-extractor>typescript": "^6.0.3"
   }
   ```
-
   The TypeScript 5 and 6 compiler APIs are equivalent for API Extractor's purposes, so this keeps API model generation working while the rest of the ecosystem moves to TypeScript 7. `@savvy-web/tsdown-plugins` similarly keeps its own `typescript` dependency locked at `^6.0.3` for the same reason. [#278][#278]
 
 ### Patch Changes
@@ -678,7 +668,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### Bumps `@types/node` to latest
-
   Regular update for Node.js cosumers [#257][#257]
 
 ### Minor Changes
@@ -778,11 +767,11 @@ Consumer repos are unaffected — they continue to receive the full `publicHoist
 
 - | [`7260973`](https://github.com/savvy-web/pnpm-plugin-silk/commit/726097330d736cf0c85ea69c4c87dbc1cb1535ac) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | effect | config | updated | ^3.21.3 | ^3.21.4 | |
-  | @effect/platform | config | updated | ^0.96.1 | ^0.96.2 | |
-  | @effect/ai-amazon-bedrock | config | updated | ^0.16.0 | ^0.16.1 | |
-  | @effect/ai-openai | config | updated | ^0.40.0 | ^0.40.1 | |
-  | @types/node | config | updated | ^25.9.3 | ^26.0.0 | |
+  | effect | config | updated | ^3.21.3 | ^3.21.4 |  |
+  | @effect/platform | config | updated | ^0.96.1 | ^0.96.2 |  |
+  | @effect/ai-amazon-bedrock | config | updated | ^0.16.0 | ^0.16.1 |  |
+  | @effect/ai-openai | config | updated | ^0.40.0 | ^0.40.1 |  |
+  | @types/node | config | updated | ^25.9.3 | ^26.0.0 |  |
 
 ### Silk ships `allowedDeprecatedVersions` defaults
 
@@ -824,7 +813,7 @@ If the child repo sets no value, Silk's `false` applies automatically.
 
 - | [`71c70ca`](https://github.com/savvy-web/pnpm-plugin-silk/commit/71c70cac4a18f61136f01b464b4523fe4c90956a) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @typescript/native-preview | config | updated | ^7.0.0-dev.20260611.2 | ^7.0.0-dev.20260612.1 | |
+  | @typescript/native-preview | config | updated | ^7.0.0-dev.20260611.2 | ^7.0.0-dev.20260612.1 |  |
 
 ## 0.14.6
 
@@ -901,12 +890,12 @@ aligns the plugin with that requirement.
 
 - | [`58d85c5`](https://github.com/savvy-web/pnpm-plugin-silk/commit/58d85c515658fb7591bbbf6e03d7db5ac1f79810) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @savvy-web/changesets | devDependency | removed | ^0.10.1 | — | |
-  | @savvy-web/commitlint | devDependency | removed | ^0.10.1 | — | |
-  | @savvy-web/lint-staged | devDependency | removed | ^1.2.1 | — | |
-  | @savvy-web/rslib-builder | devDependency | removed | ^0.20.11 | — | |
-  | @savvy-web/silk | devDependency | added | — | ^0.2.0 | |
-  | tsdown | devDependency | added | — | ^0.22.1 | |
+  | @savvy-web/changesets | devDependency | removed | ^0.10.1 | — |  |
+  | @savvy-web/commitlint | devDependency | removed | ^0.10.1 | — |  |
+  | @savvy-web/lint-staged | devDependency | removed | ^1.2.1 | — |  |
+  | @savvy-web/rslib-builder | devDependency | removed | ^0.20.11 | — |  |
+  | @savvy-web/silk | devDependency | added | — | ^0.2.0 |  |
+  | tsdown | devDependency | added | — | ^0.22.1 |  |
 
 ### `allowBuilds` Replaces `onlyBuiltDependencies`
 
@@ -980,8 +969,8 @@ import type {
 
 - | [`64ce87a`](https://github.com/savvy-web/pnpm-plugin-silk/commit/64ce87a375675022c8ca1e015fef26fb7cbc87eb) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @effect/tsgo | config | updated | ^0.7.5 | ^0.11.0 | |
-  | @typescript/native-preview | config | updated | ^7.0.0-dev.20260519.1 | ^7.0.0-dev.20260523.1 | |
+  | @effect/tsgo | config | updated | ^0.7.5 | ^0.11.0 |  |
+  | @typescript/native-preview | config | updated | ^7.0.0-dev.20260519.1 | ^7.0.0-dev.20260523.1 |  |
 
 ## 0.13.2
 
@@ -989,8 +978,8 @@ import type {
 
 - [`5e25dfe`](https://github.com/savvy-web/pnpm-plugin-silk/commit/5e25dfe31c6d01af783e6fcad8b9e4ca78e4e9a0) Add `@effect/vitest` and `@effect/tsgo` to the silk and silkPeers catalogs.
 
-- `@effect/vitest ^0.29.0` (silk) / `>=0.29.0` (silkPeers) — Effect-native Vitest integration
-- `@effect/tsgo ^0.7.4` (silk) / `>=0.7.4` (silkPeers) — Effect Language Service TypeScript-Go extension
+* `@effect/vitest ^0.29.0` (silk) / `>=0.29.0` (silkPeers) — Effect-native Vitest integration
+* `@effect/tsgo ^0.7.4` (silk) / `>=0.7.4` (silkPeers) — Effect Language Service TypeScript-Go extension
 
 ## 0.13.1
 
@@ -998,15 +987,15 @@ import type {
 
 - | [`299555a`](https://github.com/savvy-web/pnpm-plugin-silk/commit/299555a429d26d6d21f8b7828f7f904040577e4d) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @effect/language-service | config | updated | 0.85.1 | 0.86.1 | |
-  | @effect/workflow | config | updated | 0.18.0 | 0.18.1 | |
-  | @types/node | config | updated | 25.6.0 | 25.7.0 | |
-  | @typescript/native-preview | config | updated | 7.0.0-dev.20260424.2 | 7.0.0-dev.20260513.1 | |
-  | react | config | updated | 19.2.5 | 19.2.6 | |
-  | react-dom | config | updated | 19.2.5 | 19.2.6 | |
-  | @effect/language-service (silkPeers) | config | updated | 0.85.1 | 0.86.1 | |
-  | @typescript/native-preview (silkPeers) | config | updated | 7.0.0-dev.20260124.1 | 7.0.0-dev.20260513.1 | |
-  | pnpm | config | updated | 10.33.1 | 10.33.2 | |
+  | @effect/language-service | config | updated | 0.85.1 | 0.86.1 |  |
+  | @effect/workflow | config | updated | 0.18.0 | 0.18.1 |  |
+  | @types/node | config | updated | 25.6.0 | 25.7.0 |  |
+  | @typescript/native-preview | config | updated | 7.0.0-dev.20260424.2 | 7.0.0-dev.20260513.1 |  |
+  | react | config | updated | 19.2.5 | 19.2.6 |  |
+  | react-dom | config | updated | 19.2.5 | 19.2.6 |  |
+  | @effect/language-service (silkPeers) | config | updated | 0.85.1 | 0.86.1 |  |
+  | @typescript/native-preview (silkPeers) | config | updated | 7.0.0-dev.20260124.1 | 7.0.0-dev.20260513.1 |  |
+  | pnpm | config | updated | 10.33.1 | 10.33.2 |  |
 
 ## 0.13.0
 
@@ -1031,15 +1020,15 @@ import type {
 
 - | [`97d9bfd`](https://github.com/savvy-web/pnpm-plugin-silk/commit/97d9bfd36102a6fc1282c0afb25c9e50df9ad4e6) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | effect | devDependency | updated | ^3.21.0 | ^3.21.2 | |
-  | @effect/ai-openai | devDependency | updated | ^0.39.0 | ^0.39.2 | |
-  | @effect/cli | devDependency | updated | ^0.75.0 | ^0.75.1 | |
-  | @effect/cluster | devDependency | updated | ^0.58.0 | ^0.58.2 | |
-  | @effect/platform | devDependency | updated | ^0.96.0 | ^0.96.1 | |
-  | @effect/rpc | devDependency | updated | ^0.75.0 | ^0.75.1 | |
-  | @effect/sql | devDependency | updated | ^0.51.0 | ^0.51.1 | |
-  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260414.1 | 7.0.0-dev.20260422.1 | |
-  | typescript | devDependency | updated | ^6.0.2 | ^6.0.3 | |
+  | effect | devDependency | updated | ^3.21.0 | ^3.21.2 |  |
+  | @effect/ai-openai | devDependency | updated | ^0.39.0 | ^0.39.2 |  |
+  | @effect/cli | devDependency | updated | ^0.75.0 | ^0.75.1 |  |
+  | @effect/cluster | devDependency | updated | ^0.58.0 | ^0.58.2 |  |
+  | @effect/platform | devDependency | updated | ^0.96.0 | ^0.96.1 |  |
+  | @effect/rpc | devDependency | updated | ^0.75.0 | ^0.75.1 |  |
+  | @effect/sql | devDependency | updated | ^0.51.0 | ^0.51.1 |  |
+  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260414.1 | 7.0.0-dev.20260422.1 |  |
+  | typescript | devDependency | updated | ^6.0.2 | ^6.0.3 |  |
 
 ## 0.12.0
 
@@ -1110,7 +1099,7 @@ semver caret behavior on pre-1.0 versions.
 
 - [`44c4642`](https://github.com/savvy-web/pnpm-plugin-silk/commit/44c46429c2539dfc8b73d28f51f0bfe489f9506a) Reverts contol of most peerDependencies to companion packages
 
-- [`f8ad907`](https://github.com/savvy-web/pnpm-plugin-silk/commit/f8ad9074ed4cd67287351d77974775331ed55c75) Reverts control of vitest and linting peerDependencies to their compantion packages
+* [`f8ad907`](https://github.com/savvy-web/pnpm-plugin-silk/commit/f8ad9074ed4cd67287351d77974775331ed55c75) Reverts control of vitest and linting peerDependencies to their compantion packages
 
 ## 0.7.0
 

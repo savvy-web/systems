@@ -911,7 +911,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 7.0.1 | 7.1.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.2 | ^0.18.0 | [#547][#547] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -929,7 +929,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 7.0.0 | 7.0.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.1 | ^0.17.2 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -945,7 +945,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.5 | 7.0.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.0 | ^0.17.1 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -984,7 +984,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.4 | 6.0.5 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.16.0 | ^0.17.0 | [#532][#532] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1000,7 +1000,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.3 | 6.0.4 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.15.1 | ^0.16.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1012,7 +1012,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.2 | 6.0.3 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.15.0 | ^0.15.1 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1028,7 +1028,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.1 | 6.0.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.2 | ^0.15.0 | [#522][#522] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1044,7 +1044,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 6.0.0 | 6.0.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.1 | ^0.14.2 | [#513][#513] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1060,7 +1060,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.9.3 | 6.0.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.0 | ^0.14.1 | [#511][#511] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1084,12 +1084,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.9.1 | 5.9.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | |
-  | @effected/commands | dependency | updated | ^0.4.0 | ^0.5.0 | |
-  | @effected/git | dependency | updated | ^0.8.0 | ^0.9.0 | |
-  | @effected/workspaces | dependency | updated | ^0.13.1 | ^0.14.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 |  |
+  | @effected/commands | dependency | updated | ^0.4.0 | ^0.5.0 |  |
+  | @effected/git | dependency | updated | ^0.8.0 | ^0.9.0 |  |
+  | @effected/workspaces | dependency | updated | ^0.13.1 | ^0.14.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1100,7 +1100,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @modelcontextprotocol/sdk | dependency | updated | ^1.29.0 | ^1.30.0 | [#500][#500] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1116,7 +1116,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.9.0 | 5.9.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.13.0 | ^0.13.1 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1129,7 +1129,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### repos_manage action deregister
-
   `repos_manage` gains `action: "deregister"`, clearing a stale `submodule.<section>` registration from the superproject's local git config — the phantom entry `repos_inspect` drift reports as an orphan `localRegistrationDivergence`. It takes `section` (the registration name exactly as the drift report states it), refuses a section still backing a live manifest entry, and its markdown lists the config keys the removed section carried and says outright that nothing is staged, since local config is unversioned. [#494][#494]
 
 ### Dependencies
@@ -1152,9 +1151,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.8.0 | 5.8.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/git | dependency | updated | ^0.7.0 | ^0.8.0 | |
+  | @effected/git | dependency | updated | ^0.7.0 | ^0.8.0 |  |
   | @effected/workspaces | dependency | updated | ^0.12.0 | ^0.13.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1185,7 +1184,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.7.0 | 5.7.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.2 | ^0.12.0 | [#475][#475] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1201,7 +1200,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.6.0 | 5.7.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.1 | ^0.11.2 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1239,7 +1238,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.5.1 | 5.5.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.0 | ^0.11.1 | [#453][#453] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1255,12 +1254,12 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.5.0 | 5.5.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | |
-  | @effected/commands | dependency | updated | ^0.3.1 | ^0.4.0 | |
-  | @effected/git | dependency | updated | ^0.6.0 | ^0.7.0 | |
-  | @effected/workspaces | dependency | updated | ^0.10.2 | ^0.11.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 |  |
+  | @effected/commands | dependency | updated | ^0.3.1 | ^0.4.0 |  |
+  | @effected/git | dependency | updated | ^0.6.0 | ^0.7.0 |  |
+  | @effected/workspaces | dependency | updated | ^0.10.2 | ^0.11.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1281,10 +1280,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.4.0 | 5.5.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/workspaces | dependency | updated | ^0.10.0 | ^0.10.2 | |
-  | @savvy-web/silk-effects | dependency | updated | 5.3.1 | 5.4.0 | |
+  | @effected/workspaces | dependency | updated | ^0.10.0 | ^0.10.2 |  |
+  | @savvy-web/silk-effects | dependency | updated | 5.3.1 | 5.4.0 |  |
   | @effected/git | dependency | added | — | ^0.6.0 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1305,9 +1304,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.3.1 | 5.4.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/commands | dependency | updated | ^0.2.1 | ^0.3.1 | |
+  | @effected/commands | dependency | updated | ^0.2.1 | ^0.3.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.5 | ^0.10.0 | [#429][#429] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1324,7 +1323,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.3.0 | 5.3.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.9.4 | ^0.9.5 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1348,9 +1347,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.2.0 | 5.2.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/commands | dependency | updated | ^0.2.0 | ^0.2.1 | |
+  | @effected/commands | dependency | updated | ^0.2.0 | ^0.2.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.3 | ^0.9.4 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1369,7 +1368,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.1.3 | 5.2.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.9.1 | ^0.9.3 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1397,9 +1396,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 5.1.1 | 5.1.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/commands | dependency | updated | ^0.1.0 | ^0.2.0 | |
+  | @effected/commands | dependency | updated | ^0.1.0 | ^0.2.0 |  |
   | @effected/workspaces | dependency | updated | ^0.9.0 | ^0.9.1 | [#396][#396] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1438,9 +1437,9 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.6 | 5.0.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/workspaces | dependency | updated | ^0.8.0 | ^0.9.0 | |
+  | @effected/workspaces | dependency | updated | ^0.8.0 | ^0.9.0 |  |
   | @effected/commands | dependency | added | — | ^0.1.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -1455,7 +1454,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.5 | 4.2.6 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.7.0 | ^0.8.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1471,7 +1470,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.4 | 4.2.5 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.6.2 | ^0.7.0 | [#369][#369] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1487,10 +1486,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.3 | 4.2.4 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | |
-  | @effected/workspaces | dependency | updated | ^0.6.1 | ^0.6.2 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 |  |
+  | @effected/workspaces | dependency | updated | ^0.6.1 | ^0.6.2 |  |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1505,7 +1504,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.2 | 4.2.3 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.6.0 | ^0.6.1 | [#351][#351] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1529,7 +1528,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.2.0 | 4.2.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.5.2 | ^0.6.0 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1545,7 +1544,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.1.0 | 4.2.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.4.1 | ^0.5.2 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1561,10 +1560,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.0.1 | 4.1.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | |
-  | @effected/workspaces | dependency | updated | ^0.4.0 | ^0.4.1 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 |  |
+  | @effected/workspaces | dependency | updated | ^0.4.0 | ^0.4.1 |  |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -1579,7 +1578,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 4.0.0 | 4.0.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.3.0 | ^0.3.1 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1595,17 +1594,17 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 3.3.1 | 4.0.0 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/cluster | dependency | removed | ^0.59.0 | — | |
-  | @effect/experimental | dependency | removed | ^0.60.0 | — | |
-  | @effect/platform | dependency | removed | ^0.96.2 | — | |
-  | @effect/rpc | dependency | removed | ^0.75.1 | — | |
-  | @effect/sql | dependency | removed | ^0.51.1 | — | |
-  | @effect/workflow | dependency | removed | ^0.18.2 | — | |
-  | workspaces-effect | dependency | removed | ^2.1.0 | — | |
-  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect | |
-  | effect | dependency | updated | ^3.21.4 | catalog:effect | |
+  | @effect/cluster | dependency | removed | ^0.59.0 | — |  |
+  | @effect/experimental | dependency | removed | ^0.60.0 | — |  |
+  | @effect/platform | dependency | removed | ^0.96.2 | — |  |
+  | @effect/rpc | dependency | removed | ^0.75.1 | — |  |
+  | @effect/sql | dependency | removed | ^0.51.1 | — |  |
+  | @effect/workflow | dependency | removed | ^0.18.2 | — |  |
+  | workspaces-effect | dependency | removed | ^2.1.0 | — |  |
+  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect |  |
+  | effect | dependency | updated | ^3.21.4 | catalog:effect |  |
   | @effected/workspaces | dependency | added | — | ^0.3.0 | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Other
@@ -1626,7 +1625,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 3.3.0 | 3.3.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.3 | ^2.1.0 | [#304][#304] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -1639,7 +1638,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### `repos_inspect` and `repos_manage` tools
-
   Adds two tools for the vendored `.repos/` reference-repo pattern, bringing the server to ten tools (three mutating):
   - `repos_inspect` (read-only) — `mode: "status"` returns a drift report (presence, dirtiness, stale notes per repo); `mode: "config"` returns the full parsed manifest, including purposes, orientation, and notes.
   - `repos_manage` (mutating) — `action: "sync" | "pin" | "add" | "note"` against the vendored submodules, using a flat wire schema (no `oneOf`) that decodes into a per-action request internally, naming the first missing required field on failure. The `pin` result surfaces `commitMessage` and `staleNoteIds` as an explicit review-and-commit cue.
@@ -1708,7 +1706,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 3.2.0 | 3.2.1 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.2 | ^2.0.3 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1727,7 +1725,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - Added an optional `strict` input to `biome_check`. When `strict: true`, warnings are surfaced as errors in-process; each upgraded diagnostic is marked with `originalSeverity: "warning"`, and `summary.upgradedWarnings` reports how many were upgraded
 - Guidance text is now severity-aware — a warnings-only run (no `strict`) returns non-blocking guidance instead of the previous fix-it-now wording [#240][#240]
 
-- The `changeset_deps_detect` and `changeset_deps_regen` tools each gain two new optional inputs, mirroring `@savvy-web/silk-effects`'s `DepsRegen` service:
+* The `changeset_deps_detect` and `changeset_deps_regen` tools each gain two new optional inputs, mirroring `@savvy-web/silk-effects`'s `DepsRegen` service:
   - `packages` — an array of workspace package names to restrict the run to, unioned with the existing `package` input.
   - `exclude` — an array of workspace package names to drop from scope entirely; nothing is written for them and their existing changesets are left untouched. Wins over `package` and `packages`. [#241][#241]
 
@@ -1769,7 +1767,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 | --- | --- | --- | --- | --- |
 | @savvy-web/silk-effects | dependency | updated | 3.0.1 | 3.0.2 |
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.1 | ^2.0.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -1922,10 +1920,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @effect/platform | dependency | updated | ^0.96.1 | ^0.96.2 | |
-  | effect | dependency | updated | ^3.21.3 | ^3.21.4 | |
-  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 | |
-  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 | |
+  | @effect/platform | dependency | updated | ^0.96.1 | ^0.96.2 |  |
+  | effect | dependency | updated | ^3.21.3 | ^3.21.4 |  |
+  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |  |
+  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 |  |
 
 ## 1.2.0
 
@@ -2031,7 +2029,7 @@ Returns `{ dir, ok, errorCount, messages[] }` where each message has `file`, `ru
 
 - [`111241c`](https://github.com/savvy-web/systems/commit/111241cefd5d91163871c02d2372a2dfae7cac5c) Adds the `biome_check` MCP tool, a thin proxy that runs Biome over a path and returns structured diagnostics instead of console text. Use `mode: "check"` (the default — lint, format, and organize-imports) or `mode: "lint"`; set `write` to apply safe fixes (`--write`) or `unsafe` to apply unsafe fixes (`--write --unsafe`). The tool parses Biome's gitlab reporter into a typed payload with per-file severity, rule, and message, alongside a markdown summary. Unlike the other savvy-mcp tools, `biome_check` can mutate the working tree when `write` or `unsafe` is set, so it carries no read-only hint.
 
-- [`5242460`](https://github.com/savvy-web/systems/commit/524246022b19465fad0e7a52de021b9804b1c37b) Adds the `changeset_inspect` MCP tool, a read-only changeset analyzer for the changeset-manager workflow. `mode: "branch"` diffs the current branch against its base and classifies every changed file by owning package, returning the affected packages and the unmapped paths to ask the user about; `mode: "config"` surfaces the resolved `.changeset/config.json` (release surfaces, version files, ignore list). Results are returned as typed structured content, replacing the previous bash wrappers that parsed CLI stdout.
+* [`5242460`](https://github.com/savvy-web/systems/commit/524246022b19465fad0e7a52de021b9804b1c37b) Adds the `changeset_inspect` MCP tool, a read-only changeset analyzer for the changeset-manager workflow. `mode: "branch"` diffs the current branch against its base and classifies every changed file by owning package, returning the affected packages and the unmapped paths to ask the user about; `mode: "config"` surfaces the resolved `.changeset/config.json` (release surfaces, version files, ignore list). Results are returned as typed structured content, replacing the previous bash wrappers that parsed CLI stdout.
 
 ### Patch Changes
 
@@ -2053,10 +2051,10 @@ Removing the `files` field lets the clean build-output directory be the implicit
 
 - | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | workspaces-effect | dependency | updated | ^1.1.0 | ^1.2.0 | |
-  | Dependency | Type | Action | From | To | |
-  | ----------------------- | ---------- | ------- | ----- | ----- | |
-  | @savvy-web/silk-effects | dependency | updated | 1.0.0 | 1.0.1 | |
+  | workspaces-effect | dependency | updated | ^1.1.0 | ^1.2.0 |  |
+  | Dependency | Type | Action | From | To |  |
+  | ----------------------- | ---------- | ------- | ----- | ----- |  |
+  | @savvy-web/silk-effects | dependency | updated | 1.0.0 | 1.0.1 |  |
 
 ## 0.4.0
 

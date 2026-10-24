@@ -457,7 +457,7 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.10.0 | ^0.11.0 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -469,10 +469,10 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | |
-  | @effected/yaml | dependency | updated | ^0.9.0 | ^0.10.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 |  |
+  | @effected/yaml | dependency | updated | ^0.9.0 | ^0.10.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -483,10 +483,10 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 | |
-  | @rsbuild/core | dependency | updated | ^2.1.9 | ^2.1.13 | |
+  | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 |  |
+  | @rsbuild/core | dependency | updated | ^2.1.9 | ^2.1.13 |  |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -512,7 +512,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.7.0 | ^0.8.0 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -524,10 +524,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | |
-  | @effected/yaml | dependency | updated | ^0.6.1 | ^0.7.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 |  |
+  | @effected/yaml | dependency | updated | ^0.6.1 | ^0.7.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -538,7 +538,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.6.0 | ^0.6.1 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -550,7 +550,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @rsbuild/core | dependency | updated | ^2.1.8 | ^2.1.9 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -559,9 +559,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Breaking Changes
 
 - ### Layer statics replace `XLive` exports
-
   `ConfigServiceLive`, `ValidationServiceLive`, `BuildServiceLive`, and `PersistLocalServiceLive` are removed, along with the four standalone module files that defined them. Each service's production layer now lives as a `.layer` static on its own class. The package's higher-level `ConfigLayer`, `ValidationLayer`, `BuildLayer`, `PersistLocalLayer`, and `AppLayer` composites are unaffected — only the lower-level per-service layer names change for anyone consuming them directly.
-
   ```typescript
   // Before
   import { ConfigServiceLive } from "@savvy-web/github-action-builder";
@@ -571,7 +569,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   import { ConfigService } from "@savvy-web/github-action-builder";
   Effect.provide(ConfigService.layer);
   ```
-
   This is a genuine breaking change to the package's export surface, released as a minor bump rather than a major: consumption of `@savvy-web/github-action-builder` is effectively in-house across the Silk Suite, so the migration cost is contained and immediate. [#408][#408]
 
 ### Documentation
@@ -606,7 +603,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 - Both the TsconfigResolver removal and the rspress-builder option renames are released as minor rather than major, a deliberate SemVer deviation, because nothing outside this suite consumes either surface yet. [#398][#398]
 
-- The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
+* The shipped tsconfig presets now carry an inline note about how TypeScript resolves extends. The types and lib compiler options replace the base list rather than merging with it, so overriding either one in a consumer tsconfig means re-listing every entry still needed, node included, or losing access to console, process and Buffer with no warning from the compiler.
 
   ecma.json in bundler and rspress-builder, plugin.json in rspress-builder, and action.json in github-action-builder each carry a top-level note key documenting this. The bundler README also gains a short section explaining the behavior and pointing at plugin.json as the working example, since it already re-lists node alongside react and react-dom. [#398][#398]
 
@@ -621,7 +618,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### Production mode pinned by default
-
   `build:prod` now always pins rsbuild's mode to `"production"`, regardless of `NODE_ENV`. Previously, a bare local `build:prod` run without `NODE_ENV` set silently emitted an unminified build roughly 7x the size of the minified one, since rsbuild's mode falls back to `"none"` and minification only applies in production mode. Builds are now consistently minified whether or not the caller sets `NODE_ENV`.
 
   If a workflow relied on the unminified fallback for local debugging, set `build.minify: false` explicitly to opt back out of minification.
@@ -629,7 +625,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Bug Fixes
 
 - ### License attribution no longer dropped under minification
-
   License notices are now folded inline into the bundle instead of relying on `legalComments: "inline"`, which silently dropped third-party attribution once real minification ran. There is no longer a possibility of a `*.LICENSE.txt` sidecar file going missing from a committed action — attribution is preserved directly in the bundle output. [#382][#382]
 
 ### Minor Changes
@@ -642,7 +637,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
@@ -654,10 +649,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | |
-  | @effected/yaml | dependency | updated | ^0.5.0 | ^0.5.1 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 |  |
+  | @effected/yaml | dependency | updated | ^0.5.0 | ^0.5.1 |  |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -668,7 +663,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.4.0 | ^0.5.0 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -680,10 +675,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | |
-  | @effected/yaml | dependency | updated | ^0.3.1 | ^0.4.0 | |
+  | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 |  |
+  | @effected/yaml | dependency | updated | ^0.3.1 | ^0.4.0 |  |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
 ### Patch Changes
@@ -694,7 +689,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @rsbuild/core | dependency | updated | ^2.1.5 | ^2.1.6 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -702,7 +697,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.2.0 | ^0.3.0 | Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -714,19 +709,19 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @effect/cli | dependency | removed | ^0.75.2 | — | |
-  | @effect/cluster | dependency | removed | ^0.59.0 | — | |
-  | @effect/platform | dependency | removed | ^0.96.2 | — | |
-  | @effect/printer | dependency | removed | ^0.49.0 | — | |
-  | @effect/printer-ansi | dependency | removed | ^0.49.0 | — | |
-  | @effect/rpc | dependency | removed | ^0.75.1 | — | |
-  | @effect/sql | dependency | removed | ^0.51.1 | — | |
-  | @effect/typeclass | dependency | removed | ^0.40.0 | — | |
-  | yaml-effect | dependency | removed | ^0.7.2 | — | |
-  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect | |
-  | effect | dependency | updated | ^3.21.4 | catalog:effect | |
+  | @effect/cli | dependency | removed | ^0.75.2 | — |  |
+  | @effect/cluster | dependency | removed | ^0.59.0 | — |  |
+  | @effect/platform | dependency | removed | ^0.96.2 | — |  |
+  | @effect/printer | dependency | removed | ^0.49.0 | — |  |
+  | @effect/printer-ansi | dependency | removed | ^0.49.0 | — |  |
+  | @effect/rpc | dependency | removed | ^0.75.1 | — |  |
+  | @effect/sql | dependency | removed | ^0.51.1 | — |  |
+  | @effect/typeclass | dependency | removed | ^0.40.0 | — |  |
+  | yaml-effect | dependency | removed | ^0.7.2 | — |  |
+  | @effect/platform-node | dependency | updated | ^0.107.0 | catalog:effect |  |
+  | effect | dependency | updated | ^3.21.4 | catalog:effect |  |
   | @effected/yaml | dependency | added | — | ^0.2.0 | [#312][#312] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Other
@@ -743,10 +738,10 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
-  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — | |
-  | @rsbuild/core | dependency | updated | ^2.1.4 | ^2.1.5 | |
+  | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — |  |
+  | @rsbuild/core | dependency | updated | ^2.1.4 | ^2.1.5 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
 ### Patch Changes
@@ -757,7 +752,7 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 
 ### Dependencies
 
-- | Dependency | Type | Action | From | To | |
+- | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | yaml-effect | dependency | updated | ^0.7.0 | ^0.7.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
@@ -770,7 +765,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Features
 
 - ### `build.nativeDynamicImports` option
-
   Adds `build.nativeDynamicImports?: string[]` (defaults to `[]`) to keep a listed package's fully dynamic `import(...)` calls as native `import()` at runtime instead of letting rspack compile them into a context module.
 
   rspack cannot statically analyze a dynamic `import(expr)` whose argument isn't a string literal — e.g. `@changesets/apply-release-plan`, which resolves a changelog module path at runtime and dynamically imports it. Instead of bundling the call, rspack emits an empty-context stub that throws `Cannot find module` at runtime even though the target file exists on disk, with a build-time "Critical dependency: the request of a dependency is an expression" warning as the tell.
@@ -838,10 +832,10 @@ This is a documentation-surface change only — every retagged symbol was alread
 
 - | [`a0a96ee`](https://github.com/savvy-web/systems/commit/a0a96ee748297ead67590d8ccbc3eaba4f8f0802) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @effect/platform | dependency | updated | ^0.96.1 | ^0.96.2 | |
-  | effect | dependency | updated | ^3.21.3 | ^3.21.4 | |
-  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 | |
-  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 | |
+  | @effect/platform | dependency | updated | ^0.96.1 | ^0.96.2 |  |
+  | effect | dependency | updated | ^3.21.3 | ^3.21.4 |  |
+  | @typescript/native-preview | devDependency | updated | ^7.0.0-dev.20260612.1 | ^7.0.0-dev.20260621.1 |  |
+  | @types/node | devDependency | updated | ^25.9.0 | ^26.0.0 |  |
 
 ## 0.7.11
 
@@ -849,9 +843,9 @@ This is a documentation-surface change only — every retagged symbol was alread
 
 - | [`c0ae4b9`](https://github.com/savvy-web/systems/commit/c0ae4b95ef2a581445c51b3a78e17590be612951) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @rsbuild/core | dependency | updated | ^2.0.12 | ^2.0.15 | |
-  | @typescript/native-preview | devDependency | updated | 7.0.0-dev.20260614.1 | 7.0.0-dev.20260618.1 | |
-  | vitest | devDependency | updated | ^4.1.8 | ^4.1.9 | |
+  | @rsbuild/core | dependency | updated | ^2.0.12 | ^2.0.15 |  |
+  | @typescript/native-preview | devDependency | updated | 7.0.0-dev.20260614.1 | 7.0.0-dev.20260618.1 |  |
+  | vitest | devDependency | updated | ^4.1.8 | ^4.1.9 |  |
 
 ## 0.7.10
 
@@ -886,7 +880,7 @@ platform.
 
 - | [`2b264af`](https://github.com/savvy-web/systems/commit/2b264af80a44e7bed50f6dcc9daf61c356550b29) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @rsbuild/core | dependency | updated | ^2.0.11 | ^2.0.12 | |
+  | @rsbuild/core | dependency | updated | ^2.0.11 | ^2.0.12 |  |
 
 ## 0.7.7
 
@@ -894,7 +888,7 @@ platform.
 
 - | [`c96306d`](https://github.com/savvy-web/systems/commit/c96306d0a7c09b4263dd02358d2dc60ede84ef99) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @rsbuild/core | dependency | updated | ^2.0.9 | ^2.0.11 | |
+  | @rsbuild/core | dependency | updated | ^2.0.9 | ^2.0.11 |  |
 
 ## 0.7.6
 
@@ -920,8 +914,8 @@ platform.
 
 - [`d7bcbf9`](https://github.com/savvy-web/systems/commit/d7bcbf9b2329dfd86d61fb4bb619e0b3558a71a2) The package source has moved into the `savvy-web/systems` monorepo. It is no longer maintained in its former standalone repository.
 
-- The published package, its public API, its exports, and its npm package name are all unchanged — no action required on upgrade.
-- Package metadata (`repository`, `homepage`, `bugs`) now points at `savvy-web/systems`.
+* The published package, its public API, its exports, and its npm package name are all unchanged — no action required on upgrade.
+* Package metadata (`repository`, `homepage`, `bugs`) now points at `savvy-web/systems`.
 
 > Migrated from `savvy-web/github-action-builder@ab5ddf5` on 2026-05-30. Earlier release history lives in the original source repository.
 
@@ -960,11 +954,11 @@ platform.
 
 - | [`ab0c9cc`](https://github.com/savvy-web/github-action-builder/commit/ab0c9cc7fa2c06eae13dc566a28210f8fd641a18) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @savvy-web/changesets | devDependency | updated | ^0.7.4 | ^0.8.0 | |
-  | @savvy-web/commitlint | devDependency | updated | ^0.5.2 | ^0.6.0 | |
-  | @savvy-web/lint-staged | devDependency | updated | ^0.7.3 | ^0.8.0 | |
-  | @savvy-web/rslib-builder | devDependency | updated | ^0.20.0 | ^0.20.1 | |
-  | @savvy-web/vitest | devDependency | updated | ^1.2.2 | ^1.3.0 | |
+  | @savvy-web/changesets | devDependency | updated | ^0.7.4 | ^0.8.0 |  |
+  | @savvy-web/commitlint | devDependency | updated | ^0.5.2 | ^0.6.0 |  |
+  | @savvy-web/lint-staged | devDependency | updated | ^0.7.3 | ^0.8.0 |  |
+  | @savvy-web/rslib-builder | devDependency | updated | ^0.20.0 | ^0.20.1 |  |
+  | @savvy-web/vitest | devDependency | updated | ^1.2.2 | ^1.3.0 |  |
 
 ## 0.6.2
 
@@ -978,14 +972,14 @@ platform.
 
 - | [`6742fa2`](https://github.com/savvy-web/github-action-builder/commit/6742fa2ac673b0a40103575784d123eb42edc037) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @savvy-web/lint-staged | devDependency | updated | ^0.6.3 | ^0.6.4 | |
+  | @savvy-web/lint-staged | devDependency | updated | ^0.6.3 | ^0.6.4 |  |
 
-- | [`d206b06`](https://github.com/savvy-web/github-action-builder/commit/d206b064efb0ea7b63c94c2dd892ed976e40cdc5) | Dependency | Type | Action | From | To |
+* | [`d206b06`](https://github.com/savvy-web/github-action-builder/commit/d206b064efb0ea7b63c94c2dd892ed976e40cdc5) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @savvy-web/changesets | devDependency | updated | ^0.6.0 | ^0.7.0 | |
-  | @savvy-web/commitlint | devDependency | updated | ^0.4.2 | ^0.4.3 | |
-  | @savvy-web/lint-staged | devDependency | updated | ^0.6.1 | ^0.6.3 | |
-  | @savvy-web/vitest | devDependency | updated | ^1.0.0 | ^1.0.1 | |
+  | @savvy-web/changesets | devDependency | updated | ^0.6.0 | ^0.7.0 |  |
+  | @savvy-web/commitlint | devDependency | updated | ^0.4.2 | ^0.4.3 |  |
+  | @savvy-web/lint-staged | devDependency | updated | ^0.6.1 | ^0.6.3 |  |
+  | @savvy-web/vitest | devDependency | updated | ^1.0.0 | ^1.0.1 |  |
 
 ## 0.6.0
 
@@ -1014,10 +1008,10 @@ platform.
 
 - [`f0710f9`](https://github.com/savvy-web/github-action-builder/commit/f0710f9f5e1fb178ccd565e42e3444a04f3a7291) Replace `@vercel/ncc` with `@rsbuild/core` for GitHub Action bundling.
 
-- Produces clean ESM output without `eval("require")` hacks that broke Node 24
-- Supports tree-shaking via rspack
-- Single-file output per entry point with `all-in-one` chunk strategy
-- `node:*` builtins always externalized automatically
+* Produces clean ESM output without `eval("require")` hacks that broke Node 24
+* Supports tree-shaking via rspack
+* Single-file output per entry point with `all-in-one` chunk strategy
+* `node:*` builtins always externalized automatically
 
 ### Other
 
@@ -1033,11 +1027,11 @@ platform.
 
 - | [`4320227`](https://github.com/savvy-web/github-action-builder/commit/43202276c726ab55988280d44412b30d6658c75f) | Dependency | Type | Action | From | To |
   | :-- | :-- | :-- | :-- | :-- | --- |
-  | @savvy-web/changesets | dependency | updated | ^0.4.1 | ^0.5.3 | |
-  | @savvy-web/commitlint | dependency | updated | ^0.4.0 | ^0.4.2 | |
-  | @savvy-web/lint-staged | dependency | updated | ^0.5.0 | ^0.6.1 | |
-  | @savvy-web/rslib-builder | dependency | updated | ^0.16.0 | ^0.18.2 | |
-  | @savvy-web/vitest | dependency | updated | ^0.2.0 | ^0.2.1 | |
+  | @savvy-web/changesets | dependency | updated | ^0.4.1 | ^0.5.3 |  |
+  | @savvy-web/commitlint | dependency | updated | ^0.4.0 | ^0.4.2 |  |
+  | @savvy-web/lint-staged | dependency | updated | ^0.5.0 | ^0.6.1 |  |
+  | @savvy-web/rslib-builder | dependency | updated | ^0.16.0 | ^0.18.2 |  |
+  | @savvy-web/vitest | dependency | updated | ^0.2.0 | ^0.2.1 |  |
 
 ## 0.3.0
 
@@ -1127,17 +1121,12 @@ Programmatic API exposes cause field on GitHubActionBuildResult.
 
 - 416dafb: Initial release of @savvy-web/github-action-builder - a zero-config build tool
   for creating GitHub Actions from TypeScript source code.
-
   ## Features
-
   ### Zero-Config Project Scaffolding
-
   Create a complete GitHub Action project with a single command:
-
   ```bash
   npx @savvy-web/github-action-builder init my-action
   ```
-
   Generates a ready-to-build project with:
   - `package.json` with build scripts and dependencies
   - `tsconfig.json` configured for Node.js 24 ESM
@@ -1146,36 +1135,30 @@ Programmatic API exposes cause field on GitHubActionBuildResult.
   - `src/main.ts`, `src/pre.ts`, `src/post.ts` entry points
 
   ### Modern Node.js 24 Actions
-
   Build ESM-native GitHub Actions for the latest runtime:
   - Targets Node.js 24 with ES2022+ features
   - Validates `action.yml` requires `runs.using: "node24"`
   - Outputs flat bundle structure: `dist/main.js`, `dist/pre.js`, `dist/post.js`
 
   ### Single-File Bundles with @vercel/ncc
-
   All dependencies inlined into self-contained bundles:
   - No `node_modules` required at runtime
   - Minified by default for smaller bundles
   - Supports external packages for native modules
 
   ### GitHub Action Schema Validation
-
   Validates `action.yml` against GitHub's official metadata specification:
   - Checks required fields (name, description, runs)
   - Validates inputs, outputs, and branding configuration
   - Ensures `runs.using` is set to `node24`
 
   ### CI-Aware Strict Mode
-
   Automatically adapts validation behavior:
   - **Local development**: Warnings shown, build continues
   - **CI environments**: Warnings become errors, build fails
 
   ### Programmatic API
-
   Use the builder in scripts with full TypeScript support:
-
   ```typescript
   import { GitHubAction } from "@savvy-web/github-action-builder";
 
@@ -1185,9 +1168,7 @@ Programmatic API exposes cause field on GitHubActionBuildResult.
 
   const result = await action.build();
   ```
-
   ### CLI Commands
-
   - `init <action-name>` - Create a new GitHub Action project
   - `build` - Bundle entry points into production-ready JavaScript
   - `validate` - Check configuration and action.yml without building
