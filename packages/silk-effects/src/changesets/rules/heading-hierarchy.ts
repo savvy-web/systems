@@ -2,7 +2,7 @@
  * Lint rule: changeset-heading-hierarchy (CSH001).
  *
  * @remarks
- * Kit twin of `HeadingHierarchyRule`. Forbids h1 headings and sequential
+ * Kit rule. Forbids h1 headings and sequential
  * depth skips.
  *
  * @internal

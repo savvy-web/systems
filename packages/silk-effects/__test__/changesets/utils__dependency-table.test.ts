@@ -1,5 +1,5 @@
 import type { Table } from "@effected/markdown";
-import { Root } from "@effected/markdown";
+import { Table as KitTable, Root, TableCell, TableRow, Text } from "@effected/markdown";
 import { describe, expect, it } from "vitest";
 
 import type { DependencyTableRow } from "../../src/changesets/schemas/dependency-table.js";
@@ -75,6 +75,24 @@ describe("parseDependencyTable", () => {
 		const md = `| Dependency | Type | Action | From | To |
 | --- | --- | --- | --- | --- |`;
 		expect(() => parseDependencyTable(getTable(md))).toThrow();
+	});
+});
+
+describe("parseDependencyTable short rows", () => {
+	it("reports a data row with fewer than five cells as an error, not a TypeError", () => {
+		const row = (values: string[]) =>
+			new TableRow({ children: values.map((value) => new TableCell({ children: [new Text({ value })] })) });
+		const table = new KitTable({
+			children: [row(["Dependency", "Type", "Action", "From", "To"]), row(["foo", "dependency", "added", "1.0.0"])],
+		});
+		let thrown: unknown;
+		try {
+			parseDependencyTable(table);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).not.toBeInstanceOf(TypeError);
 	});
 });
 

@@ -2,7 +2,7 @@
  * Lint rule: changeset-dependency-table-format (CSH005).
  *
  * @remarks
- * Kit twin of `DependencyTableFormatRule`. A `## Dependencies` section must
+ * Kit rule. A `## Dependencies` section must
  * contain a table anywhere before the next heading (prose may precede or
  * follow it); a section without one reports at the heading. The table must
  * parse through `parseDependencyTable` (columns, types, actions), and the

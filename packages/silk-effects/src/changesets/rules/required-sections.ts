@@ -2,7 +2,7 @@
  * Lint rule: changeset-required-sections (CSH002).
  *
  * @remarks
- * Kit twin of `RequiredSectionsRule`. Every h2 must match a known category
+ * Kit rule. Every h2 must match a known category
  * heading (case-insensitive).
  *
  * @internal

@@ -16,7 +16,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
  * (`src/categories/index.ts`). This rule inspects `atxHeading` micromark
  * tokens and extracts their text via the {@link getHeadingText} utility.
  *
- * This rule mirrors the remark-lint rule `remarkLintRequiredSections` but uses
+ * This rule mirrors the kit rule `requiredSections` in `src/changesets/rules/required-sections.ts` but uses
  * markdownlint's micromark token API so it can run inside markdownlint-cli2 and
  * the VS Code markdownlint extension.
  *

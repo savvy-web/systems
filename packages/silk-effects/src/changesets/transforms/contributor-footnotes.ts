@@ -2,7 +2,7 @@
  * Changelog transform: aggregate contributor attributions into a Thanks section.
  *
  * @remarks
- * Kit twin of `ContributorFootnotesPlugin`. Inline `Thanks [@user](url)!` and
+ * Kit transform. Inline `Thanks [@user](url)!` and
  * `Thanks @user!` attributions are stripped from list items and standalone
  * paragraphs and collected into a deduplicated `### Thanks` section placed at
  * the end of each version block (before trailing reference definitions).

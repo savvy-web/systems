@@ -2,7 +2,7 @@
  * Lint rule: changeset-uncategorized-content (CSH004).
  *
  * @remarks
- * Kit twin of `UncategorizedContentRule`. Flags substantive content before
+ * Kit rule. Flags substantive content before
  * the first h2; html nodes (comments) are ignored.
  *
  * @internal

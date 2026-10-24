@@ -2,9 +2,9 @@
  * Lint rule: changeset-content-structure (CSH003).
  *
  * @remarks
- * Kit twin of `ContentStructureRule`. Flags empty h2 sections, code fences
+ * Kit rule. Flags empty h2 sections, code fences
  * without a language, and empty list items. Findings are emitted in three
- * passes (headings, code, list items) to match the remark rule's order.
+ * passes (headings, code, list items) to match the markdownlint rule's order.
  *
  * @internal
  */

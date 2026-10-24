@@ -40,8 +40,8 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText, unescapeMarkdown } from "./
  * module uses a widened `AnyToken` type to compare token types as strings and
  * avoid TS2367 errors.
  *
- * This rule mirrors the remark-lint rule `remarkLintDependencyTableFormat`
- * but uses markdownlint's micromark token API so it can run inside
+ * This rule mirrors the kit rule `dependencyTableFormat` in
+ * `src/changesets/rules/dependency-table-format.ts` but uses markdownlint's micromark token API so it can run inside
  * markdownlint-cli2 and the VS Code markdownlint extension.
  *
  * @example
@@ -124,8 +124,8 @@ export const DependencyTableFormatRule: Rule = {
 			const token = tokens[i];
 
 			// Find h2 headings — atx (`## Dependencies`) or setext ("Dependencies"
-			// underlined with `---`). remark-parse normalizes setext to a plain
-			// depth-2 heading node, so the remark engine already enforces the
+			// underlined with `---`). the kit parser normalizes setext to a plain
+			// depth-2 heading node, so the kit rule already enforces the
 			// section; accepting only atx here would let the setext spelling
 			// escape this engine and split the two implementations of one rule.
 			if (token.type !== "atxHeading" && token.type !== "setextHeading") {
@@ -143,7 +143,7 @@ export const DependencyTableFormatRule: Rule = {
 			// Shared section-scanning decision (issues #456/#457): the first table
 			// ANYWHERE in the section satisfies the rule; prose may precede or
 			// follow it. The semantics live in scanDependencySection so this rule
-			// and the sibling remark rule cannot drift.
+			// and the sibling kit rule cannot drift.
 			const { table } = scanDependencySection<AnyToken>(tokens as AnyToken[], i + 1, {
 				isSkippable: (t) => t.type === "lineEnding" || t.type === "lineEndingBlank",
 				isHeading: (t) => t.type === "atxHeading" || t.type === "setextHeading",
@@ -153,7 +153,7 @@ export const DependencyTableFormatRule: Rule = {
 
 			// Position choice (documented in utils/dependency-section.ts): a
 			// section with no table reports at the Dependencies HEADING, matching
-			// the remark rule's anchor for the same diagnostic.
+			// the kit rule's anchor for the same diagnostic.
 			if (tableToken === undefined) {
 				onError({
 					lineNumber: headingLine,

@@ -15,7 +15,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  *    (h2 then h3, not h2 then h4).
  *
  * @remarks
- * This rule mirrors the remark-lint rule `remarkLintHeadingHierarchy` but uses
+ * This rule mirrors the kit rule `headingHierarchy` in `src/changesets/rules/heading-hierarchy.ts` but uses
  * markdownlint's micromark token API so it can run inside markdownlint-cli2 and
  * the VS Code markdownlint extension.
  *

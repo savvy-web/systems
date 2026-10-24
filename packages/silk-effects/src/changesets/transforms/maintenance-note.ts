@@ -32,9 +32,9 @@ function isPlaceholderOnly(children: ReadonlyArray<RootChild>, block: VersionBlo
 }
 
 /**
- * Options for {@link maintenanceNote}.
+ * Options for `maintenanceNote`.
  *
- * @internal
+ * @public
  */
 export interface MaintenanceNoteOptions {
 	/** Version heading text to target (e.g. `"2.3.1"`). */

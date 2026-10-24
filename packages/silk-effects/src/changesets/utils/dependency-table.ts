@@ -97,7 +97,8 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 		const cells = rows[i].children;
 		const raw: Record<string, string> = {};
 		for (let c = 0; c < COLUMN_KEYS.length; c++) {
-			raw[COLUMN_KEYS[c]] = Mdast.toText(cells[c]).trim();
+			const cell = cells[c];
+			raw[COLUMN_KEYS[c]] = cell === undefined ? "" : Mdast.toText(cell).trim();
 		}
 		result.push(decode(raw));
 	}

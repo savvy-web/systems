@@ -63,7 +63,7 @@ describe("content-structure", () => {
 	});
 
 	it("rejects code block with empty string language", () => {
-		// remark-parse treats ``` with no lang as lang=null
+		// the parser yields a code node with no lang for a bare ```
 		// This tests the same thing as "without language" effectively
 		const md = "```\ncode here\n```\n";
 		const messages = lint(md);
