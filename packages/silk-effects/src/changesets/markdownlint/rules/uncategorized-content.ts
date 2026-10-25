@@ -16,7 +16,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * triggers an error. This ensures that changeset content is always grouped
  * under a recognized category heading.
  *
- * This rule mirrors the remark-lint rule `remarkLintUncategorizedContent` but
+ * This rule mirrors the kit rule `uncategorizedContent` in `src/changesets/rules/uncategorized-content.ts` but
  * uses markdownlint's micromark token API so it can run inside
  * markdownlint-cli2 and the VS Code markdownlint extension.
  *
@@ -28,7 +28,7 @@ import { RULE_DOCS, getHeadingLevel } from "./utils.js";
  * ```
  *
  * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH004.md | CSH004 rule documentation}
- * @see `src/remark/rules/uncategorized-content.ts` for the corresponding remark-lint rule
+ * @see `src/changesets/rules/uncategorized-content.ts` for the corresponding kit-node rule
  *
  * @public
  */

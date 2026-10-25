@@ -1043,30 +1043,9 @@ importers:
       '@savvy-web/silk-core':
         specifier: workspace:^
         version: link:../silk-core/dist/dev/pkg
-      mdast-util-to-string:
-        specifier: ^4.0.0
-        version: 4.0.0
-      remark-gfm:
-        specifier: ^4.0.1
-        version: 4.0.1(supports-color@8.1.1)
-      remark-parse:
-        specifier: ^11.0.0
-        version: 11.0.0(supports-color@8.1.1)
-      remark-stringify:
-        specifier: ^11.0.0
-        version: 11.0.0
       shell-quote:
         specifier: ^1.12.0
         version: 1.12.0
-      unified:
-        specifier: ^11.0.5
-        version: 11.0.5
-      unified-lint-rule:
-        specifier: ^3.0.1
-        version: 3.0.1
-      unist-util-visit:
-        specifier: ^5.1.0
-        version: 5.1.0
     devDependencies:
       '@changesets/types':
         specifier: ^7.0.0
@@ -1098,9 +1077,6 @@ importers:
       '@savvy-web/bundler':
         specifier: workspace:*
         version: link:../bundler/dist/dev/pkg
-      '@types/mdast':
-        specifier: ^4.0.4
-        version: 4.0.4
       '@types/node':
         specifier: catalog:build
         version: 26.6.5
@@ -4952,9 +4928,6 @@ packages:
   unicorn-magic@0.4.1:
     resolution: {integrity: sha512-lzlXPoVB0Uy/FvTaUgX39RbixYiSKoc3JSoSf01+0c2B6FR3qdYIPN7Qjo/AV7n6sqLCk0509cT3LRj1oSZ1+A==}
     engines: {node: '>=20'}
-
-  unified-lint-rule@3.0.1:
-    resolution: {integrity: sha512-HxIeQOmwL19DGsxHXbeyzKHBsoSCFO7UtRVUvT2v61ptw/G+GbysWcrpHdfs5jqbIFDA11MoKngIhQK0BeTVjA==}
 
   unified@11.0.5:
     resolution: {integrity: sha512-xKvGhPWw3k84Qjh8bI3ZeJjqnyadK+GEFtazSfZv/rKeTkTjOJho6mFqh2SM96iIcZokxiOpg78GazTSg8+KHA==}
@@ -9292,13 +9265,6 @@ snapshots:
       tiny-inflate: 1.0.3
 
   unicorn-magic@0.4.1: {}
-
-  unified-lint-rule@3.0.1:
-    dependencies:
-      '@types/unist': 3.0.3
-      trough: 2.2.0
-      unified: 11.0.5
-      vfile: 6.0.3
 
   unified@11.0.5:
     dependencies:

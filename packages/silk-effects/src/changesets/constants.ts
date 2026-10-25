@@ -26,7 +26,7 @@ const DOCS_BASE = "https://github.com/savvy-web/systems/blob/main/packages/silk-
  * @remarks
  * Keyed by rule code (`CSH001`--`CSH005`). Each value is a full URL
  * pointing to the rule's documentation page on GitHub. Used by the
- * remark-lint plugins to attach documentation links to diagnostic
+ * lint rules to attach documentation links to diagnostic
  * messages.
  *
  * @internal

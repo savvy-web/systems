@@ -28,8 +28,8 @@ export { RULE_DOCS } from "../../constants.js";
  * Get the heading level (1-6) from an `atxHeading` or `setextHeading` token.
  *
  * @remarks
- * remark-parse normalizes setext headings to plain depth-1/2 heading nodes,
- * so the remark siblings of these rules see them as ordinary headings. The
+ * `@effected/markdown` normalizes setext headings to plain depth-1/2 heading nodes,
+ * so the kit siblings of these rules see them as ordinary headings. The
  * micromark extractors must agree, or the two engines disagree about the
  * same file (the issue #367 class of drift).
  *
@@ -58,9 +58,9 @@ const BACKSLASH_ESCAPE_RE = /\\([!-/:-@[-`{-~])/g;
  * Resolve CommonMark backslash escapes in raw micromark source text.
  *
  * @remarks
- * Every rule in this directory has a sibling remark implementation that reads
- * the parsed mdast tree, where the parser has already resolved escapes, via
- * `mdast-util-to-string`. Micromark tokens instead carry RAW source. Comparing
+ * Every rule in this directory has a sibling kit implementation that reads
+ * the parsed `@effected/markdown` tree, where the parser has already resolved escapes, via
+ * `Mdast.toText`. Micromark tokens instead carry RAW source. Comparing
  * raw text against a value the parsed form would produce makes the two
  * implementations of one documented rule disagree about the same file
  * (issue #367).
@@ -80,7 +80,7 @@ export function unescapeMarkdown(raw: string): string {
  *
  * @remarks
  * Escape-resolved, so a heading compares equal to the same heading as the
- * remark rules see it. `getHeadingLevel` needs no equivalent — it counts
+ * the kit rules see it. `getHeadingLevel` needs no equivalent — it counts
  * sequence characters rather than reading text.
  *
  * @param heading - The `atxHeading` or `setextHeading` micromark token

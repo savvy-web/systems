@@ -8,7 +8,7 @@
  * @internal
  */
 
-import type { Table } from "mdast";
+import type { Table } from "@effected/markdown";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
 import {
@@ -30,10 +30,10 @@ import {
  * @remarks
  * The typical workflow for processing dependency tables is:
  *
- * 1. **Parse** an mdast `Table` node into typed {@link DependencyTableRow} objects
+ * 1. **Parse** an `@effected/markdown` `Table` node into typed {@link DependencyTableRow} objects
  * 2. **Collapse** duplicate rows (same package updated multiple times) into single entries
  * 3. **Sort** rows by dependency type, then alphabetically by package name
- * 4. **Serialize** back to an mdast `Table` node or directly to a markdown string
+ * 4. **Serialize** back to an `@effected/markdown` `Table` node or directly to a markdown string
  *
  * The {@link DependencyTable.aggregate} method combines the collapse and sort
  * steps into a single call, which is the most common usage pattern.
@@ -46,9 +46,9 @@ import {
  * ```typescript
  * import { DependencyTable } from "\@savvy-web/changesets";
  * import type { DependencyTableRow } from "\@savvy-web/changesets";
- * import type { Table } from "mdast";
+ * import type { Table } from "\@effected/markdown";
  *
- * // Given an mdast Table node from a parsed CHANGELOG
+ * // Given an \@effected/markdown Table node from a parsed CHANGELOG
  * declare const tableNode: Table;
  *
  * // Parse into typed rows
@@ -57,7 +57,7 @@ import {
  * // Collapse duplicates and sort by type, then name
  * const aggregated: DependencyTableRow[] = DependencyTable.aggregate(rows);
  *
- * // Serialize back to an mdast Table node for further AST manipulation
+ * // Serialize back to an \@effected/markdown Table node for further AST manipulation
  * const outputNode: Table = DependencyTable.serialize(aggregated);
  *
  * // Or serialize directly to a markdown string
@@ -89,7 +89,7 @@ export class DependencyTable {
 	private constructor() {}
 
 	/**
-	 * Parse an mdast `Table` node into typed dependency table rows.
+	 * Parse an `@effected/markdown` `Table` node into typed dependency table rows.
 	 *
 	 * @remarks
 	 * Extracts the text content from each table cell and maps it to the
@@ -97,7 +97,7 @@ export class DependencyTable {
 	 * treated as the header and skipped. Rows that do not have the expected
 	 * number of columns are ignored.
 	 *
-	 * @param tableNode - An mdast `Table` node from a parsed markdown AST
+	 * @param tableNode - An `@effected/markdown` `Table` node from a parsed markdown tree
 	 * @returns Array of {@link DependencyTableRow} objects, one per data row
 	 */
 	static parse(tableNode: Table): DependencyTableRow[] {
@@ -105,16 +105,16 @@ export class DependencyTable {
 	}
 
 	/**
-	 * Serialize typed dependency table rows into an mdast `Table` node.
+	 * Serialize typed dependency table rows into an `@effected/markdown` `Table` node.
 	 *
 	 * @remarks
-	 * Produces a well-formed mdast `Table` with a header row
+	 * Produces a well-formed `@effected/markdown` `Table` with a header row
 	 * (`Dependency | Type | Action | From | To`) followed by one data row
-	 * per input entry. The resulting node can be inserted into a remark AST
+	 * per input entry. The resulting node can be inserted into a kit tree
 	 * for further processing or stringification.
 	 *
 	 * @param rows - Array of {@link DependencyTableRow} objects to serialize
-	 * @returns An mdast `Table` node ready for AST insertion
+	 * @returns An `@effected/markdown` `Table` node ready for tree insertion
 	 */
 	static serialize(rows: DependencyTableRow[]): Table {
 		return serializeDependencyTable(rows);
@@ -125,7 +125,7 @@ export class DependencyTable {
 	 *
 	 * @remarks
 	 * Convenience method that combines {@link DependencyTable.serialize} with
-	 * remark stringification. Produces a GFM-compatible markdown table string.
+	 * the canonical `@effected/markdown` emitter. Produces a GFM-compatible markdown table string.
 	 *
 	 * @param rows - Array of {@link DependencyTableRow} objects to render
 	 * @returns A markdown string containing the formatted table

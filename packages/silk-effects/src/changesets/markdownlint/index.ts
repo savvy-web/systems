@@ -3,7 +3,7 @@
  *
  * markdownlint custom rules for validating changeset file structure.
  *
- * Provides the same validation as the remark-lint rules but using
+ * Provides the same validation as the kit rules under `src/changesets/rules/` but using
  * markdownlint's micromark token API for integration with
  * markdownlint-cli2 and the VS Code markdownlint extension.
  *

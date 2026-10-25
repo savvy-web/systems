@@ -16,7 +16,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
  * (`src/categories/index.ts`). This rule inspects `atxHeading` micromark
  * tokens and extracts their text via the {@link getHeadingText} utility.
  *
- * This rule mirrors the remark-lint rule `remarkLintRequiredSections` but uses
+ * This rule mirrors the kit rule `requiredSections` in `src/changesets/rules/required-sections.ts` but uses
  * markdownlint's micromark token API so it can run inside markdownlint-cli2 and
  * the VS Code markdownlint extension.
  *
@@ -28,7 +28,7 @@ import { RULE_DOCS, getHeadingLevel, getHeadingText } from "./utils.js";
  * ```
  *
  * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH002.md | CSH002 rule documentation}
- * @see `src/remark/rules/required-sections.ts` for the corresponding remark-lint rule
+ * @see `src/changesets/rules/required-sections.ts` for the corresponding kit-node rule
  *
  * @public
  */

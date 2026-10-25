@@ -1,17 +1,14 @@
 import { expect, layer } from "@effect/vitest";
 import { Effect } from "effect";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import remarkStringify from "remark-stringify";
-import { unified } from "unified";
 
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 import { getDependencyReleaseLine } from "../../src/changesets/changelog/getDependencyReleaseLine.js";
 import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js";
-import { AggregateDependencyTablesPlugin } from "../../src/changesets/remark/plugins/aggregate-dependency-tables.js";
-import { DependencyTableFormatRule } from "../../src/changesets/remark/rules/dependency-table-format.js";
+import { dependencyTableFormat } from "../../src/changesets/rules/dependency-table-format.js";
 import type { ChangesetOptions } from "../../src/changesets/schemas/options.js";
 import { makeGitHubTest } from "../../src/changesets/services/github.js";
+import { aggregateDependencyTables } from "../../src/changesets/transforms/aggregate-dependency-tables.js";
+import { emitKitMarkdown, parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 import type { GitHubCommitInfo } from "../../src/changesets/vendor/github-info.js";
 import type { NewChangesetWithCommit } from "../../src/changesets/vendor/types.js";
 
@@ -211,7 +208,6 @@ layer(testLayer)("Full pipeline integration", (it) => {
 
 			expect(result).toContain("## 1.0.0");
 			expect(result).toContain("add feature");
-			// remark-stringify escapes @ to \@
 			expect(result).toContain("some-lib");
 			expect(result).toContain("2.0.0");
 		}),
@@ -265,23 +261,12 @@ layer(testLayer)("Full pipeline integration", (it) => {
 `;
 
 		// Layer 1: lint validation
-		const lintFile = unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(DependencyTableFormatRule)
-			.use(remarkStringify)
-			.processSync(changeset);
-		expect(lintFile.messages).toHaveLength(0);
+		const lintFindings = dependencyTableFormat(parseKitMarkdown(changeset));
+		expect(lintFindings).toHaveLength(0);
 
 		// Layer 3: transform (simulate changelog with version heading)
 		const changelog = `## 1.0.0\n\n### Dependencies\n\n${changeset.split("\n\n").slice(1).join("\n\n")}`;
-		const transformed = unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(AggregateDependencyTablesPlugin)
-			.use(remarkStringify)
-			.processSync(changelog)
-			.toString();
+		const transformed = emitKitMarkdown(aggregateDependencyTables(parseKitMarkdown(changelog)));
 
 		expect(transformed).toContain("typescript");
 		expect(transformed).toContain("new-pkg");

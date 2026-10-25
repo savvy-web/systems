@@ -3,8 +3,8 @@
 // Changeset `.md` files produced by `@changesets/cli` contain YAML
 // frontmatter (delimited by `---`) specifying which packages are
 // affected and their version bump types. This frontmatter must be
-// removed before remark-lint processing, as remark-parse does not
-// handle YAML frontmatter natively without `remark-frontmatter`.
+// removed before lint processing, as the markdown parser does not
+// handle YAML frontmatter natively here.
 //
 // The regex used is non-greedy (`[\s\S]*?`) to match only the first
 // frontmatter block and avoid stripping content after a second `---`

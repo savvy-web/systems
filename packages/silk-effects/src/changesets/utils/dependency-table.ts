@@ -1,11 +1,12 @@
 /**
  * Dependency table utilities for parsing, serializing, collapsing, and sorting
- * dependency table rows between MDAST table nodes and typed representations.
+ * dependency table rows between `@effected/markdown` `Table` nodes and typed
+ * representations.
  *
  * @remarks
  * This module provides the low-level functional primitives that the
  * {@link DependencyTable} class wraps with a stateful, fluent API.
- * It operates on arrays of `DependencyTableRow` objects and MDAST `Table`
+ * It operates on arrays of `DependencyTableRow` objects and kit `Table`
  * nodes, converting between the two representations.
  *
  * The collapse algorithm merges rows sharing the same `dependency + type`
@@ -18,13 +19,12 @@
  * @internal
  */
 
+import { Mdast, Root, Table, TableCell, TableRow, Text } from "@effected/markdown";
 import { Schema } from "effect";
-import type { Table, TableCell, TableRow, Text } from "mdast";
-import { toString as mdastToString } from "mdast-util-to-string";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
 import { DependencyTableRowSchema } from "../schemas/dependency-table.js";
-import { stringifyMarkdown } from "./remark-pipeline.js";
+import { emitKitMarkdown } from "./markdown-emit.js";
 
 /**
  * Ordered column headers for dependency tables.
@@ -49,14 +49,14 @@ const COLUMN_KEYS: readonly (keyof DependencyTableRow)[] = ["dependency", "type"
 const decode = Schema.decodeUnknownSync(DependencyTableRowSchema);
 
 /**
- * Parse an MDAST table node into validated dependency table rows.
+ * Parse a kit table node into validated dependency table rows.
  *
  * @remarks
  * Validates the header row against {@link COLUMN_HEADERS} (case-insensitive),
  * then decodes each data row through the `DependencyTableRowSchema` for
  * type-safe validation of action values, version strings, and dependency types.
  *
- * @param table - An MDAST `Table` node (from remark-gfm)
+ * @param table - An `@effected/markdown` `Table` node
  * @returns Array of validated `DependencyTableRow` objects
  * @throws If the table has fewer than 2 rows (header + at least one data row)
  * @throws If the header columns do not match the expected column names
@@ -65,11 +65,11 @@ const decode = Schema.decodeUnknownSync(DependencyTableRowSchema);
  * @example
  * ```typescript
  * import { parseDependencyTable } from "../utils/dependency-table.js";
- * import { parseMarkdown } from "../utils/remark-pipeline.js";
- * import type { Table } from "mdast";
+ * import { parseKitMarkdown } from "../utils/markdown-emit.js";
+ * import type { Table } from "\@effected/markdown";
  *
- * const tree = parseMarkdown("| Dependency | Type | Action | From | To |\n| --- | --- | --- | --- | --- |\n| foo | dependency | added | — | 1.0.0 |");
- * const table = tree.children.find((n) => n.type === "table") as Table;
+ * const tree = parseKitMarkdown("| Dependency | Type | Action | From | To |\n| --- | --- | --- | --- | --- |\n| foo | dependency | added | — | 1.0.0 |");
+ * const table = tree.children.find((n): n is Table => n.type === "table");
  * const rows = parseDependencyTable(table);
  * // rows[0].dependency === "foo"
  * ```
@@ -84,7 +84,7 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 
 	// Validate header row
 	const headerRow = rows[0];
-	const headers = headerRow.children.map((cell) => mdastToString(cell).trim().toLowerCase());
+	const headers = headerRow.children.map((cell) => Mdast.toText(cell).trim().toLowerCase());
 	const expected = COLUMN_HEADERS.map((h) => h.toLowerCase());
 
 	if (headers.length !== expected.length || !headers.every((h, i) => h === expected[i])) {
@@ -97,30 +97,14 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 		const cells = rows[i].children;
 		const raw: Record<string, string> = {};
 		for (let c = 0; c < COLUMN_KEYS.length; c++) {
-			raw[COLUMN_KEYS[c]] = mdastToString(cells[c]).trim();
+			const cell = cells[c];
+			raw[COLUMN_KEYS[c]] = cell === undefined ? "" : Mdast.toText(cell).trim();
 		}
 		result.push(decode(raw));
 	}
 
 	return result;
 }
-
-/**
- * Local widening of mdast's `Text` node to admit `@effected/markdown`'s
- * opt-in `escapeStyle` emitter instruction.
- *
- * @remarks
- * `@types/mdast`'s `Text` has no `escapeStyle` field; the kit's own `Text`
- * class does (`readonly escapeStyle?: "canonical" | "literal"`), and
- * `Mdast.fromMdast` admits the field on a plain mdast `text` node when
- * present — it is the one emitter instruction a plain tree can carry
- * straight through the decode boundary. This type widens only that field,
- * on the exact node type the kit decorates it on; every other field on
- * `Text` (and the rest of the mdast node graph) is untouched.
- *
- * @internal
- */
-type LiteralText = Text & { readonly escapeStyle: "literal" };
 
 /**
  * Create a table cell with a text node that emits literally.
@@ -138,35 +122,28 @@ type LiteralText = Text & { readonly escapeStyle: "literal" };
  * through parse-and-reserialize regardless of which spelling produced them.
  *
  * @param text - The cell text content
- * @returns An MDAST `TableCell` node
+ * @returns A kit `TableCell` node
  *
  * @internal
  */
 function makeCell(text: string): TableCell {
-	const node: LiteralText = { type: "text", value: text, escapeStyle: "literal" };
-	return {
-		type: "tableCell",
-		children: [node],
-	};
+	return new TableCell({ children: [new Text({ value: text, escapeStyle: "literal" })] });
 }
 
 /**
  * Create a table row from an array of cell texts.
  *
  * @param texts - Array of cell text values
- * @returns An MDAST `TableRow` node
+ * @returns A kit `TableRow` node
  *
  * @internal
  */
 function makeRow(texts: string[]): TableRow {
-	return {
-		type: "tableRow",
-		children: texts.map(makeCell),
-	};
+	return new TableRow({ children: texts.map(makeCell) });
 }
 
 /**
- * Serialize dependency table rows into an MDAST `Table` node.
+ * Serialize dependency table rows into a kit `Table` node.
  *
  * @remarks
  * Creates a well-formed GFM table with the canonical header row
@@ -174,7 +151,7 @@ function makeRow(texts: string[]): TableRow {
  * The inverse of {@link parseDependencyTable}.
  *
  * @param rows - Array of `DependencyTableRow` objects
- * @returns An MDAST `Table` node ready for insertion into an AST
+ * @returns A kit `Table` node ready for insertion into a kit tree
  *
  * @example
  * ```typescript
@@ -195,10 +172,7 @@ export function serializeDependencyTable(rows: DependencyTableRow[]): Table {
 	const headerRow = makeRow([...COLUMN_HEADERS]);
 	const dataRows = rows.map((row) => makeRow(COLUMN_KEYS.map((key) => row[key])));
 
-	return {
-		type: "table",
-		children: [headerRow, ...dataRows],
-	};
+	return new Table({ children: [headerRow, ...dataRows] });
 }
 
 /**
@@ -228,7 +202,7 @@ export function serializeDependencyTable(rows: DependencyTableRow[]): Table {
  */
 export function serializeDependencyTableToMarkdown(rows: DependencyTableRow[]): string {
 	const table = serializeDependencyTable(rows);
-	return stringifyMarkdown({ type: "root", children: [table] }).trim();
+	return emitKitMarkdown(new Root({ children: [table] })).trim();
 }
 
 /**

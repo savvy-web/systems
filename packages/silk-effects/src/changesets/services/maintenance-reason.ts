@@ -5,7 +5,7 @@
  * A release whose `changesets` array is empty was forced by workspace
  * coupling — a `fixed` or `linked` version group in the changesets config —
  * or by an engine behavior we do not model. The derived reason feeds the
- * `MaintenanceNotePlugin` so the generated CHANGELOG never ships an empty
+ * `maintenanceNote` transform so the generated CHANGELOG never ships an empty
  * version block.
  *
  * Pattern matching uses {@link ChangesetConfig.matches} (exact +
