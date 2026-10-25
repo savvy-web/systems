@@ -197,7 +197,7 @@ export function writeResolvedTsconfig(options: ResolvedTsconfigOptions): string 
  * same file set under the same names:
  *
  * - `extends` names the base by its CANONICAL (symlink-free) path. Root files are resolved relative
- *   to the base's directory, and on a symlinked base dir (macOS `/var` -> `/private/var`, a linked
+ *   to the base's directory, and on a symlinked base dir (macOS `/var` resolving to `/private/var`, a linked
  *   checkout) a non-canonical name would key them differently from rolldown's ids and every entry
  *   would fail with "No TypeScript Go project found".
  * - `files`/`include`/`exclude` are restated as ABSOLUTE paths under the base's directory. A base

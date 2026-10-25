@@ -205,7 +205,11 @@ export interface DtsPassDtsOptions {
 /** The `file://` URL of the TypeScript module this package resolves (its own pinned dependency). */
 const typescriptModuleUrl = (): string => import.meta.resolve("typescript");
 
-/** Build the {@link DtsPassDtsOptions} for a resolved tsconfig path. */
+/**
+ * Build the {@link DtsPassDtsOptions} for a resolved tsconfig path.
+ *
+ * @public
+ */
 export const dtsPassDtsOptions = (tsconfig: string): DtsPassDtsOptions => ({
 	tsconfig,
 	emitDtsOnly: true,
