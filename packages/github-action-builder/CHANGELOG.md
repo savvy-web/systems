@@ -1,5 +1,21 @@
 # @savvy-web/github-action-builder
 
+## 2.4.20
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| typescript | peerDependency | updated | ^7.0.0 | ^7.1.0-beta |
+
+[#825][#825]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#825]: https://github.com/savvy-web/systems/pull/825
+
 ## 2.4.19
 
 ### Dependencies
