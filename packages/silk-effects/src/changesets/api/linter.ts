@@ -1,7 +1,7 @@
 /**
  * Class-based API wrapper for changeset linting.
  *
- * Provides a static class interface that runs all five remark-lint rules
+ * Provides a static class interface that runs all five kit-node lint rules
  * against changeset markdown files and returns structured diagnostics.
  *
  * @internal
@@ -9,23 +9,30 @@
 
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import remarkStringify from "remark-stringify";
-import { unified } from "unified";
 
-import { ContentStructureRule } from "../remark/rules/content-structure.js";
-import { DependencyTableFormatRule } from "../remark/rules/dependency-table-format.js";
-import { HeadingHierarchyRule } from "../remark/rules/heading-hierarchy.js";
-import { RequiredSectionsRule } from "../remark/rules/required-sections.js";
-import { UncategorizedContentRule } from "../remark/rules/uncategorized-content.js";
+import { contentStructure } from "../rules/content-structure.js";
+import { dependencyTableFormat } from "../rules/dependency-table-format.js";
+import { headingHierarchy } from "../rules/heading-hierarchy.js";
+import { requiredSections } from "../rules/required-sections.js";
+import type { LintRule } from "../rules/types.js";
+import { uncategorizedContent } from "../rules/uncategorized-content.js";
+import { parseKitMarkdown } from "../utils/markdown-emit.js";
 import { stripFrontmatter } from "../utils/strip-frontmatter.js";
+
+/** The five changeset lint rules, in reporting order. */
+const RULES: ReadonlyArray<LintRule> = [
+	headingHierarchy,
+	requiredSections,
+	contentStructure,
+	dependencyTableFormat,
+	uncategorizedContent,
+];
 
 /**
  * A single lint diagnostic message produced by changeset validation.
  *
  * @remarks
- * Each `LintMessage` corresponds to one remark-lint rule violation found
+ * Each `LintMessage` corresponds to one lint rule violation found
  * during changeset validation. Messages include source location information
  * (file, line, column) for integration with editors, CI reporters, and
  * the Effect CLI's `lint` and `check` commands.
@@ -52,13 +59,13 @@ export interface LintMessage {
 	file: string;
 
 	/**
-	 * Identifier of the remark-lint rule that produced this message.
+	 * Identifier of the lint rule that produced this message.
 	 *
 	 * @remarks
-	 * Corresponds to one of the five built-in rules: `"heading-hierarchy"`,
-	 * `"required-sections"`, `"content-structure"`, `"dependency-table-format"`,
-	 * or `"uncategorized-content"`. Falls back to `"unknown"` if the underlying
-	 * vfile message has no rule ID.
+	 * Corresponds to one of the five built-in rules:
+	 * `"changeset-heading-hierarchy"`, `"changeset-required-sections"`,
+	 * `"changeset-content-structure"`, `"changeset-dependency-table-format"`,
+	 * or `"changeset-uncategorized-content"`.
 	 */
 	rule: string;
 
@@ -67,8 +74,7 @@ export interface LintMessage {
 	 *
 	 * @remarks
 	 * Line numbers are relative to the content after YAML frontmatter
-	 * stripping. Defaults to `1` if the underlying rule does not provide
-	 * position information.
+	 * stripping (the blank line after the closing `---` counts as line 1).
 	 */
 	line: number;
 
@@ -76,8 +82,7 @@ export interface LintMessage {
 	 * Column number where the issue was detected (1-based).
 	 *
 	 * @remarks
-	 * Defaults to `1` if the underlying rule does not provide position
-	 * information.
+	 * Taken from the start position of the offending node.
 	 */
 	column: number;
 
@@ -95,7 +100,7 @@ export interface LintMessage {
 /**
  * Static class for linting changeset markdown files.
  *
- * Runs the five remark-lint rules (heading-hierarchy, required-sections,
+ * Runs the five `@effected/markdown` kit-node lint rules (heading-hierarchy, required-sections,
  * content-structure, dependency-table-format, uncategorized-content) against
  * changeset markdown and returns structured {@link LintMessage} diagnostics.
  *
@@ -210,28 +215,16 @@ export class ChangesetLinter {
 	 * @returns Array of {@link LintMessage} diagnostics (empty if the content is valid)
 	 */
 	static validateContent(content: string, filePath = "<input>"): LintMessage[] {
-		const body = stripFrontmatter(content);
-
-		const processor = unified()
-			.use(remarkParse)
-			.use(remarkGfm)
-			.use(remarkStringify)
-			.use(HeadingHierarchyRule)
-			.use(RequiredSectionsRule)
-			.use(ContentStructureRule)
-			.use(DependencyTableFormatRule)
-			.use(UncategorizedContentRule);
-
-		const file = processor.processSync(body);
-
-		return file.messages.map((msg) => ({
-			file: filePath,
-			/* v8 ignore next 3 -- ruleId/line/column fallbacks; remark-lint always provides these */
-			rule: msg.ruleId ?? msg.source ?? "unknown",
-			line: msg.line ?? 1,
-			column: msg.column ?? 1,
-			message: msg.message,
-		}));
+		const root = parseKitMarkdown(stripFrontmatter(content));
+		return RULES.flatMap((rule) =>
+			rule(root).map((finding) => ({
+				file: filePath,
+				rule: finding.rule,
+				line: finding.position.start.line,
+				column: finding.position.start.column,
+				message: finding.message,
+			})),
+		);
 	}
 
 	/**

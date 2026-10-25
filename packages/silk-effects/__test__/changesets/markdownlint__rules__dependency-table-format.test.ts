@@ -64,8 +64,8 @@ describe("markdownlint/dependency-table-format", () => {
 	});
 
 	// A setext level-2 "Dependencies" heading (underlined with ---) is the same
-	// documented heading to a reader; remark-parse normalizes setext to a plain
-	// heading node so the remark engine already enforces the section. The
+	// documented heading to a reader; the kit parser normalizes setext to a plain
+	// heading node so the kit engine already enforces the section. The
 	// markdownlint scan must accept setextHeading tokens too, or the two
 	// engines disagree about the same file.
 	describe("setext level-2 Dependencies heading (engine agreement)", () => {
@@ -88,7 +88,7 @@ describe("markdownlint/dependency-table-format", () => {
 
 	// --- issues #456 / #457 ---------------------------------------------------
 	// CSH005 accepts a valid dependency table ANYWHERE in the `## Dependencies`
-	// section; prose may precede or follow it. This mirrors the remark rule so
+	// section; prose may precede or follow it. This mirrors the kit rule so
 	// the two implementations of one documented rule cannot disagree.
 	describe("table position within the section (issues #456/#457)", () => {
 		it("passes when prose precedes the table", () => {
@@ -152,7 +152,7 @@ describe("markdownlint/dependency-table-format", () => {
 
 	// --- issue #367 -----------------------------------------------------------
 	// The micromark token carries raw source, so backslash escapes reach the rule
-	// intact. The sibling remark rule validates the parsed tree, where the parser
+	// intact. The sibling kit rule validates the parsed tree, where the parser
 	// has already resolved them. Both must agree about the same file.
 	describe("backslash escapes are resolved before validation (issue #367)", () => {
 		it("accepts a tilde range written with the legacy escape", () => {

@@ -38,7 +38,7 @@ function extractH3Headings(content: string): string[] {
 /**
  * A heading the transform pipeline is allowed to emit: the 13 changeset
  * categories, plus the `Thanks` section synthesized by
- * ContributorFootnotesPlugin (not an authorable changeset category).
+ * the contributor-footnotes transform (not an authorable changeset category).
  */
 function isEmittableHeading(heading: string): boolean {
 	return isValidHeading(heading) || heading === "Thanks";

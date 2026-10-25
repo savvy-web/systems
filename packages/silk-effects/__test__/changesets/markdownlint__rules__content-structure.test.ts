@@ -101,7 +101,7 @@ describe("markdownlint/content-structure", () => {
 		expect(messages[0]).toContain(RULE_DOCS.CSH003);
 	});
 
-	it("rejects an empty setext h2 section like its remark sibling", () => {
+	it("rejects an empty setext h2 section like its kit sibling", () => {
 		const messages = check("Features\n--------\n");
 		expect(messages).toHaveLength(1);
 		expect(messages[0]).toContain("Empty section");

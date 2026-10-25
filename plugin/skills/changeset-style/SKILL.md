@@ -72,7 +72,7 @@ Matching is **case-sensitive and exact**. Use `### Sub-heading` under a `## Cate
 
 ## Structural Rules
 
-These rules are enforced by the remark-lint pre-validation layer. Violating them will cause the changeset to fail CI.
+These rules are enforced by the kit lint rules in silk-effects (`src/changesets/rules/`), the pre-validation layer behind `savvy changeset check` and `changeset_validate`. Violating them will cause the changeset to fail CI.
 
 | Rule | Description |
 | :--- | :--- |
@@ -100,7 +100,7 @@ A `## Dependencies` section written as prose or a bullet list — instead of
 this table — is a CSH005 violation, not a stylistic alternative. Prose is
 allowed alongside the table: a valid table anywhere in the section satisfies
 the rule, with explanatory text before or after it. Both lint engines
-(remark-lint and markdownlint) share one section-scanning decision, so this
+(the kit rules and markdownlint) share one section-scanning decision, so this
 is enforced uniformly across every path a changeset passes through:
 `savvy changeset check`, the `changeset_validate` MCP tool, and the
 pre-commit hook.

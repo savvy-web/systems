@@ -57,21 +57,13 @@ jobs:
             @tsdoctor/*
             jiti
             jju
-            mdast-util-heading-range
-            mdast-util-to-string
             picocolors
-            remark-gfm
             fast-check
             pluginfinity
-            remark-parse
-            remark-stringify
             rolldown-pnpm-config
             semver
             shell-quote
             std-env
-            unified
-            unified-lint-rule
-            unist-util-visit
           run: |
             pnpm savvy init
             pnpm lint:fix 2>/dev/null || true

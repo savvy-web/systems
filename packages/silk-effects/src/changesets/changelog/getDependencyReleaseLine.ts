@@ -16,7 +16,7 @@
  * consuming package's `package.json` fields (`dependencies`,
  * `devDependencies`, `peerDependencies`, `optionalDependencies`) via
  * the {@link inferDependencyType} helper. Downstream, the heading is
- * consumed by `AggregateDependencyTablesPlugin`, which locates and
+ * consumed by the aggregate-dependency-tables transform, which locates and
  * merges per-package dependency tables during changelog assembly.
  *
  * ### Dependency type inference

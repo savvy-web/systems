@@ -1,7 +1,5 @@
-import type { Table } from "mdast";
-import remarkGfm from "remark-gfm";
-import remarkParse from "remark-parse";
-import { unified } from "unified";
+import type { Table } from "@effected/markdown";
+import { Table as KitTable, Root, TableCell, TableRow, Text } from "@effected/markdown";
 import { describe, expect, it } from "vitest";
 
 import type { DependencyTableRow } from "../../src/changesets/schemas/dependency-table.js";
@@ -12,14 +10,13 @@ import {
 	serializeDependencyTableToMarkdown,
 	sortDependencyRows,
 } from "../../src/changesets/utils/dependency-table.js";
-import { parseMarkdown, stringifyMarkdown } from "../../src/changesets/utils/remark-pipeline.js";
+import { emitKitMarkdown, parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
 
-/** Parse markdown into MDAST and extract first table node. */
+/** Parse markdown into kit nodes and extract the first table node. */
 function getTable(md: string): Table {
-	const tree = unified().use(remarkParse).use(remarkGfm).parse(md);
-	const table = tree.children.find((n) => n.type === "table");
+	const table = parseKitMarkdown(md).children.find((n): n is Table => n.type === "table");
 	if (!table) throw new Error("No table found in markdown");
-	return table as Table;
+	return table;
 }
 
 const VALID_TABLE = `| Dependency | Type | Action | From | To |
@@ -78,6 +75,24 @@ describe("parseDependencyTable", () => {
 		const md = `| Dependency | Type | Action | From | To |
 | --- | --- | --- | --- | --- |`;
 		expect(() => parseDependencyTable(getTable(md))).toThrow();
+	});
+});
+
+describe("parseDependencyTable short rows", () => {
+	it("reports a data row with fewer than five cells as an error, not a TypeError", () => {
+		const row = (values: string[]) =>
+			new TableRow({ children: values.map((value) => new TableCell({ children: [new Text({ value })] })) });
+		const table = new KitTable({
+			children: [row(["Dependency", "Type", "Action", "From", "To"]), row(["foo", "dependency", "added", "1.0.0"])],
+		});
+		let thrown: unknown;
+		try {
+			parseDependencyTable(table);
+		} catch (error) {
+			thrown = error;
+		}
+		expect(thrown).toBeInstanceOf(Error);
+		expect(thrown).not.toBeInstanceOf(TypeError);
 	});
 });
 
@@ -325,8 +340,7 @@ describe("dependency table cells survive the canonical escaping", () => {
 	});
 
 	it("still escapes markdown in ordinary prose outside a table", () => {
-		const tree = parseMarkdown("bumped _private and some_snake_case today\n");
-		const md = stringifyMarkdown(tree);
+		const md = emitKitMarkdown(parseKitMarkdown("bumped _private and some_snake_case today\n"));
 		expect(md).toContain("\\_private");
 		expect(md).toContain("some_snake_case");
 	});
@@ -336,7 +350,7 @@ describe("dependency table cells survive the canonical escaping", () => {
 		// changeset AST, which is stringified through the shared emit boundary,
 		// so document-level and standalone serialization agree byte-for-byte.
 		const table = serializeDependencyTable(ESCAPE_BAIT);
-		const md = stringifyMarkdown({ type: "root", children: [table] });
+		const md = emitKitMarkdown(new Root({ children: [table] }));
 		expect(md.trim()).toBe(serializeDependencyTableToMarkdown(ESCAPE_BAIT));
 	});
 });

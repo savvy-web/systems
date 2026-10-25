@@ -233,7 +233,7 @@ export type { GitHubCommitInfo } from "./vendor/github-info.js";
 
 // === Markdownlint rules ===
 // These are the markdownlint (micromark token API) implementations.
-// Alias exports use "Markdownlint" prefix to avoid collision with remark rules.
+// Alias exports keep their historical "Markdownlint" prefix.
 
 // The default export is the rules array for markdownlint-cli2 `customRules` config.
 export {
@@ -245,27 +245,4 @@ export {
 	default as SilkChangesetsRules,
 } from "./markdownlint/index.js";
 
-// === Remark Transform Plugins ===
-
-export { AggregateDependencyTablesPlugin } from "./remark/plugins/aggregate-dependency-tables.js";
-export { ContributorFootnotesPlugin } from "./remark/plugins/contributor-footnotes.js";
-export { DeduplicateItemsPlugin } from "./remark/plugins/deduplicate-items.js";
-export { IssueLinkRefsPlugin } from "./remark/plugins/issue-link-refs.js";
-export type { MaintenanceNoteOptions } from "./remark/plugins/maintenance-note.js";
-export { MaintenanceNotePlugin } from "./remark/plugins/maintenance-note.js";
-export { MergeSectionsPlugin } from "./remark/plugins/merge-sections.js";
-export { NormalizeFormatPlugin } from "./remark/plugins/normalize-format.js";
-export { ReorderSectionsPlugin } from "./remark/plugins/reorder-sections.js";
-
-// === Remark Presets ===
-
-export { SilkChangesetPreset, SilkChangesetTransformPreset } from "./remark/presets.js";
-
-// === Remark Lint Rules ===
-// These are the unified/remark-lint implementations.
-
-export { ContentStructureRule } from "./remark/rules/content-structure.js";
-export { DependencyTableFormatRule } from "./remark/rules/dependency-table-format.js";
-export { HeadingHierarchyRule } from "./remark/rules/heading-hierarchy.js";
-export { RequiredSectionsRule } from "./remark/rules/required-sections.js";
-export { UncategorizedContentRule } from "./remark/rules/uncategorized-content.js";
+export type { MaintenanceNoteOptions } from "./transforms/maintenance-note.js";

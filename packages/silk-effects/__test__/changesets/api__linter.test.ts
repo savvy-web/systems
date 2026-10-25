@@ -6,6 +6,12 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangesetLinter } from "../../src/changesets/api/linter.js";
 
 describe("ChangesetLinter.validateContent", () => {
+	it("reports lines relative to the frontmatter-stripped body", () => {
+		const [m] = ChangesetLinter.validateContent('---\n"@x/y": patch\n---\n\nStray paragraph\n');
+		expect(m.rule).toBe("changeset-uncategorized-content");
+		expect(m.line).toBe(2);
+	});
+
 	it("returns no messages for valid content", () => {
 		const content = '---\n"@savvy-web/changesets": minor\n---\n\n## Features\n\n- Added lint rules\n';
 		const messages = ChangesetLinter.validateContent(content);

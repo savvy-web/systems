@@ -64,8 +64,8 @@ import { getReleaseLine as getReleaseLineEffect } from "./getReleaseLine.js";
  *
  * `GitHubService.layer` satisfies the requirements of both `getReleaseLine` and
  * `getDependencyReleaseLine`, which each need only `GitHubService`. Markdown
- * parsing is not a layer: the formatters call the remark pipeline's
- * `parseMarkdown` / `stringifyMarkdown` functions directly.
+ * parsing is not a layer: the formatters call `parseKitMarkdown` /
+ * `emitKitMarkdown` from `utils/markdown-emit.ts` directly.
  *
  * @internal
  */

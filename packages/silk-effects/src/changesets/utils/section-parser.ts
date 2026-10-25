@@ -104,7 +104,7 @@ export interface ParsedChangeset {
  *
  * Unknown headings (those not recognized by `fromHeading()`) are silently
  * skipped; validation of heading names is the responsibility of Layer 1
- * (remark-lint).
+ * (the lint rules).
  *
  * @param summary - The changeset summary markdown
  * @returns Parsed sections and optional preamble

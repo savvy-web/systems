@@ -137,7 +137,7 @@ layer(testLayer)("changelog corpus", (it) => {
 			const synthesized = yield* depLine();
 
 			// the authored table must not be bullet-wrapped by the formatter
-			// (remark-stringify pads table cells, so match structurally)
+			// (the emitter pads table cells, so match structurally)
 			expect(authored).toMatch(/\n\| Dependency \| Type\s+\| Action/);
 			expect(authored).not.toMatch(/^\s*[-*] \|/m);
 
@@ -223,8 +223,7 @@ layer(testLayer)("changelog corpus", (it) => {
 			const result = ChangelogTransformer.transformContent(assemble("1.1.0", entry));
 
 			// Deliberate byte pins on the canonical emit boundary: the bullet
-			// marker is `-` (the kit's canonical choice; remark-stringify
-			// defaulted `*`) ...
+			// marker is `-` (the kit's canonical choice) ...
 			expect(result).toMatch(/^- Added search/m);
 			expect(result).not.toMatch(/^\* /m);
 

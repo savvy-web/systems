@@ -96,7 +96,7 @@ describe("markdownlint/required-sections", () => {
 		const messages = check("## Invalid\n\nContent\n");
 		expect(messages[0]).toContain(RULE_DOCS.CSH002);
 	});
-	it("rejects an unknown setext h2 section like its remark sibling", () => {
+	it("rejects an unknown setext h2 section like its kit sibling", () => {
 		const messages = check("Bogus Section\n-------------\n\nContent\n");
 		expect(messages).toHaveLength(1);
 		expect(messages[0]).toContain('Unknown section "Bogus Section"');
@@ -104,7 +104,7 @@ describe("markdownlint/required-sections", () => {
 });
 
 // --- issue #367: shared extractors resolve escapes -----------------------------
-// getHeadingText reads RAW micromark source while the sibling remark rule reads
+// getHeadingText reads RAW micromark source while the sibling kit rule reads
 // the parsed tree via mdast-util-to-string. Both must judge the same heading.
 describe("markdownlint/required-sections: backslash escapes in headings", () => {
 	it("does not treat a backslash before a space as an escape", () => {

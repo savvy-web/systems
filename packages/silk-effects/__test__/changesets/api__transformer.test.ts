@@ -6,6 +6,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 
 describe("ChangelogTransformer.transformContent", () => {
+	it("canonicalizes author spellings", () => {
+		const out = ChangelogTransformer.transformContent("1.0.0\n-----\n\n### Features\n\n* A\n* B\n");
+		expect(out).toBe("## 1.0.0\n\n### Features\n\n- A\n- B\n");
+	});
+
 	it("merges duplicate sections and reorders by priority", () => {
 		const input = [
 			"## 1.0.0",

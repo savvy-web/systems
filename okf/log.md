@@ -1,5 +1,16 @@
 # Log
 
+## 2026-10-23
+
+* Updated @savvy-web/tsdown-plugins
+* Updated Build each workspace-dependency package via its own prepare script
+* Updated Every package versions independently
+* Updated Keep prepare:turbo run build:dev on every workspace:* dependency
+* Updated Split the build orchestrator from the plugin pack
+* Added The per-target release filter runs outside the PublishabilityDetector
+* Updated dist/<target>/issues.json
+* Updated silk-core
+
 ## 2026-10-13
 
 * Updated Managed hook sections

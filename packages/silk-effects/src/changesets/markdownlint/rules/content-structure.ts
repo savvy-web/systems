@@ -36,7 +36,7 @@ function hasContentBetween(tokens: MicromarkToken[], currentIdx: number, nextIdx
  *    `content` token before the next prefix or end of list.
  *
  * @remarks
- * This rule mirrors the remark-lint rule `remarkLintContentStructure` but uses
+ * This rule mirrors the kit rule `contentStructure` in `src/changesets/rules/content-structure.ts` but uses
  * markdownlint's micromark token API so it can run inside markdownlint-cli2 and
  * the VS Code markdownlint extension.
  *
@@ -48,7 +48,7 @@ function hasContentBetween(tokens: MicromarkToken[], currentIdx: number, nextIdx
  * ```
  *
  * @see {@link https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/CSH003.md | CSH003 rule documentation}
- * @see `src/remark/rules/content-structure.ts` for the corresponding remark-lint rule
+ * @see `src/changesets/rules/content-structure.ts` for the corresponding kit-node rule
  *
  * @public
  */

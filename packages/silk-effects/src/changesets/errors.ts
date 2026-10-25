@@ -161,7 +161,7 @@ export const MarkdownParseErrorBase = Data.TaggedError("MarkdownParseError");
  * Markdown parsing failure.
  *
  * @remarks
- * Raised when a markdown file cannot be parsed into an AST by the unified/remark
+ * Raised when a markdown file cannot be parsed into an AST by the @effected/markdown
  * pipeline. Carries optional source file location information (line, column)
  * for diagnostic display.
  *

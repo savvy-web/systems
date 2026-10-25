@@ -92,7 +92,7 @@ describe("markdownlint/uncategorized-content", () => {
 		expect(messages[0]).toContain(RULE_DOCS.CSH004);
 	});
 
-	it("accepts content under a setext h2 heading like its remark sibling", () => {
+	it("accepts content under a setext h2 heading like its kit sibling", () => {
 		expect(check("Features\n--------\n\n- Added X\n")).toEqual([]);
 	});
 });
