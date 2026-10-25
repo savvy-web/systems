@@ -1,3 +1,7 @@
+packages:
+  - e2e/*
+  - packages/*
+  - plugin
 allowBuilds:
   "@parcel/watcher": true
   better-sqlite3: true
@@ -173,10 +177,6 @@ overrides:
   "@effect/vitest>vitest": ^5.0.1
   "@effected/workspaces@0.38.1>@effected/lockfiles": 0.19.4
   "@microsoft/api-extractor>typescript": ^6.0.3
-packages:
-  - e2e/*
-  - packages/*
-  - plugin
 peerDependencyRules:
   allowedVersions:
     "@effect/vitest>vitest": ^5.0.1
