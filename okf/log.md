@@ -18,6 +18,7 @@
 * Added A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
 * Updated Managed hook sections
 * Updated dist/<target>/issues.json
+* Added The lint-staged boundary stays plain-function and shares tool discovery through the kit's sync facades
 
 ## 2026-10-23
 
