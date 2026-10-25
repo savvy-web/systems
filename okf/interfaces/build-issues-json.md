@@ -19,10 +19,10 @@ sources:
     resource: ../../packages/bundler/src/run.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T06:56:15Z
+  at: 2026-10-25T19:39:30Z
 integrity:
   generated:
-    body: 27670a65b060e4eb
+    body: 5a1a1bf86cbada51
 ---
 
 # dist/\<target\>/issues.json
@@ -52,6 +52,16 @@ terminal output, to learn what a build produced.[^issues-artifact]
   De-duplication is on the identity-bearing fields together, so a
   diagnostic byte-identical across multiple registry target-groups appears
   once, not once per group.[^issues-artifact]
+- **`suppressed` counts everything the per-package `suppressWarnings`
+  rules absorbed, including messages that exist only in the bundled
+  rollup declarations.** The API Extractor meta pass runs twice in split
+  mode: Run A over the bundled rollup `.d.ts` (the model) and Run B over
+  the per-module declarations (the source-located diagnostics). A
+  suppressed message only Run A saw appears WITHOUT `file`/`line`/
+  `column`, the same way a rollup-only CI-fatal warning does, because
+  the rollup position is not a source location. A message both runs
+  suppressed appears once, with Run B's per-module location
+  (savvy-web/systems#772).[^meta-design]
 - **`source: "config"` is an advisory finding about the build config
   itself, not about the code it built.** Today there is one:
   `targets-no-final-release`, a `warn` that `runBuild` records when every

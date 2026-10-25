@@ -15,6 +15,9 @@
 * Updated cli
 * Updated e2e
 * Updated pnpm-plugin-silk
+* Added A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
+* Updated Managed hook sections
+* Updated dist/<target>/issues.json
 
 ## 2026-10-23
 

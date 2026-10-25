@@ -17,10 +17,10 @@ sources:
     resource: ../../packages/silk-core/src/schemas/SavvyOkfSection.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-13T17:20:58Z
+  at: 2026-10-25T19:39:30Z
 integrity:
   generated:
-    body: f6cc1231583e51ae
+    body: 846b6f3ec8d2e052
 ---
 
 # Managed hook sections
@@ -124,25 +124,32 @@ validate.[^savvy-okf-section]
   ```sh
   if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
     # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
-    # unstaged work: a commit must never link a concept it does not contain.
+    # unstaged work: a commit must never link a concept it does not contain. Log mode
+    # reads the git index, so it stays on.
     if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
-      (cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1
+      (cd "$ROOT" && pm_exec okfit sync --staged --only generated --only log) || exit 1
     else
       (cd "$ROOT" && pm_exec okfit sync --staged) || exit 1
     fi
   fi
   ```
 
-- The default `--staged` modes are `generated` and `index`, so the
-  derived `index.md` files are re-stamped in the same commit too — but
-  only while the bundle is clean apart from what is staged. Index mode
-  reads concepts from DISK, not from the git index, and `--staged`
-  re-adds what it writes, so an untracked or partially staged concept
-  would otherwise let an unrelated commit land an `index.md` entry
-  linking a file that commit does not contain. When
-  `git status --porcelain -- okf` shows any unstaged or untracked entry,
-  the hook narrows to `--only generated` for that commit and the index
-  catches up on the next clean one.[^savvy-okf-section]
+- Since `@okfit/cli` 0.14.0 the default `--staged` modes are
+  `generated`, `index` and `log`, so a concept-touching commit carries
+  its own `generated.at` stamps, the re-derived `index.md` files, and
+  its own `log.md` entry, dated to the commit and derived from the git
+  index (the staged concepts' titles) (savvy-web/systems#796). Index
+  mode is the one that needs care: it reads concepts from DISK, not
+  from the git index, and `--staged` re-adds what it writes, so an
+  untracked or partially staged concept would otherwise let an
+  unrelated commit land an `index.md` entry linking a file that commit
+  does not contain.[^savvy-okf-section]
+- When `git status --porcelain -- okf` shows any unstaged or untracked
+  entry (second status column non-blank), the hook narrows to
+  `--only generated --only log` for that commit: it drops only `index`,
+  which catches up on the next clean commit. Log mode stays on because
+  it reads the git index, so on a dirty bundle it can still only
+  describe what the commit actually contains.[^savvy-okf-section]
 
 ## The SAVVY-INSTALL section
 

@@ -180,6 +180,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		const captureRollupOnlyFatal = splitDiagnostics && onMessage !== undefined && ci !== true;
 		const rollupFatal: import("../report/collector.js").DiagnosticInput[] = [];
 		const runBReported = new Set<string>();
+		// The same blind spot exists for SUPPRESSED messages (#772): the suppressor absorbs a rollup-only
+		// message in Run A, so unless Run A's suppressed entries are captured, one Run B never sees is missing
+		// from the report's `suppressed` bucket. Independent of `ci` (a suppressed message is set to None and
+		// never makes Run A throw); only needed when a sink exists. Flushed after Run B, location stripped,
+		// for entries Run B did not also report as suppressed.
+		const captureRollupSuppressed = splitDiagnostics && onSuppressed !== undefined;
+		const rollupSuppressed: import("../report/collector.js").DiagnosticInput[] = [];
+		const runBSuppressed = new Set<string>();
 		// Run A's split-mode message sink. Three shapes:
 		//  - non-CI (captureRollupOnlyFatal): buffer ciFatal entries for the post-Run-B dedup + flush.
 		//  - CI (ci === true): a rollup-only CI-fatal escalates `ae-forgotten-export` to ERROR here, so Run A
@@ -208,7 +216,16 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 			suppressWarnings: tsdoc.suppressWarnings,
 			...(ci !== undefined ? { ci } : {}),
 			...(splitDiagnostics
-				? { onMessage: runAOnMessage }
+				? {
+						onMessage: runAOnMessage,
+						...(captureRollupSuppressed
+							? {
+									onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
+										rollupSuppressed.push(entry);
+									},
+								}
+							: {}),
+					}
 				: {
 						...(onMessage !== undefined ? { onMessage } : {}),
 						...(onSuppressed !== undefined ? { onSuppressed } : {}),
@@ -241,7 +258,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 					selfReferencePaths,
 					suppressWarnings: tsdoc.suppressWarnings,
 					...(runBOnMessage !== undefined ? { onMessage: runBOnMessage } : {}),
-					...(onSuppressed !== undefined ? { onSuppressed } : {}),
+					...(onSuppressed !== undefined
+						? {
+								onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
+									runBSuppressed.add(diagnosticKey(entry));
+									onSuppressed(entry);
+								},
+							}
+						: {}),
 				});
 			} catch (err) {
 				if (onMessage !== undefined) {
@@ -259,6 +283,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 				for (const entry of rollupFatal) {
 					if (runBReported.has(diagnosticKey(entry))) continue;
 					onMessage(stripLocation(entry));
+				}
+			}
+			// Likewise for suppressed messages that exist ONLY in the bundled rollup: record them (location
+			// stripped) unless Run B already recorded the same message, with its accurate location.
+			if (onSuppressed !== undefined) {
+				for (const entry of rollupSuppressed) {
+					if (runBSuppressed.has(diagnosticKey(entry))) continue;
+					onSuppressed(stripLocation(entry));
 				}
 			}
 		}
