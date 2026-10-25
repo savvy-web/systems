@@ -22,7 +22,7 @@ Load when adding a `workspace:*` edge between packages or moving code across a l
 - **github-action-builder** (`@savvy-web/github-action-builder`) — zero-config rsbuild tool for Node.js 24 GitHub Actions. See `packages/github-action-builder/CLAUDE.md`.
 - **pnpm-plugin-silk** (`@savvy-web/pnpm-plugin-silk`) — the unified pnpm config dependency distributing the purpose-scoped catalogs and install-time policy across the ecosystem. See `packages/pnpm-plugin-silk/CLAUDE.md`.
 
-`e2e/*` is a separate harness area of PRIVATE, test-only packages (`@e2e/bundler`, `@e2e/pnpm-plugin-silk`, `@e2e/silk`) — distinct from the published `packages/*` — that exercise built `dist/dev` artifacts against isolated fixtures. See `e2e/CLAUDE.md`.
+`e2e/*` is a separate harness area of PRIVATE, test-only packages — today only `@e2e/silk`, the packed-install proof that has no owning package — distinct from the published `packages/*`. Every other e2e test lives IN its package under `packages/<pkg>/__test__/e2e/` and runs the package's own built `dist/dev` by path (bundler's subprocess fixtures, cli's `regen-catalog`, pnpm-plugin-silk's pnpmfile contract). See `e2e/CLAUDE.md`.
 
 Also in this repo: the silk agent plugin (the repo's only plugin; `plugins/github-actions` was removed), whose source of truth is `plugin/` (`@savvy-web/ai-plugins`, private) built by pluginfinity into committed `plugin/builds/claude` and `plugin/builds/copilot` trees (the legacy `plugins/silk/` copy is deleted); the placeholder docs site (`docs/`), cross-repo planning, and the plugin marketplace entry points (`.claude-plugin/` for Claude Code, `.github/plugin/` for Copilot).
 

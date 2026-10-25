@@ -1,5 +1,5 @@
 // packages/tsdown-plugins/__test__/build/build-target-groups.test.ts
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -121,13 +121,13 @@ describe("buildTargetGroups", () => {
 			const devDtsConfig = devDts.dts as { tsconfig: string; emitDtsOnly: boolean; generator: string };
 			expect(devDtsConfig.tsconfig).toMatch(dtsEmitPattern);
 			expect(devDtsConfig.emitDtsOnly).toBe(true);
-			expect(devDtsConfig.generator).toBe("tsc");
-			// Stronger pin: the derived file exists and extends the real base by absolute path.
+			expect(devDtsConfig.generator).toBe("tsgo");
+			// Stronger pin: the derived file exists and extends the real base by absolute CANONICAL path.
 			const derivedContents = JSON.parse(await readFile(devDtsConfig.tsconfig, "utf-8")) as {
 				extends: string;
 				compilerOptions: { stableTypeOrdering: boolean };
 			};
-			expect(derivedContents.extends).toBe(realTsconfigPath);
+			expect(derivedContents.extends).toBe(realpathSync.native(realTsconfigPath));
 			expect(derivedContents.compilerOptions.stableTypeOrdering).toBe(true);
 			expect(devDts.unbundle).toBe(false);
 			expect(devDts.clean).toBe(false);
@@ -1213,7 +1213,7 @@ describe("buildTargetGroups", () => {
 			const rtDtsConfig = rtDts.dts as { tsconfig: string; emitDtsOnly: boolean; generator: string };
 			expect(rtDtsConfig.tsconfig).toMatch(dtsEmitPattern);
 			expect(rtDtsConfig.emitDtsOnly).toBe(true);
-			expect(rtDtsConfig.generator).toBe("tsc");
+			expect(rtDtsConfig.generator).toBe("tsgo");
 		});
 	});
 
@@ -1257,7 +1257,12 @@ describe("buildTargetGroups", () => {
 		});
 		const decl = calls.find((c) => c.unbundle === true && String(c.outDir).endsWith("/dist/prod/npm/declarations"));
 		expect(decl).toBeDefined();
-		expect(decl?.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true, generator: "tsc" });
+		expect(decl?.dts).toEqual({
+			tsconfig: "/tmp/tsconfig.json",
+			emitDtsOnly: true,
+			generator: "tsgo",
+			tsgo: { moduleUrl: expect.stringMatching(/^file:\/\/.*\/typescript\//) },
+		});
 		expect(decl?.clean).toBe(true);
 	});
 

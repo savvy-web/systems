@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-25
+
+* Updated silk-effects
+
 ## 2026-10-23
 
 * Updated @savvy-web/tsdown-plugins

@@ -5,7 +5,7 @@
 * [@savvy-web/silk](silk.md) - The single install-target package that carries the savvy/savvy-mcp bins and a thin config-integration shim surface over silk-effects.
 * [@savvy-web/tsdown-plugins](tsdown-plugins.md) - The interface-only plugin pack holding every build behavior @savvy-web/bundler orchestrates — entry detection, the build loop, dts emission, dual-format output, targets, exe, meta, config validation.
 * [cli](cli.md) - The savvy binary — the single command host for the Silk Suite's everyday dev tooling.
-* [e2e](e2e.md) - The private, never-published harness area exercising the repo's build and release tooling through the BUILT dist/dev artifact, against isolated fixtures outside the workspace.
+* [e2e](e2e.md) - The private, never-published harness area — now only @e2e/silk, the packed-install proof with no owning package — plus the in-package e2e suites under packages/\<pkg\>/\_\_test\_\_/e2e/ that reach each package's BUILT dist/dev artifact by path.
 * [github-action-builder](github-action-builder.md) - Zero-config Effect-first build tool that bundles TypeScript into single-file Node.js 24 GitHub Actions, validates action.yml, and syncs output for act testing.
 * [mcp](mcp.md) - The savvy-mcp server — a standalone, spawnable, tools-only MCP server serving Silk Suite tooling to coding agents as structured tools.
 * [pnpm-plugin-silk](pnpm-plugin-silk.md) - The single pnpm config dependency that distributes the Silk Suite's shared workspace configuration — catalogs, overrides, build/hoist/peer rules, and release-age gating — to every consuming repository.

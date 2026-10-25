@@ -1,11 +1,15 @@
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
+import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { catalogs } from "@savvy-web/pnpm-plugin-silk";
 import { describe, expect, it } from "vitest";
 
-const require = createRequire(import.meta.url);
-const pkgRoot = dirname(require.resolve("@savvy-web/pnpm-plugin-silk/package.json"));
+/**
+ * The BUILT artifact, by path. A bare `@savvy-web/pnpm-plugin-silk` import from inside the package
+ * would self-reference the SOURCE manifest's exports (`./src/index.ts`), not what ships.
+ */
+const pkgRoot = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg");
+const { catalogs } = (await import(pathToFileURL(join(pkgRoot, "index.js")).href)) as {
+	catalogs: Map<string, Map<string, string>>;
+};
 
 describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 	/** Every camelCase peer catalog dropped in 0.27.0 — both surfaces must reject all of them. */

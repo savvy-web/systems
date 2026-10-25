@@ -115,9 +115,14 @@ describe("deriveDtsPassOptions (dts pass)", () => {
 		expect(o.outDir).toBe("/abs/pkg/dist/dev/pkg");
 		// bundled: rolldown preserveModules off
 		expect(o.unbundle).toBe(false);
-		// dts-only emission; generator pinned to "tsc" (rolldown-plugin-dts auto-detect flips to
-		// its broken "tsgo" generator when a peer-resolved typescript >= 7 is installed).
-		expect(o.dts).toEqual({ tsconfig: "/tmp/t.json", emitDtsOnly: true, generator: "tsc" });
+		// dts-only emission on the tsgo (TypeScript 7.1 API) generator, naming this package's own
+		// typescript module explicitly so a consumer's hoisted copy can never be picked instead.
+		expect(o.dts).toEqual({
+			tsconfig: "/tmp/t.json",
+			emitDtsOnly: true,
+			generator: "tsgo",
+			tsgo: { moduleUrl: expect.stringMatching(/^file:\/\/.*\/typescript\//) },
+		});
 		// must NOT wipe the JS pass output
 		expect(o.clean).toBe(false);
 		// dts maps off
@@ -237,7 +242,12 @@ describe("deriveDeclarationsPassOptions", () => {
 		const d = deriveDeclarationsPassOptions(base);
 		expect(d.unbundle).toBe(true);
 		expect(d.outDir).toBe("/repo/pkg/dist/prod/npm/declarations");
-		expect(d.dts).toEqual({ tsconfig: "/tmp/tsconfig.json", emitDtsOnly: true, generator: "tsc" });
+		expect(d.dts).toEqual({
+			tsconfig: "/tmp/tsconfig.json",
+			emitDtsOnly: true,
+			generator: "tsgo",
+			tsgo: { moduleUrl: expect.stringMatching(/^file:\/\/.*\/typescript\//) },
+		});
 		expect(d.format).toEqual(["esm"]);
 		expect(d.platform).toBe("node");
 		expect(Object.keys(d.entry)).toEqual(["index"]);

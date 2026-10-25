@@ -242,11 +242,12 @@ export async function buildTargetGroups(options: BuildTargetGroupsOptions): Prom
 	}
 	const ambient = extractAmbientDts(pkgForAmbient, {});
 
-	// The dts/declarations EMIT passes run on TS6 and use a `stableTypeOrdering` variant of the
-	// resolved tsconfig so union/type member ordering is deterministic across builds (#156). This is
-	// SEPARATE from the api-extractor tsconfig (`options.tsconfigPath`, consumed by the later
-	// runMetaPass), which stays on TS5.9 and would hard-error on the unknown flag. Derived once;
-	// falls back to the original path when it cannot be read (synthetic test paths).
+	// The dts/declarations EMIT passes run on this package's TypeScript (7.1+, the tsgo API) and use a
+	// `stableTypeOrdering` variant of the resolved tsconfig so union/type member ordering is
+	// deterministic across builds (#156). This is SEPARATE from the api-extractor tsconfig
+	// (`options.tsconfigPath`, consumed by the later runMetaPass): api-extractor compiles with its OWN
+	// bundled TypeScript 6, which predates the flag and would hard-error on the unknown compiler option.
+	// Derived once; falls back to the original path when it cannot be read (synthetic test paths).
 	const dtsEmitTsconfigPath = writeDtsEmitTsconfig(options.tsconfigPath);
 
 	const collector = options.collector;

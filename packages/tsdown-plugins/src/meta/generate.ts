@@ -8,6 +8,7 @@ import { runApiExtractor } from "./api-extractor.js";
 import type { NormalizedMeta } from "./config.js";
 import { mergeApiModels } from "./merge-models.js";
 import { resolveOgCacheSalt, writeGeneratedOgImage } from "./og-image.js";
+import { scrubDeclarationMapsUnder } from "./scrub-declaration-maps.js";
 import { resolvePortableTsconfig } from "./tsconfig-resolver.js";
 import { writeTsdocConfig } from "./tsdoc-config.js";
 import type { TsdoctorMetaOptions } from "./tsdoctor-config.js";
@@ -152,6 +153,11 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 			selfReferencePaths[specifier] = [join(aeInputDir, `${entries[name]}.d.ts`)];
 		}
 	}
+	// API Extractor reads the `.d.ts.map` beside every input it analyzes and crashes (EISDIR) on a
+	// source-less mapping segment (#817). Scrub both inputs once, before any run: the bundled dts
+	// Run A models and the per-module declarations Run B reads.
+	scrubDeclarationMapsUnder(dtsDir);
+	if (splitDiagnostics) scrubDeclarationMapsUnder(aeInputDir);
 	for (const entryName of entryNames) {
 		const modelEntryDts = join(dtsDir, `${entries[entryName]}.d.ts`);
 		// Entry names can contain path separators (e.g. "foo/index", "bin/cli"); flatten so the

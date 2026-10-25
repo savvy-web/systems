@@ -9,23 +9,25 @@ await build({
 				build: {
 					packages: {
 						"@microsoft/api-extractor": {
-							range: "7.59.1",
-							peer: "7.59.1",
+							range: "^7.59.4",
+							peer: "^7.59.4",
 							strategy: "lock",
 						},
 						"@microsoft/api-extractor-model": {
-							range: "7.33.12",
-							peer: "7.33.12",
+							range: "^7.33.15",
+							peer: "^7.33.15",
 							strategy: "lock",
 						},
+						// 0.17.0 dropped the line break before an inline node (microsoft/tsdoc#493); 0.17.1
+						// carries the fix, so the floor stays at 0.17.1 even though api-extractor accepts ~0.17.0.
 						"@microsoft/tsdoc": {
-							range: "~0.16.0",
-							peer: "~0.16.0",
+							range: "~0.17.1",
+							peer: "~0.17.1",
 							strategy: "lock",
 						},
 						"@microsoft/tsdoc-config": {
-							range: "0.18.1",
-							peer: "0.18.1",
+							range: "~0.18.3",
+							peer: "~0.18.3",
 							strategy: "lock",
 						},
 						"@tsdown/exe": {
@@ -225,10 +227,6 @@ await build({
 							peer: "^19.3.0",
 							strategy: "lock-minor",
 						},
-						"@typescript/native-preview": {
-							range: "^7.0.0-dev.20260707.2",
-							peer: "^7.0.0-dev.20260707.2",
-						},
 						husky: {
 							range: "^9.1.7",
 							peer: "^9.1.7",
@@ -344,7 +342,6 @@ await build({
 			local: {
 				peerDependencyRules: {
 					allowedVersions: {
-						"@savvy-web/bundler>typescript": "^6.0.3",
 						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
 						"@effect/vitest>vitest": "^5.0.1",
@@ -405,7 +402,6 @@ await build({
 					"@types/node",
 					"@types/react",
 					"@types/react-dom",
-					"@typescript/native-preview",
 					"@vitest/coverage-istanbul",
 					"@vitest/coverage-v8",
 					"husky",

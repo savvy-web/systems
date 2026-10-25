@@ -8,7 +8,7 @@ resource: ../../packages/bundler
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-09T17:54:20Z
+  at: 2026-10-25T14:59:20Z
 sources:
   - id: bundler-config
     resource: ../../packages/bundler/src/config.ts
@@ -20,7 +20,7 @@ sources:
     resource: ../../packages/bundler/src/og.ts
 integrity:
   generated:
-    body: d211e72b0d394cbf
+    body: 4567a71ce7ee615b
 ---
 
 # @savvy-web/bundler
@@ -142,8 +142,21 @@ escape hatches call the same helpers the front door calls —
 `writeIssuesArtifact` — never a private path, and both stamp `issues.json`
 from a `finally` exactly like the front door.
 
+## Test layout
+
+Unit and integration tests sit under `__test__/`; the subprocess e2e suites
+that spawn the BUILT front door and the raw-tsdown escape hatch inside real
+consumer fixtures live in `__test__/e2e/` (moved in from the retired
+`@e2e/bundler` harness, savvy-web/systems#680). The fixtures import
+`@savvy-web/bundler` by bare specifier, and since a package cannot be its
+own `workspace:*` devDependency, `__test__/e2e/helpers.ts` links
+`fixtures/node_modules/@savvy-web/bundler` to `dist/dev/pkg` at module
+load. The layout, the link mechanism and the escape-hatch generator rule are
+[`modules/e2e.md`](e2e.md).
+
 ## Related
 
+- [`modules/e2e.md`](e2e.md)
 - [`modules/tsdown-plugins.md`](tsdown-plugins.md)
 - [`decisions/bundler-tsdown-plugins-split.md`](../decisions/bundler-tsdown-plugins-split.md)
 - [`interfaces/savvy-build-config.md`](../interfaces/savvy-build-config.md)

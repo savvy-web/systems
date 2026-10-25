@@ -8,7 +8,7 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T06:56:15Z
+  at: 2026-10-25T14:59:20Z
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: ../../packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: 6ecb3d8b7edafd6e
+    body: 079a3d8c20ecac25
 ---
 
 # @savvy-web/tsdown-plugins
@@ -92,17 +92,30 @@ additive only, with a byte-comparison collision guard.[^tp-build]
 
 ## Declaration emission
 
-The cardinal decision: **tsdown native dts on the tsc path, not
+The cardinal decision: **tsdown native dts through the real compiler, not
 `isolatedDeclarations`** — under pnpm symlinks the compiler-free path
 produces TS2742/TS2883 portability failures in consumers, so the dts pass
-runs the real TypeScript compiler under a resolved tsconfig this package
-derives from the package's own `tsconfig.json` and writes to the OS temp
-dir.[^tp-dts] Declarations are rolled up **one entry at a time** rather than
-in one multi-entry build, because a shared chunk's content-hashed naming
-and split layout vary across otherwise byte-identical builds — determinism
-is a publishing property, since the `.api.json` feeds the docs corpus and
-the `.d.ts` is diffed on every release. The typescript pin backing this is
-[`decisions/typescript-6-dts-pin.md`](../decisions/typescript-6-dts-pin.md).
+runs TypeScript under a resolved tsconfig this package derives from the
+package's own `tsconfig.json` and writes to the OS temp dir.[^tp-dts] The
+compiler is TypeScript 7.1's API: `typescript` is a direct runtime
+dependency pinned exactly to `7.1.0-beta` (not `catalog:silk`, still on the
+7.0 line whose main export is a version stub), and `dtsPassDtsOptions` —
+shared by `deriveDtsPassOptions` and `deriveDeclarationsPassOptions` — pins
+`generator: "tsgo"` with `tsgo.moduleUrl` resolved from this package, so
+`rolldown-plugin-dts`'s auto-detection can never pick a consumer's hoisted
+copy.[^tp-build] The two AST readers in `src/dts/` (`relative-imports.ts`,
+`reexport-stub.ts`) parse through the shared `parse.ts` client over
+`typescript/sync` and `typescript/ast`; they are the package's only
+`typescript` importers. The tsgo generator opens the dts-emit tsconfig as a
+TypeScript project, so `writeDtsEmitTsconfig` names the base canonically and
+restates its `files`/`include`/`exclude` as absolute canonical paths — the
+trap is [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md).
+Declarations are rolled up **one entry at a time** rather than in one
+multi-entry build, because a shared chunk's content-hashed naming and split
+layout vary across otherwise byte-identical builds — determinism is a
+publishing property, since the `.api.json` feeds the docs corpus and the
+`.d.ts` is diffed on every release. The pin and generator choice are
+[`decisions/typescript-7-1-dts-api.md`](../decisions/typescript-7-1-dts-api.md).
 
 ## Dual-format output
 
@@ -143,13 +156,24 @@ caller inherits.
 
 `runMetaPass` runs during `--target prod` over each group's already-emitted
 bundled `.d.ts` and its catalog-resolved manifest; API Extractor never
-re-runs the tsdown bundle. For each entry it runs the extractor **twice**
+re-runs the tsdown bundle. Before any extractor run, `generateMeta` scrubs
+the `.d.ts.map` files beside its inputs — once over the bundled dts
+directory and, when a declarations pass exists, once over the per-module
+declarations directory — dropping every source-less mapping segment
+(`scrubDeclarationMapsUnder`, `src/meta/scrub-declaration-maps.ts`, over
+`@jridgewell/sourcemap-codec`), because API Extractor's `SourceMapper`
+resolves such a segment to a directory and dies with `EISDIR`; see
+[`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md).[^tp-generate]
+For each entry it then runs the extractor **twice**
 when the build emitted a separate declarations pass: Run A reads the
 bundled `pkg/<entry>.d.ts` and produces the shipped `.api.json` (stable
 because the bundled input is stable); Run B reads the per-module
 `declarations/<entry>.d.ts` to harvest `ae-*`/`tsdoc-*` diagnostics at
 accurate source locations, and is wrapped so its failure degrades to a
 warning rather than breaking a build whose model already succeeded.[^tp-meta]
+The extractor compiles with its own bundled TypeScript 6 (the
+`@microsoft/api-extractor>typescript` override), never this package's 7.1
+`typescript`, so `typescriptCompilerFolder` is deliberately not passed.
 Under CI, `ae-forgotten-export` escalates to a hard failure
 (`MetaGenerationError`); locally it stays a warning tagged `ciFatal`, and a
 `suppressWarnings` match always wins over the escalation. The bundle can
@@ -253,7 +277,9 @@ any build work on every target path.
 ## Related
 
 - [`modules/bundler.md`](bundler.md)
-- [`decisions/typescript-6-dts-pin.md`](../decisions/typescript-6-dts-pin.md)
+- [`decisions/typescript-7-1-dts-api.md`](../decisions/typescript-7-1-dts-api.md)
+- [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md)
+- [`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md)
 - [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 - [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)
 - [`decisions/release-filter-placement.md`](../decisions/release-filter-placement.md)

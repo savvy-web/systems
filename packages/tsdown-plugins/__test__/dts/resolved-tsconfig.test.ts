@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 // packages/tsdown-plugins/__test__/dts/resolved-tsconfig.test.ts
 
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
@@ -159,14 +160,31 @@ describe("writeDtsEmitTsconfig", () => {
 		const emitted = JSON.parse(await readFile(out, "utf-8")) as {
 			extends: string;
 			compilerOptions: Record<string, unknown>;
+			include?: string[];
+			exclude?: string[];
 		};
 		// Inherits the base via an ABSOLUTE extends (keeps the base's own relative paths resolving) and
 		// adds only the flag that makes TS6 declaration emit order union/type members deterministically.
-		expect(emitted.extends).toBe(base);
+		// The base is named CANONICALLY (symlinks resolved): the tsgo generator keys project files by
+		// realpath, so a symlinked tmpdir base must be spelled the way rolldown spells module ids.
+		expect(emitted.extends).toBe(realpathSync.native(base));
 		expect(emitted.compilerOptions).toEqual({ stableTypeOrdering: true });
+		// The base's absolute include set is restated verbatim (it was already absolute).
+		expect(emitted.include).toEqual(baseCfg.include);
+		expect(emitted.exclude).toEqual(baseCfg.exclude);
 		// The base (api-extractor) tsconfig is NOT mutated — it must never carry the unknown flag.
 		const stillBase = JSON.parse(await readFile(base, "utf-8")) as { compilerOptions: Record<string, unknown> };
 		expect(stillBase.compilerOptions.stableTypeOrdering).toBeUndefined();
+	});
+
+	it("pins TypeScript's default include to the base's own directory when the base declares none", async () => {
+		// Without this, the default `**\/*` would resolve against the WRAPPER's directory — the OS temp
+		// dir — and the tsgo project would hold every stray temp file instead of the package's sources.
+		const dir = await mkdtemp(join(tmpdir(), "dtscfg-noinclude-"));
+		const base = join(dir, "tsconfig.json");
+		await writeFile(base, JSON.stringify({ compilerOptions: { strict: true } }));
+		const emitted = JSON.parse(await readFile(writeDtsEmitTsconfig(base), "utf-8")) as { include?: string[] };
+		expect(emitted.include).toEqual([join(realpathSync.native(dir), "**/*")]);
 	});
 
 	it("falls back to the original path when the base tsconfig does not exist", () => {

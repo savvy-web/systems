@@ -10,10 +10,10 @@ sources:
     resource: ../../e2e/CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:05:33Z
+  at: 2026-10-25T14:59:20Z
 integrity:
   generated:
-    body: 69c5657a2eaa75d4
+    body: 0fc30a3fdd3acd17
 ---
 
 # Catalog and workspace resolution coverage lives only in e2e/
@@ -23,7 +23,8 @@ integrity:
 Never write a test — inside `packages/*` or anywhere else — that lets
 `catalog:`/`workspace:*` specifier resolution root at the host repo. Any
 test that exercises `workspaces-effect`'s `CatalogResolver` (which reads
-`process.cwd()`) belongs in [`modules/e2e.md`](../modules/e2e.md), and it
+`process.cwd()`) is an e2e test — under `e2e/` or a package's own
+`__test__/e2e/` (see [`modules/e2e.md`](../modules/e2e.md)) — and it
 must isolate resolution by one of two means:
 
 - **Subprocess**: spawn the built tool (`node savvy.build.ts`) with `cwd`
@@ -52,7 +53,8 @@ place instead of re-deriving it per package.[^e2e-claude-md]
 ## Related
 
 - [`modules/e2e.md`](../modules/e2e.md) — the harness area this convention
-  governs, its four coverage tiers, and the fixture conventions.
+  governs (`@e2e/silk` plus the in-package `packages/<pkg>/__test__/e2e/`
+  suites) and the fixture conventions.
 - [`conventions/effect-vitest-testing.md`](effect-vitest-testing.md) — the
   suite-wide `@effect/vitest` conventions this convention sits alongside.
 

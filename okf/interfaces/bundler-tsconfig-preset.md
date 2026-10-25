@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/bundler/public/tsconfig/ecma.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-10-25T14:59:20Z
 integrity:
   generated:
-    body: a0e26243358f467a
+    body: a3e8844e0579f931
 ---
 
 # bundler tsconfig preset
@@ -71,7 +71,8 @@ TypeScript configuration the bundler's build assumes.[^tsconfig-preset-doc]
 
 - [modules/bundler.md](../modules/bundler.md) — the module that ships
   this preset.
-- [decisions/typescript-6-dts-pin.md](../decisions/typescript-6-dts-pin.md)
-  — the TypeScript 6 pin this preset's baseline assumes.
+- [decisions/typescript-7-1-dts-api.md](../decisions/typescript-7-1-dts-api.md)
+  — the compiler the dts pass runs; the preset's option baseline (TS6
+  defaults made explicit) is compatible with it unchanged.
 
 [^tsconfig-preset-doc]: `../../packages/bundler/public/tsconfig/ecma.json`

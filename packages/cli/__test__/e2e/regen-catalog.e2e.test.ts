@@ -27,19 +27,19 @@ import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 
-/** Built `savvy` bin, resolved through the linked `@savvy-web/cli` dist/dev artifact. */
-const SAVVY_BIN = join(dirname(require.resolve("@savvy-web/cli/package.json")), "bin/savvy.js");
+/** Built `savvy` bin out of this package's own dist/dev artifact (never the source tree). */
+const SAVVY_BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy.js");
 
 const FIXTURE_TEMPLATE = join(import.meta.dirname, "fixtures", "regen-catalog");
 
 /**
  * `process.env` minus `NODE_V8_COVERAGE` so spawned subprocesses don't write
- * coverage temp files that race vitest's V8 provider (see e2e/CLAUDE.md).
+ * coverage temp files that race vitest's V8 provider (see packages/bundler/__test__/e2e/helpers.ts).
  */
 const { NODE_V8_COVERAGE: _omit, ...SPAWN_ENV } = process.env;
 
