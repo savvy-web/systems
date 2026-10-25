@@ -413,6 +413,39 @@ describe("generateMeta — two-input split wiring", () => {
 			expect(String(calls[0].text)).toContain("RollupOnly");
 			expect("file" in calls[0]).toBe(false);
 		});
+
+		it("records Run A's suppressed entries when Run A throws on a CI-fatal message", async () => {
+			const { cwd, dtsDir, aeInputDir } = scaffold();
+			const onSuppressed = vi.fn();
+			mockRunApiExtractor.mockImplementation(
+				(options: { entryDtsPath: string; onSuppressed?: (e: Record<string, unknown>) => void }) => {
+					if (!options.entryDtsPath.startsWith(dtsDir)) return;
+					options.onSuppressed?.(suppressed("Absorbed", { file: "index.d.ts", line: 4210, column: 1 }));
+					throw new Error("API Extractor reported 1 error(s) and 0 warning(s)");
+				},
+			);
+			await expect(
+				generateMeta({
+					cwd,
+					packageName: "@scope/fixture",
+					tsconfigPath: join(cwd, "tsconfig.json"),
+					dtsDir,
+					aeInputDir,
+					entries: { index: "index" },
+					exportPaths: { index: "." },
+					outMetaDir: join(cwd, "dist", "prod", "npm", "meta"),
+					localPaths: [],
+					tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+					onMessage: vi.fn(),
+					onSuppressed,
+					ci: true,
+				}),
+			).rejects.toThrow("API Extractor reported 1 error(s)");
+			const calls = onSuppressed.mock.calls.map((c) => c[0] as Record<string, unknown>);
+			expect(calls).toHaveLength(1);
+			expect(String(calls[0].text)).toContain("Absorbed");
+			expect("file" in calls[0]).toBe(false);
+		});
 	});
 
 	describe("self-reference paths and harvest-failure code (#771)", () => {

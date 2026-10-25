@@ -403,6 +403,7 @@ overrides:
   '@effect/vitest@^4.0.0': 4.0.6
   effect@^4.0.0: 4.0.6
   '@effect/vitest>vitest': ^5.0.1
+  '@effected/workspaces@0.38.1>@effected/lockfiles': 0.19.4
   '@microsoft/api-extractor>typescript': ^6.0.3
 
 pnpmfileChecksum: sha256-Wk1oy/79+VmAtASUuwWXgd+NTAJwm1IR7u+JquwpEbA=
@@ -1664,6 +1665,16 @@ packages:
     resolution: {integrity: sha512-2fRcEB75M2s0p+zxO53y/Yya8oYWhrIMv8GVXJvJnojmQktWihMDmz/9kHqivIkTDG5F/VG2IyMDMNG7M3uLhw==}
     engines: {node: '>=24.11.0'}
     peerDependencies:
+      effect: 4.0.6
+
+  '@effected/lockfiles@0.19.4':
+    resolution: {integrity: sha512-6flrgNx2WsqSiErNyH+zvKpDYaGSueDmjtag1Dyr5ooSPAnHFe90W5LQcTP9s/XgKes41d1yGUA/uK02Ushm7g==}
+    engines: {node: '>=24.11.0'}
+    peerDependencies:
+      '@effected/jsonc': ^0.20.0
+      '@effected/npm': ^0.26.2
+      '@effected/semver': ^0.18.0
+      '@effected/yaml': ^0.25.1
       effect: 4.0.6
 
   '@effected/lockfiles@0.19.5':
@@ -5566,7 +5577,7 @@ snapshots:
     dependencies:
       effect: 4.0.6
 
-  '@effected/lockfiles@0.19.5(@effected/jsonc@0.20.0(effect@4.0.6))(@effected/npm@0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6))(@effected/semver@0.18.0(effect@4.0.6))(@effected/yaml@0.25.1(effect@4.0.6))(effect@4.0.6)':
+  '@effected/lockfiles@0.19.4(@effected/jsonc@0.20.0(effect@4.0.6))(@effected/npm@0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6))(@effected/semver@0.18.0(effect@4.0.6))(@effected/yaml@0.25.1(effect@4.0.6))(effect@4.0.6)':
     dependencies:
       '@effected/jsonc': 0.20.0(effect@4.0.6)
       '@effected/npm': 0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6)
@@ -5675,7 +5686,7 @@ snapshots:
       '@effected/git': 0.25.1(effect@4.0.6)
       '@effected/glob': 0.14.0(effect@4.0.6)
       '@effected/jsonc': 0.20.0(effect@4.0.6)
-      '@effected/lockfiles': 0.19.5(@effected/jsonc@0.20.0(effect@4.0.6))(@effected/npm@0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6))(@effected/semver@0.18.0(effect@4.0.6))(@effected/yaml@0.25.1(effect@4.0.6))(effect@4.0.6)
+      '@effected/lockfiles': 0.19.4(@effected/jsonc@0.20.0(effect@4.0.6))(@effected/npm@0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6))(@effected/semver@0.18.0(effect@4.0.6))(@effected/yaml@0.25.1(effect@4.0.6))(effect@4.0.6)
       '@effected/npm': 0.26.2(@effected/semver@0.18.0(effect@4.0.6))(effect@4.0.6)
       '@effected/package-json': 0.25.2(effect@4.0.6)
       '@effected/semver': 0.18.0(effect@4.0.6)

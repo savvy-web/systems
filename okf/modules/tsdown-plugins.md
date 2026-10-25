@@ -8,7 +8,7 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-10-25T21:27:42Z
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: ../../packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: 079a3d8c20ecac25
+    body: e286247468377472
 ---
 
 # @savvy-web/tsdown-plugins
@@ -98,8 +98,9 @@ produces TS2742/TS2883 portability failures in consumers, so the dts pass
 runs TypeScript under a resolved tsconfig this package derives from the
 package's own `tsconfig.json` and writes to the OS temp dir.[^tp-dts] The
 compiler is TypeScript 7.1's API: `typescript` is a direct runtime
-dependency pinned exactly to `7.1.0-beta` (not `catalog:silk`, still on the
-7.0 line whose main export is a version stub), and `dtsPassDtsOptions` —
+dependency pinned exactly to `7.1.0-beta` (not `catalog:silk`, whose
+`^7.1.0-beta` is a range: this package needs the exact compiler its emit was
+verified on), and `dtsPassDtsOptions` —
 shared by `deriveDtsPassOptions` and `deriveDeclarationsPassOptions` — pins
 `generator: "tsgo"` with `tsgo.moduleUrl` resolved from this package, so
 `rolldown-plugin-dts`'s auto-detection can never pick a consumer's hoisted

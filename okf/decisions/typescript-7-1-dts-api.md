@@ -7,7 +7,7 @@ tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-10-25T21:27:42Z
 sources:
   - id: tp-manifest
     resource: ../../packages/tsdown-plugins/package.json
@@ -28,13 +28,15 @@ verified:
     at: 2026-10-25T14:47:01Z
   - by: human:spencer
     at: 2026-10-25T14:56:24Z
+  - by: human:spencer
+    at: 2026-10-25T21:24:55Z
 integrity:
   generated:
-    body: 23fe24e8ff7384ec
+    body: 8aa2ec3f6441d3f3
   verified:
     by: human:spencer
-    at: 2026-10-25T14:56:24Z
-    content: c2bf9128abf508e5
+    at: 2026-10-25T21:24:55Z
+    content: 5a98db2eaaca766b
 ---
 
 # Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
@@ -69,9 +71,10 @@ temp-dir tsconfig this package writes. Both premises have moved:
 
 - **Pin `typescript` to `7.1.0-beta` exactly** as a direct runtime
   dependency of `@savvy-web/tsdown-plugins`, not `catalog:silk` or
-  `catalog:build`, which stay on `^7.0.2` until 7.1 is stable. The pin is
-  exact because a prerelease has no caret semantics worth relying on; it
-  moves to the catalog once 7.1 ships stable.[^tp-manifest]
+  `catalog:build`. Those catalogs now carry `^7.1.0-beta` themselves, but
+  that is a range: this package keeps its own exact pin because it needs the
+  exact compiler its declaration emit was verified on, and a prerelease has
+  no caret semantics worth relying on.[^tp-manifest]
 - **The two AST readers parse through one shared client.**
   `src/dts/relative-imports.ts` and `src/dts/reexport-stub.ts` call
   `withParsedSource` in `src/dts/parse.ts`, which lazily starts a single
@@ -123,9 +126,10 @@ its file set absolutely; see
 
 ## Consequences
 
-- `catalog:silk`/`catalog:build` and `tsdown-plugins` deliberately disagree
-  on the `typescript` version until 7.1 is stable; do not "fix" the
-  divergence by moving the pin to the catalog early.
+- `catalog:silk`/`catalog:build` carry the range `^7.1.0-beta` while
+  `tsdown-plugins` pins `7.1.0-beta` exactly; do not "fix" the divergence by
+  switching this package to the catalog range, which would let declaration
+  emit run on a compiler it was not verified on.
 - The `@e2e/bundler` harness, which had pinned `typescript: "7.1.0-beta"`
   so its fixtures built against the same compiler, is retired
   (savvy-web/systems#680, done): its suites now live in

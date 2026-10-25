@@ -8,7 +8,7 @@ resource: ../../e2e
 tags: [testing]
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-10-25T21:27:42Z
 sources:
   - id: e2e-silk
     resource: ../../e2e/silk/__test__/e2e
@@ -24,7 +24,7 @@ sources:
     resource: ../../packages/bundler/__test__/e2e/fixtures/leaf-escape/tsdown.config.ts
 integrity:
   generated:
-    body: e06180cea5dfc918
+    body: 0962f53a706ab16a
 ---
 
 # e2e
@@ -96,8 +96,9 @@ unit test in silk (see [`interfaces/layers-json.md`](../interfaces/layers-json.m
   dtsPassDtsOptions(tsconfig)` from `@savvy-web/tsdown-plugins` into `dts`
   — not `emitDtsOnly`, since the escape hatch emits JS too — so declaration
   emit runs on tsdown-plugins' own TypeScript 7.1 regardless of the
-  `typescript` the bundler package itself resolves (the catalog is still on
-  the 7.0 line, whose main export has no compiler API). This is the
+  `typescript` the bundler package itself resolves through the catalog
+  (now the range `^7.1.0-beta`, not the exact `7.1.0-beta` tsdown-plugins'
+  emit was verified on) or that tsdown happens to peer-resolve. This is the
   documented pattern for an escape-hatch consumer; see
   [`decisions/typescript-7-1-dts-api.md`](../decisions/typescript-7-1-dts-api.md).[^leaf-escape-config]
 - **Every e2e test runs in the normal `pnpm test` gate** via

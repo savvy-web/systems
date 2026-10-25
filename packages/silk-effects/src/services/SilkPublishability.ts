@@ -136,10 +136,20 @@ const TargetsBindingSchema = Schema.Struct({
 	),
 });
 
-// Drift guard: every `TargetsBinding` must satisfy the decoded shape, so a field added to or retyped on
-// the interface without the schema fails to compile.
-const _bindingMatchesSchema = (b: TargetsBinding): typeof TargetsBindingSchema.Type => b;
+type DecodedTargetsBinding = typeof TargetsBindingSchema.Type;
+
+// Drift guard, in two halves. Assignability catches a field retyped on the interface or dropped from the
+// schema. It cannot catch a field added to the interface alone (extra properties are assignable), and
+// decode would then strip that key while the cast in readTargetsBinding claims it is present. So the key
+// check below requires every interface key to exist in the schema; on a miss its type becomes the missing
+// key names and `true` fails to compile.
+const _bindingMatchesSchema = (b: TargetsBinding): DecodedTargetsBinding => b;
+type UnschemaedKeys =
+	| Exclude<keyof TargetGroupBinding, keyof DecodedTargetsBinding["groups"][number]>
+	| Exclude<keyof TargetBinding, keyof DecodedTargetsBinding["targets"][number]>;
+const _noUnschemaedKeys: [UnschemaedKeys] extends [never] ? true : UnschemaedKeys = true;
 void _bindingMatchesSchema;
+void _noUnschemaedKeys;
 
 /** `targets.json` file contents (a JSON string) decoded to a {@link TargetsBinding}. */
 const TargetsBindingFromJson = Schema.fromJsonString(TargetsBindingSchema);

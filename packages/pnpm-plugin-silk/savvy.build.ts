@@ -377,6 +377,14 @@ await build({
 				// in resolution -- so the override is what actually forces the
 				// single Vitest 5 resolution.
 				"@effect/vitest>vitest": "^5.0.1",
+				// @effected/lockfiles 0.19.5 raised its @effected/npm peer from ^0.26.2 to ^0.27.0 in a
+				// patch. @effected/workspaces 0.38.1 (still pulled by @vitest-agent/* and
+				// rolldown-pnpm-config) ranges lockfiles ^0.19.4 beside npm ^0.26.2, so that graph got
+				// lockfiles 0.19.5 over npm 0.26.2 and its declarations fail to type-check
+				// (IntegrityHashStatics). Keep that graph on the last lockfiles whose peer range it
+				// satisfies. A no-op wherever workspaces 0.38.1 is absent; drop it once neither tool
+				// pulls 0.38.1.
+				"@effected/workspaces@0.38.1>@effected/lockfiles": "0.19.4",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {

@@ -204,33 +204,43 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 						if (entry.level === "error") onMessage(stripLocation(entry));
 					}
 				: (): void => {};
-		runApiExtractor({
-			cwd,
-			packageJsonPath,
-			entryDtsPath: modelEntryDts,
-			tsconfigPath,
-			tsdocConfigPath,
-			apiJsonPath: perEntryApiJson,
-			// Only the main entry emits tsdoc-metadata.json.
-			...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
-			suppressWarnings: tsdoc.suppressWarnings,
-			...(ci !== undefined ? { ci } : {}),
-			...(splitDiagnostics
-				? {
-						onMessage: runAOnMessage,
-						...(captureRollupSuppressed
-							? {
-									onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
-										rollupSuppressed.push(entry);
-									},
-								}
-							: {}),
-					}
-				: {
-						...(onMessage !== undefined ? { onMessage } : {}),
-						...(onSuppressed !== undefined ? { onSuppressed } : {}),
-					}),
-		});
+		// A CI-fatal message makes Run A throw before Run B and the post-Run-B flush below, so flush the
+		// suppressed buffer on the way out: a failed build's issues.json still lists what the rules absorbed.
+		const flushRollupSuppressedOnThrow = (err: unknown): never => {
+			if (onSuppressed !== undefined) for (const entry of rollupSuppressed) onSuppressed(stripLocation(entry));
+			throw err;
+		};
+		try {
+			runApiExtractor({
+				cwd,
+				packageJsonPath,
+				entryDtsPath: modelEntryDts,
+				tsconfigPath,
+				tsdocConfigPath,
+				apiJsonPath: perEntryApiJson,
+				// Only the main entry emits tsdoc-metadata.json.
+				...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
+				suppressWarnings: tsdoc.suppressWarnings,
+				...(ci !== undefined ? { ci } : {}),
+				...(splitDiagnostics
+					? {
+							onMessage: runAOnMessage,
+							...(captureRollupSuppressed
+								? {
+										onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
+											rollupSuppressed.push(entry);
+										},
+									}
+								: {}),
+						}
+					: {
+							...(onMessage !== undefined ? { onMessage } : {}),
+							...(onSuppressed !== undefined ? { onSuppressed } : {}),
+						}),
+			});
+		} catch (err) {
+			flushRollupSuppressedOnThrow(err);
+		}
 		// Run B — diagnostics only. Reads the per-module declarations so locations resolve to the true
 		// source declaration. No model emitted (emitDocModel:false). Not a CI gate (Run A is); wrapped so
 		// a diagnostics-run failure never breaks a build whose model already succeeded.

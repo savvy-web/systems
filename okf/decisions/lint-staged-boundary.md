@@ -2,7 +2,7 @@
 type: Decision
 title: The lint-staged boundary stays plain-function and shares tool discovery through the kit's sync facades
 description: "silk-effects' Lint handlers stay synchronous plain functions with no Effect runtime, and Lint's Command utility is a thin wrapper over @effected/workspaces' detectPackageManagerSync and @effected/commands' makeToolDiscoverySync, so the lint-staged path and the Effect services share one tool-discovery implementation without a second copy or a per-invocation runtime."
-status: draft
+status: stable
 tags: [architecture, tooling, deps]
 generated:
   by: okfit/claude-code
@@ -23,6 +23,13 @@ sources:
 integrity:
   generated:
     body: ed331de84c935a6f
+  verified:
+    by: human:spencer
+    at: 2026-10-25T21:24:55Z
+    content: 18cef53ff2c91123
+verified:
+  - by: human:spencer
+    at: 2026-10-25T21:24:55Z
 ---
 
 # The lint-staged boundary stays plain-function and shares tool discovery through the kit's sync facades
