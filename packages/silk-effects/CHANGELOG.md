@@ -1,5 +1,24 @@
 # @savvy-web/silk-effects
 
+## 10.0.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/markdown | dependency | updated | ^0.22.0 | ^0.23.0 |
+| @effected/package-json | dependency | updated | ^0.25.1 | ^0.25.2 |
+| @effected/walker | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/yaml | dependency | updated | ^0.25.0 | ^0.25.1 |
+
+[#821][#821]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#821]: https://github.com/savvy-web/systems/pull/821
+
 ## 10.0.0
 
 ### Breaking Changes

@@ -1,5 +1,32 @@
 # @savvy-web/cli
 
+## 3.7.13
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/cli | dependency | updated | ^0.22.0 | ^0.22.1 |
+| @effected/config-file | dependency | updated | ^0.19.1 | ^0.20.0 |
+| @effected/walker | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/workspaces | dependency | updated | ^0.38.0 | ^0.38.1 |
+| @effected/yaml | dependency | updated | ^0.25.0 | ^0.25.1 |
+| @savvy-web/silk-effects | dependency | updated | 10.0.0 | 10.0.1 |
+
+[#821][#821]
+
+### Maintenance
+
+- Bumps tooling with Biome reaching 2.6.3 [#820][#820]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#820]: https://github.com/savvy-web/systems/pull/820
+
+[#821]: https://github.com/savvy-web/systems/pull/821
+
 ## 3.7.12
 
 ### Dependencies

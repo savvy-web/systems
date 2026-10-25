@@ -1,5 +1,31 @@
 # @savvy-web/silk
 
+## 4.5.0
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | dependency | updated | ^0.38.0 | ^0.38.1 |
+| @savvy-web/changelog | dependency | updated | 1.0.23 | 1.0.24 |
+| @savvy-web/cli | dependency | updated | 3.7.12 | 3.7.13 |
+| @savvy-web/mcp | dependency | updated | 3.4.15 | 3.4.16 |
+| @savvy-web/silk-effects | dependency | updated | 10.0.0 | 10.0.1 |
+| @biomejs/biome | peerDependency | updated | 2.6.2 | 2.6.3 |
+| @types/bun | peerDependency | updated | ^1.4.3 | ^1.4.4 |
+
+[#820][#820]
+
+[#821][#821]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#820]: https://github.com/savvy-web/systems/pull/820
+
+[#821]: https://github.com/savvy-web/systems/pull/821
+
 ## 4.4.1
 
 ### Dependencies
