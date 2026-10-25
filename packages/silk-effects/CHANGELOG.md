@@ -1,5 +1,43 @@
 # @savvy-web/silk-effects
 
+## 10.1.0
+
+### Bug Fixes
+
+- `readTargetsBinding` now decodes `dist/prod/targets.json` against a schema rather than casting it. A file that is valid JSON but the wrong shape, such as `{}`, now reads as no binding (`null`), as the function's contract states, instead of crashing publishability detection later. Closes #575 [#825][#825]
+
+### Refactoring
+
+- The `Lint` namespace's `Command` utility now runs on the @effected kit's synchronous facades, `detectPackageManagerSync` and `ToolDiscoverySync`, instead of a hand-rolled copy, so lint-staged handlers and the kit share one set of tool-discovery rules. Its public API is unchanged, and tools still resolve global-first. Closes #471
+
+- Behavior differences to be aware of:
+
+- Package-manager detection now follows the kit's order: `devEngines`, then `packageManager`, then the lockfile and workspace markers. It falls back to `npm` when nothing is found.
+
+- `getExecPrefix("npm")` now returns `["npx", "--no", "--"]`, with a trailing `--`.
+
+- `isAvailable` probes the tool directly, with no shell, instead of running `command -v`.
+
+- `Command.exec` and `Command.execSilent` are deprecated and will be removed in a future major. [#825][#825]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.25.2 | ^0.26.0 |
+| @effected/walker | dependency | updated | ^0.20.0 | ^0.20.1 |
+| @savvy-web/silk-core | dependency | updated | 0.5.1 | 0.5.2 |
+| @effected/commands | peerDependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | peerDependency | updated | ^0.38.0 | ^0.39.0 |
+
+[#825][#825]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#825]: https://github.com/savvy-web/systems/pull/825
+
 ## 10.0.1
 
 ### Dependencies

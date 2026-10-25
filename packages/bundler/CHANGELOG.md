@@ -1,5 +1,22 @@
 # @savvy-web/bundler
 
+## 2.6.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.11.0 | 2.11.1 |
+| typescript | peerDependency | updated | ^7.0.0 | ^7.1.0-beta |
+
+[#825][#825]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#825]: https://github.com/savvy-web/systems/pull/825
+
 ## 2.6.1
 
 ### Dependencies

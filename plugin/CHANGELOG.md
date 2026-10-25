@@ -1,5 +1,17 @@
 # @savvy-web/ai-plugins
 
+## 4.4.3
+
+### Maintenance
+
+- Rebuilt the Claude Code and Copilot plugin builds against pluginfinity 0.3.8. [#825][#825]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#825]: https://github.com/savvy-web/systems/pull/825
+
 ## 4.4.2
 
 ### Maintenance

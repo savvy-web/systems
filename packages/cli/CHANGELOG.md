@@ -1,5 +1,27 @@
 # @savvy-web/cli
 
+## 3.7.14
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/cli | dependency | updated | ^0.22.1 | ^0.22.2 |
+| @effected/commands | dependency | updated | ^0.15.1 | ^0.16.0 |
+| @effected/config-file | dependency | updated | ^0.20.0 | ^0.20.1 |
+| @effected/git | dependency | updated | ^0.25.0 | ^0.25.1 |
+| @effected/walker | dependency | updated | ^0.20.0 | ^0.20.1 |
+| @effected/workspaces | dependency | updated | ^0.38.1 | ^0.39.0 |
+| @savvy-web/silk-effects | dependency | updated | 10.0.1 | 10.1.0 |
+
+[#825][#825]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#825]: https://github.com/savvy-web/systems/pull/825
+
 ## 3.7.13
 
 ### Dependencies
