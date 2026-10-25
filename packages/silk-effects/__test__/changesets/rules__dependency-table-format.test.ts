@@ -20,7 +20,7 @@ describe("dependency-table-format rule", () => {
 		expect(lint(md)).toEqual([]);
 	});
 
-	// Engine-agreement pin for the setext spelling: remark-parse normalizes a
+	// Engine-agreement pin for the setext spelling: the kit parser normalizes a
 	// setext level-2 heading to a depth-2 heading node, so this rule enforces
 	// the section; the markdownlint sibling accepts setextHeading tokens for
 	// the same reason. Both suites carry this pair so a drift is loud.
@@ -194,7 +194,7 @@ describe("dependency-table-format rule", () => {
 	// makeCell now emits `escapeStyle: "literal"`, so a freshly-serialized
 	// table spells `~0.2.1` and `some_pkg` without backslashes. This rule must
 	// accept that spelling exactly like the legacy escaped one, since both
-	// parse to the same mdast text value (remark-parse resolves any escapes
+	// parse to the same mdast text value (the kit parser resolves any escapes
 	// present in the source at parse time).
 	describe("backward compatibility: literal (unescaped) spelling", () => {
 		it("accepts a tilde range written without the legacy escape", () => {

@@ -108,7 +108,7 @@ ${TABLE_HEADER}
 		const result = transform(md);
 		expect((result.match(/### Dependencies/g) || []).length).toBe(1);
 		// The two node runtime rows collapse into one spanning both endpoints;
-		// type survives the round-trip verbatim. remark-stringify pads cells,
+		// type survives the round-trip verbatim. the kit emitter pads cells,
 		// so match with flexible whitespace.
 		expect(result).toMatch(/\| node\s+\| runtime\s+\| updated \| 25\.5\.0\s+\| 26\.0\.0\s+\|/);
 		expect(result).toMatch(/\| pnpm\s+\| packageManager \| updated \| 11\.22\.0 \| 11\.23\.0 \|/);
@@ -231,7 +231,7 @@ ${TABLE_HEADER}
 `;
 		const result = transform(md);
 		expect((result.match(/### Dependencies/g) ?? []).length).toBe(1);
-		// remark-stringify pads table cells, so count header rows structurally
+		// the kit emitter pads table cells, so count header rows structurally
 		expect((result.match(/\| Dependency \|/g) ?? []).length).toBe(1);
 		expect(result).toContain("effect");
 		expect(result).toContain("some-lib");

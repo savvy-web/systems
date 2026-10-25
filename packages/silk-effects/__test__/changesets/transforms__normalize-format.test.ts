@@ -27,6 +27,14 @@ describe("normalize-format", () => {
 		expect(result).not.toContain("### Bug Fixes");
 	});
 
+	it("removes an empty section whose only follower is a reference definition", () => {
+		const md =
+			"## 1.0.0\n\n### Features\n\n- fixed [#12][#12]\n\n### Bug Fixes\n\n[#12]: https://github.com/o/r/issues/12\n";
+		const result = transform(md);
+		expect(result).not.toContain("### Bug Fixes");
+		expect(result).toContain("[#12]: https://github.com/o/r/issues/12");
+	});
+
 	it("removes multiple empty sections", () => {
 		const md = "## 1.0.0\n\n### Features\n\n### Bug Fixes\n\n### Performance\n\n- P\n";
 		const result = transform(md);

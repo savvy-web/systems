@@ -260,7 +260,7 @@ export const CATEGORIES: readonly SectionCategory[] = [
 
 /**
  * Set of all valid section heading strings (case-insensitive lookup).
- * Used by Layer 1 (remark-lint) to validate changeset headings.
+ * Used by the kit lint rules (Layer 1) to validate changeset headings.
  */
 const headingToCategory = new Map<string, SectionCategory>(CATEGORIES.map((cat) => [cat.heading.toLowerCase(), cat]));
 

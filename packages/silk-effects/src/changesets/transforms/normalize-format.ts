@@ -51,6 +51,10 @@ export const normalizeFormat: ChangelogTransform = (root) => {
 				// A heading next means this section is empty
 				if (isHeadingOfDepth(next, [2, 3])) break;
 
+				// Reference definitions belong to the version block (issueLinkRefs
+				// appends them at its end), not to the section they trail
+				if (next.type === "definition") continue;
+
 				hasContent = true;
 				break;
 			}

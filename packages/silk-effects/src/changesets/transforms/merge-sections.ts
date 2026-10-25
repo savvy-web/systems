@@ -30,7 +30,7 @@ export const mergeSections: ChangelogTransform = (root) => {
 	const children: RootChild[] = [...root.children];
 	const blocks = getVersionBlocks(children);
 
-	// Process blocks in reverse so index adjustments don't affect earlier blocks
+	// Process blocks in reverse so a rebuilt block never shifts an earlier block's indices
 	for (let b = blocks.length - 1; b >= 0; b--) {
 		const sections = getBlockSections(children, blocks[b]);
 		if (sections.length <= 1) continue;
@@ -49,45 +49,21 @@ export const mergeSections: ChangelogTransform = (root) => {
 			}
 		}
 
-		// Collect indices to remove (in reverse order for safe splicing)
-		const indicesToRemove: number[] = [];
+		if (![...groups.values()].some((indices) => indices.length > 1)) continue;
 
+		// Rebuild the block: anything before the first h3 stays, then each
+		// distinct heading in first-occurrence order with its own content
+		// followed by the content of its duplicates. Rebuilding from the
+		// original section snapshot avoids the stale-index trap of splicing
+		// group by group when duplicates interleave (Features, Bug Fixes,
+		// Features, Bug Fixes).
+		const block = blocks[b];
+		const rebuilt: RootChild[] = children.slice(block.startIndex, sections[0].headingIndex);
 		for (const indices of groups.values()) {
-			if (indices.length <= 1) continue;
-
-			// First occurrence is the merge target
-			const target = sections[indices[0]];
-			// Merged content goes after the target's existing content
-			const targetEndIndex = target.headingIndex + 1 + target.contentNodes.length;
-
-			// Collect content from duplicates (in order)
-			const mergedContent: RootChild[] = [];
-			for (let d = 1; d < indices.length; d++) {
-				const dup = sections[indices[d]];
-				mergedContent.push(...dup.contentNodes);
-				// Mark the heading + content for removal
-				indicesToRemove.push(dup.headingIndex);
-				for (let c = 0; c < dup.contentNodes.length; c++) {
-					indicesToRemove.push(dup.headingIndex + 1 + c);
-				}
-			}
-
-			children.splice(targetEndIndex, 0, ...mergedContent);
-
-			// Adjust indices that come after the insertion point
-			const shift = mergedContent.length;
-			for (let r = 0; r < indicesToRemove.length; r++) {
-				if (indicesToRemove[r] >= targetEndIndex) {
-					indicesToRemove[r] += shift;
-				}
-			}
+			const [target, ...duplicates] = indices.map((s) => sections[s]);
+			rebuilt.push(target.heading, ...target.contentNodes, ...duplicates.flatMap((d) => d.contentNodes));
 		}
-
-		// Remove marked indices in reverse order
-		indicesToRemove.sort((x, y) => y - x);
-		for (const idx of indicesToRemove) {
-			children.splice(idx, 1);
-		}
+		children.splice(block.startIndex, block.endIndex - block.startIndex, ...rebuilt);
 	}
 
 	return new Root({ ...root, children });

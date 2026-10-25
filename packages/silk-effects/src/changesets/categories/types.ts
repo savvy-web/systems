@@ -5,8 +5,8 @@
  * Section categories define how changes are grouped and ordered in release
  * notes and CHANGELOGs. Each category maps conventional commit types to a
  * display heading with a priority for ordering. Categories are used across
- * all three processing layers: remark-lint pre-validation (Layer 1),
- * changelog formatting (Layer 2), and remark-transform post-processing
+ * all three processing layers: kit lint-rule pre-validation (Layer 1),
+ * changelog formatting (Layer 2), and kit transform post-processing
  * (Layer 3).
  *
  * @see {@link CATEGORIES} for the predefined list of 13 section categories

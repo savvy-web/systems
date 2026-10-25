@@ -62,7 +62,7 @@ describe("getDependencyReleaseLine", () => {
 
 			const result = yield* getDependencyReleaseLine(changesets, deps, OPTIONS).pipe(Effect.provide(testLayer));
 
-			// Column headers — remark-stringify pads columns for alignment
+			// Column headers — the kit emitter pads columns for alignment
 			expect(result).toMatch(/\| Dependency\s*\|/);
 			expect(result).toMatch(/\| Type\s*\|/);
 			expect(result).toMatch(/\| Action\s*\|/);

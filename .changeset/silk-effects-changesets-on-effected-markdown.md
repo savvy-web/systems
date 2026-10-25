@@ -20,6 +20,11 @@ Migration: use `ChangelogTransformer` and `ChangesetLinter`, which keep their si
 
 `DependencyTable.parse` and `DependencyTable.serialize` now take and return the `Table` class from `@effected/markdown`. Consumers that construct a table import `Table` from `@effected/markdown`.
 
+## Bug Fixes
+
+* `ChangelogTransformer` keeps every item under its own heading when duplicate sections interleave (Features, Bug Fixes, Features, Bug Fixes); the previous merge pass misordered the second group's items and could remove unrelated nodes
+* `ChangelogTransformer` drops an empty section whose only follower is an issue reference definition instead of keeping the empty heading
+
 ## Refactoring
 
 * The changesets transformer and linter run on `@effected/markdown`, and the `remark` and `unified` dependencies are removed

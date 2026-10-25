@@ -208,7 +208,7 @@ layer(testLayer)("getReleaseLine", (it) => {
 				OPTIONS,
 			);
 			expect(result).toContain("### Dependencies");
-			// remark-stringify pads table cells, so match structurally
+			// the kit emitter pads table cells, so match structurally
 			expect(result).toMatch(/\n\| Dependency \| Type\s+\| Action/);
 			expect(result).not.toMatch(/^\s*[-*] \|/m);
 			for (const line of result.split("\n")) {

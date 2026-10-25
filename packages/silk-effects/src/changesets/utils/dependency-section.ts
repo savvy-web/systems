@@ -7,7 +7,7 @@
  * given the blocks of a `## Dependencies` section, which block (if any) is the
  * dependency table? Issues #456/#457 arose because each rule answered it with
  * its own inline loop and the answers drifted: the markdownlint rule required
- * the table to be the FIRST block after the heading, while the remark rule
+ * the table to be the FIRST block after the heading, while the kit rule (then on remark)
  * accepted a table anywhere in the section.
  *
  * The decided semantics live here, engine-agnostically:
