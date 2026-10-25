@@ -1,5 +1,22 @@
 # @savvy-web/templates
 
+## 1.2.15
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.24.1 | ^0.25.1 |
+| @effected/yaml | dependency | updated | ^0.23.0 | ^0.25.0 |
+
+[#815][#815]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#815]: https://github.com/savvy-web/systems/pull/815
+
 ## 1.2.14
 
 ### Dependencies

@@ -1,5 +1,27 @@
 # @savvy-web/tsdown-plugins
 
+## 2.10.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/images | dependency | updated | ^0.5.0 | ^0.6.1 |
+| @effected/jsonc | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/npm | dependency | updated | ^0.25.0 | ^0.26.1 |
+| @effected/package-json | dependency | updated | ^0.24.1 | ^0.25.1 |
+| @effected/semver | dependency | updated | ^0.15.0 | ^0.17.0 |
+| @effected/tsconfig-json | dependency | updated | ^0.17.0 | ^0.17.1 |
+| @effected/workspaces | dependency | updated | ^0.36.1 | ^0.38.0 |
+
+[#815][#815]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#815]: https://github.com/savvy-web/systems/pull/815
+
 ## 2.10.0
 
 ### Features

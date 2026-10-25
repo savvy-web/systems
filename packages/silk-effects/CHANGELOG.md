@@ -1,5 +1,65 @@
 # @savvy-web/silk-effects
 
+## 10.0.0
+
+### Breaking Changes
+
+- The changesets transformer and linter now run on `@effected/markdown` instead of remark and unified (savvy-web/systems#804). The unified-plugin exports of the `Changesets` namespace no longer exist, and `DependencyTable` now works with the kit's `Table` class.
+
+#### Removed exports
+
+- These `Changesets` namespace exports are deleted:
+
+- `AggregateDependencyTablesPlugin`, `ContributorFootnotesPlugin`, `DeduplicateItemsPlugin`, `IssueLinkRefsPlugin`, `MaintenanceNotePlugin`, `MergeSectionsPlugin`, `NormalizeFormatPlugin` and `ReorderSectionsPlugin`
+
+- `SilkChangesetPreset` and `SilkChangesetTransformPreset`
+
+- `ContentStructureRule`, `DependencyTableFormatRule`, `HeadingHierarchyRule`, `RequiredSectionsRule` and `UncategorizedContentRule`
+
+- Migration: use `ChangelogTransformer` and `ChangesetLinter`, which keep their signatures and produce the same output, with one exception: CSH003 (`changeset-content-structure`) no longer reports an empty `##` section nested inside a blockquote or list item. That matches the markdownlint rule, which only checks top-level sections. Code that composed the plugins or presets into its own unified pipeline must call these two instead.
+
+#### DependencyTable types
+
+- `DependencyTable.parse` and `DependencyTable.serialize` now take and return the `Table` class from `@effected/markdown`. Consumers that construct a table import `Table` from `@effected/markdown`.
+
+### Bug Fixes
+
+- `ChangelogTransformer` keeps every item under its own heading when duplicate sections interleave (Features, Bug Fixes, Features, Bug Fixes); the previous merge pass misordered the second group's items and could remove unrelated nodes
+- `ChangelogTransformer` drops an empty section whose only follower is an issue reference definition instead of keeping the empty heading
+
+### Refactoring
+
+- The changesets transformer and linter run on `@effected/markdown`, and the `remark` and `unified` dependencies are removed
+- Output is byte-identical to the previous implementation on the existing changelog corpus [#815][#815]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| mdast-util-to-string | dependency | removed | ^4.0.0 | — |
+| remark-gfm | dependency | removed | ^4.0.1 | — |
+| remark-parse | dependency | removed | ^11.0.0 | — |
+| remark-stringify | dependency | removed | ^11.0.0 | — |
+| unified | dependency | removed | ^11.0.5 | — |
+| unified-lint-rule | dependency | removed | ^3.0.1 | — |
+| unist-util-visit | dependency | removed | ^5.1.0 | — |
+| @effected/jsonc | dependency | updated | ^0.19.0 | ^0.20.0 |
+| @effected/markdown | dependency | updated | ^0.20.0 | ^0.22.0 |
+| @effected/package-json | dependency | updated | ^0.24.1 | ^0.25.1 |
+| @effected/toml | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/yaml | dependency | updated | ^0.23.0 | ^0.25.0 |
+| @savvy-web/silk-core | dependency | updated | 0.5.0 | 0.5.1 |
+| @effected/git | peerDependency | updated | ^0.24.0 | ^0.25.0 |
+| @effected/workspaces | peerDependency | updated | ^0.36.0 | ^0.38.0 |
+
+[#815][#815]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#815]: https://github.com/savvy-web/systems/pull/815
+
 ## 9.6.0
 
 ### Features
