@@ -180,6 +180,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 		const captureRollupOnlyFatal = splitDiagnostics && onMessage !== undefined && ci !== true;
 		const rollupFatal: import("../report/collector.js").DiagnosticInput[] = [];
 		const runBReported = new Set<string>();
+		// The same blind spot exists for SUPPRESSED messages (#772): the suppressor absorbs a rollup-only
+		// message in Run A, so unless Run A's suppressed entries are captured, one Run B never sees is missing
+		// from the report's `suppressed` bucket. Independent of `ci` (a suppressed message is set to None and
+		// never makes Run A throw); only needed when a sink exists. Flushed after Run B, location stripped,
+		// for entries Run B did not also report as suppressed.
+		const captureRollupSuppressed = splitDiagnostics && onSuppressed !== undefined;
+		const rollupSuppressed: import("../report/collector.js").DiagnosticInput[] = [];
+		const runBSuppressed = new Set<string>();
 		// Run A's split-mode message sink. Three shapes:
 		//  - non-CI (captureRollupOnlyFatal): buffer ciFatal entries for the post-Run-B dedup + flush.
 		//  - CI (ci === true): a rollup-only CI-fatal escalates `ae-forgotten-export` to ERROR here, so Run A
@@ -196,24 +204,43 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 						if (entry.level === "error") onMessage(stripLocation(entry));
 					}
 				: (): void => {};
-		runApiExtractor({
-			cwd,
-			packageJsonPath,
-			entryDtsPath: modelEntryDts,
-			tsconfigPath,
-			tsdocConfigPath,
-			apiJsonPath: perEntryApiJson,
-			// Only the main entry emits tsdoc-metadata.json.
-			...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
-			suppressWarnings: tsdoc.suppressWarnings,
-			...(ci !== undefined ? { ci } : {}),
-			...(splitDiagnostics
-				? { onMessage: runAOnMessage }
-				: {
-						...(onMessage !== undefined ? { onMessage } : {}),
-						...(onSuppressed !== undefined ? { onSuppressed } : {}),
-					}),
-		});
+		// A CI-fatal message makes Run A throw before Run B and the post-Run-B flush below, so flush the
+		// suppressed buffer on the way out: a failed build's issues.json still lists what the rules absorbed.
+		const flushRollupSuppressedOnThrow = (err: unknown): never => {
+			if (onSuppressed !== undefined) for (const entry of rollupSuppressed) onSuppressed(stripLocation(entry));
+			throw err;
+		};
+		try {
+			runApiExtractor({
+				cwd,
+				packageJsonPath,
+				entryDtsPath: modelEntryDts,
+				tsconfigPath,
+				tsdocConfigPath,
+				apiJsonPath: perEntryApiJson,
+				// Only the main entry emits tsdoc-metadata.json.
+				...(isMain && !mainEntryDidTsdocMetadata ? { tsdocMetadataPath } : {}),
+				suppressWarnings: tsdoc.suppressWarnings,
+				...(ci !== undefined ? { ci } : {}),
+				...(splitDiagnostics
+					? {
+							onMessage: runAOnMessage,
+							...(captureRollupSuppressed
+								? {
+										onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
+											rollupSuppressed.push(entry);
+										},
+									}
+								: {}),
+						}
+					: {
+							...(onMessage !== undefined ? { onMessage } : {}),
+							...(onSuppressed !== undefined ? { onSuppressed } : {}),
+						}),
+			});
+		} catch (err) {
+			flushRollupSuppressedOnThrow(err);
+		}
 		// Run B — diagnostics only. Reads the per-module declarations so locations resolve to the true
 		// source declaration. No model emitted (emitDocModel:false). Not a CI gate (Run A is); wrapped so
 		// a diagnostics-run failure never breaks a build whose model already succeeded.
@@ -241,7 +268,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 					selfReferencePaths,
 					suppressWarnings: tsdoc.suppressWarnings,
 					...(runBOnMessage !== undefined ? { onMessage: runBOnMessage } : {}),
-					...(onSuppressed !== undefined ? { onSuppressed } : {}),
+					...(onSuppressed !== undefined
+						? {
+								onSuppressed: (entry: import("../report/collector.js").DiagnosticInput): void => {
+									runBSuppressed.add(diagnosticKey(entry));
+									onSuppressed(entry);
+								},
+							}
+						: {}),
 				});
 			} catch (err) {
 				if (onMessage !== undefined) {
@@ -259,6 +293,14 @@ export async function generateMeta(options: GenerateMetaOptions): Promise<MetaRe
 				for (const entry of rollupFatal) {
 					if (runBReported.has(diagnosticKey(entry))) continue;
 					onMessage(stripLocation(entry));
+				}
+			}
+			// Likewise for suppressed messages that exist ONLY in the bundled rollup: record them (location
+			// stripped) unless Run B already recorded the same message, with its accurate location.
+			if (onSuppressed !== undefined) {
+				for (const entry of rollupSuppressed) {
+					if (runBSuppressed.has(diagnosticKey(entry))) continue;
+					onSuppressed(stripLocation(entry));
 				}
 			}
 		}

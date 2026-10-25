@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { beforeEach, describe, expect, it } from "@effect/vitest";
 import { PublishConfig, PublishabilityDetector, WorkspacePackage, WorkspaceRoot } from "@effected/workspaces";
-import { Effect, Layer } from "effect";
+import { Effect, FileSystem, Layer } from "effect";
 import { ChangesetConfig } from "../../src/services/ChangesetConfig.js";
-import { SilkPublishability } from "../../src/services/SilkPublishability.js";
+import { SilkPublishability, readTargetsBinding } from "../../src/services/SilkPublishability.js";
 
 const writePkg = (dir: string, content: unknown): void => {
 	writeFileSync(join(dir, "package.json"), JSON.stringify(content), "utf-8");
@@ -397,6 +397,34 @@ describe("SilkPublishability.layer — silk rules", () => {
 			expect(targets[0].directory).toBe("dist/prod/npm/pkg");
 		}),
 	);
+
+	// Valid JSON, wrong shape (#575): must degrade to null exactly like unparseable content.
+	for (const [label, bad] of [
+		["{}", {}],
+		["groups with a wrong-typed field", { groups: [{ id: 1 }], targets: [] }],
+		["targets that is not an array", { groups: [], targets: "nope" }],
+	] as const) {
+		it.effect(`wrong-shape targets.json (${label}) → readTargetsBinding is null and detect falls back`, () =>
+			Effect.gen(function* () {
+				writePkg(tmpDir, {
+					name: "@scope/x",
+					version: "1.0.0",
+					private: true,
+					publishConfig: { access: "public", targets: { npm: true } },
+				});
+				writeBinding(tmpDir, bad);
+				const binding = yield* Effect.flatMap(FileSystem.FileSystem, (fs) => readTargetsBinding(fs, tmpDir)).pipe(
+					Effect.provide(NodeServices.layer),
+				);
+				expect(binding).toBeNull();
+				const targets = yield* runSilk(
+					Effect.flatMap(PublishabilityDetector, (d) => d.detect(makeWsPkg(tmpDir, "@scope/x"))),
+				);
+				expect(targets.length).toBe(1);
+				expect(targets[0].directory).toBe("dist/prod/npm/pkg");
+			}),
+		);
+	}
 });
 
 // ──────────────────────────────────────────────────────────────────────────────

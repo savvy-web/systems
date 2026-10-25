@@ -31,7 +31,7 @@ catalogs:
     rolldown: ^1.2.15
     tsdown: ^0.23.2
     tsx: ^4.23.15
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
   build:peers:
     "@microsoft/api-extractor": ^7.59.4
     "@microsoft/api-extractor-model": ^7.33.15
@@ -49,7 +49,7 @@ catalogs:
     rolldown: ^1.2.0
     tsdown: ^0.23.0
     tsx: ^4.23.15
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
   docs:
     "@rspress/core": ^2.0.23
     "@rspress/plugin-sitemap": ^2.0.23
@@ -59,7 +59,7 @@ catalogs:
     react: ^19.3.1
     react-dom: ^19.3.1
     rspress-plugin-mermaid: ^1.0.3
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
     vite: ^8.3.5
     vitepress: ^2.0.0-alpha.20
   docs:peers:
@@ -71,7 +71,7 @@ catalogs:
     react: ^19.3.0
     react-dom: ^19.3.0
     rspress-plugin-mermaid: ^1.0.3
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.20
   lint:
@@ -107,7 +107,7 @@ catalogs:
     react: ^19.3.1
     react-dom: ^19.3.1
     tsx: ^4.23.15
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
   silk:peers:
     "@types/bun": ^1.4.4
     "@types/node": ^26.6.0
@@ -121,7 +121,7 @@ catalogs:
     react: ^19.3.0
     react-dom: ^19.3.0
     tsx: ^4.23.15
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
@@ -137,7 +137,7 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effect": 0.18.5+sha512-SAaxh7iNx1yLd5IAXdMeeeDzd+OJqObtsq5kIMSwHi4YgLAaezwZYqwd2KEDjQHStT77IH2rH2rvsUPpB/cz2g==
+  "@effected/pnpm-plugin-effect": 0.18.6
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
@@ -171,6 +171,7 @@ minimumReleaseAgeExclude:
   - yarn
 overrides:
   "@effect/vitest>vitest": ^5.0.1
+  "@effected/workspaces@0.38.1>@effected/lockfiles": 0.19.4
   "@microsoft/api-extractor>typescript": ^6.0.3
 packages:
   - e2e/*

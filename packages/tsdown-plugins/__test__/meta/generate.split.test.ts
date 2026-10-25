@@ -331,6 +331,123 @@ describe("generateMeta — two-input split wiring", () => {
 		expect("onMessage" in singleArgs).toBe(false);
 	});
 
+	describe("suppressed entries in split mode (#772)", () => {
+		// Drive each run's onSuppressed. Run A reads dtsDir (rollup), Run B aeInputDir (per-module).
+		function suppressedFromRuns(
+			dtsDir: string,
+			runA: ReadonlyArray<Record<string, unknown>>,
+			runB: ReadonlyArray<Record<string, unknown>>,
+		): void {
+			mockRunApiExtractor.mockImplementation(
+				(options: {
+					apiJsonPath: string;
+					entryDtsPath: string;
+					onSuppressed?: (e: Record<string, unknown>) => void;
+				}) => {
+					writeFileSync(options.apiJsonPath, "{}", "utf-8");
+					if (options.onSuppressed === undefined) return;
+					const messages = options.entryDtsPath.startsWith(dtsDir) ? runA : runB;
+					for (const m of messages) options.onSuppressed(m);
+				},
+			);
+		}
+
+		const suppressed = (symbol: string, loc: Record<string, unknown>): Record<string, unknown> => ({
+			source: "api-extractor",
+			level: "warn",
+			code: "ae-forgotten-export",
+			text: `The symbol "${symbol}" needs to be exported by the entry point index.d.ts`,
+			...loc,
+		});
+
+		const run = async (
+			ci: boolean | undefined,
+			runA: ReadonlyArray<Record<string, unknown>>,
+			runB: ReadonlyArray<Record<string, unknown>>,
+		): Promise<Record<string, unknown>[]> => {
+			const { cwd, dtsDir, aeInputDir } = scaffold();
+			const onSuppressed = vi.fn();
+			suppressedFromRuns(dtsDir, runA, runB);
+			await generateMeta({
+				cwd,
+				packageName: "@scope/fixture",
+				tsconfigPath: join(cwd, "tsconfig.json"),
+				dtsDir,
+				aeInputDir,
+				entries: { index: "index" },
+				exportPaths: { index: "." },
+				outMetaDir: join(cwd, "dist", "prod", "npm", "meta"),
+				localPaths: [],
+				tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+				onMessage: vi.fn(),
+				onSuppressed,
+				...(ci !== undefined ? { ci } : {}),
+			});
+			return onSuppressed.mock.calls.map((c) => c[0] as Record<string, unknown>);
+		};
+
+		it("records a rollup-only suppressed entry with its location stripped", async () => {
+			const calls = await run(undefined, [suppressed("RollupOnly", { file: "index.d.ts", line: 4210, column: 1 })], []);
+			expect(calls).toHaveLength(1);
+			expect(String(calls[0].text)).toContain("RollupOnly");
+			expect(calls[0].code).toBe("ae-forgotten-export");
+			expect("file" in calls[0]).toBe(false);
+			expect("line" in calls[0]).toBe(false);
+			expect("column" in calls[0]).toBe(false);
+		});
+
+		it("records an entry suppressed in both runs once, with Run B's located copy", async () => {
+			const calls = await run(
+				undefined,
+				[suppressed("Shared", { file: "index.d.ts", line: 4000, column: 1 })],
+				[suppressed("Shared", { file: "src/shared.ts", line: 10, column: 3 })],
+			);
+			expect(calls).toHaveLength(1);
+			expect(calls[0].file).toBe("src/shared.ts");
+			expect(calls[0].line).toBe(10);
+		});
+
+		it("still records a rollup-only suppressed entry under ci:true", async () => {
+			const calls = await run(true, [suppressed("RollupOnly", { file: "index.d.ts", line: 4210, column: 1 })], []);
+			expect(calls).toHaveLength(1);
+			expect(String(calls[0].text)).toContain("RollupOnly");
+			expect("file" in calls[0]).toBe(false);
+		});
+
+		it("records Run A's suppressed entries when Run A throws on a CI-fatal message", async () => {
+			const { cwd, dtsDir, aeInputDir } = scaffold();
+			const onSuppressed = vi.fn();
+			mockRunApiExtractor.mockImplementation(
+				(options: { entryDtsPath: string; onSuppressed?: (e: Record<string, unknown>) => void }) => {
+					if (!options.entryDtsPath.startsWith(dtsDir)) return;
+					options.onSuppressed?.(suppressed("Absorbed", { file: "index.d.ts", line: 4210, column: 1 }));
+					throw new Error("API Extractor reported 1 error(s) and 0 warning(s)");
+				},
+			);
+			await expect(
+				generateMeta({
+					cwd,
+					packageName: "@scope/fixture",
+					tsconfigPath: join(cwd, "tsconfig.json"),
+					dtsDir,
+					aeInputDir,
+					entries: { index: "index" },
+					exportPaths: { index: "." },
+					outMetaDir: join(cwd, "dist", "prod", "npm", "meta"),
+					localPaths: [],
+					tsdoc: { suppressWarnings: [], tagDefinitions: [] },
+					onMessage: vi.fn(),
+					onSuppressed,
+					ci: true,
+				}),
+			).rejects.toThrow("API Extractor reported 1 error(s)");
+			const calls = onSuppressed.mock.calls.map((c) => c[0] as Record<string, unknown>);
+			expect(calls).toHaveLength(1);
+			expect(String(calls[0].text)).toContain("Absorbed");
+			expect("file" in calls[0]).toBe(false);
+		});
+	});
+
 	describe("self-reference paths and harvest-failure code (#771)", () => {
 		const base = (cwd: string, dtsDir: string, aeInputDir?: string) => ({
 			cwd,

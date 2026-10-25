@@ -31,6 +31,10 @@ Load before changing any `@effected/*` dependency in this package's manifest, or
 → `@../../okf/decisions/kit-effect-peers-via-catalog.md`
 Why `@effected/workspaces`, `@effected/git`, `@effected/commands` and `@effected/templates` are REQUIRED PEERS (`catalog:effected:peers`), the two-copies type-identity failure, and the `configDependencies` bump trap.
 
+Load before touching `src/lint/utils/Command.ts` or turning a `Lint` handler into an Effect program:
+→ `@../../okf/decisions/lint-staged-boundary.md`
+Why the lint-staged handlers stay synchronous plain functions and `Command` wraps the kit's sync facades (`detectPackageManagerSync`, `makeToolDiscoverySync`) rather than re-implementing discovery or adding a runtime.
+
 Interfaces split out of the namespace docs — load the one matching what you are touching:
 → `@../../okf/interfaces/managed-hook-sections.md` — the BEGIN/END MANAGED SECTION marker contract `SavvySections` writes.
 → `@../../okf/interfaces/issue-reference-grammar.md` — why issue-reference parsing is `@effected/github-references` and never re-hand-rolled; `closes-trailer` semantics.

@@ -18,9 +18,10 @@ const rendered = (section: Section): string => {
 
 const EXPECTED_SYNC = `if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
   # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
-  # unstaged work: a commit must never link a concept it does not contain.
+  # unstaged work: a commit must never link a concept it does not contain. Log mode
+  # reads the git index, so it stays on.
   if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
-    (cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1
+    (cd "$ROOT" && pm_exec okfit sync --staged --only generated --only log) || exit 1
   else
     (cd "$ROOT" && pm_exec okfit sync --staged) || exit 1
   fi
@@ -43,10 +44,10 @@ describe("savvyOkfSync", () => {
 		expect(out).toContain('(cd "$ROOT" && pm_exec okfit sync --staged) || exit 1');
 	});
 
-	it("keeps the default --staged modes on a clean bundle and narrows to --only generated on a dirty one", () => {
+	it("keeps the default --staged modes on a clean bundle and narrows to --only generated --only log on a dirty one", () => {
 		const out = savvyOkfSync();
 		expect(out).toContain("git -C \"$ROOT\" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'");
-		expect(out).toContain('(cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1');
+		expect(out).toContain('(cd "$ROOT" && pm_exec okfit sync --staged --only generated --only log) || exit 1');
 		expect(out).toContain('(cd "$ROOT" && pm_exec okfit sync --staged) || exit 1');
 	});
 

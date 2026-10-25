@@ -57,16 +57,19 @@ export const SavvyOkfSection: SectionId = SectionId.make({
  * land it silently. `--staged` re-adds whatever it writes, so the hook needs no
  * `git add` of its own.
  *
- * The default `--staged` modes are `generated` and `index`, so the derived
- * `index.md` files are re-stamped in the same commit too — but only while the
- * bundle is clean apart from what is staged. Index mode reads concepts from
- * DISK, not from the git index, and `--staged` re-adds what it writes, so an
- * untracked or partially staged concept would otherwise let an unrelated
- * commit land an `index.md` entry linking a file that commit does not
- * contain. When `git status --porcelain -- okf` shows any unstaged or
- * untracked entry (second status column non-blank), the hook narrows to
- * `--only generated` for that commit and the index catches up on the next
- * clean one.
+ * The default `--staged` modes are `generated`, `index` and `log`: the
+ * `generated.at` stamps, the derived `index.md` files and the commit's own
+ * `log.md` entry (dated to the commit and derived from the git index) all land
+ * in the same commit. Index mode, however, reads concepts from DISK, not from
+ * the git index, and `--staged` re-adds what it writes, so an untracked or
+ * partially staged concept would otherwise let an unrelated commit land an
+ * `index.md` entry linking a file that commit does not contain. When
+ * `git status --porcelain -- okf` shows any unstaged or untracked entry (second
+ * status column non-blank), the hook narrows to `--only generated --only log`
+ * for that commit: it keeps `generated` and `log` and drops only `index`, which
+ * catches up on the next clean commit. Log mode is safe on a dirty bundle
+ * because it reads the git index, so it can only describe what the commit
+ * actually contains.
  *
  * @returns The sync shell, with no surrounding markers or trailing newline.
  *
@@ -76,9 +79,10 @@ export const SavvyOkfSection: SectionId = SectionId.make({
 export function savvyOkfSync(): string {
 	return `if ! in_ci && [ -d "$ROOT/okf" ] && [ -x "$ROOT/node_modules/.bin/okfit" ]; then
   # Index mode reads concepts from disk, so skip it while okf/ carries untracked or
-  # unstaged work: a commit must never link a concept it does not contain.
+  # unstaged work: a commit must never link a concept it does not contain. Log mode
+  # reads the git index, so it stays on.
   if git -C "$ROOT" status --porcelain --untracked-files=all -- okf | grep -q '^.[^ ]'; then
-    (cd "$ROOT" && pm_exec okfit sync --staged --only generated) || exit 1
+    (cd "$ROOT" && pm_exec okfit sync --staged --only generated --only log) || exit 1
   else
     (cd "$ROOT" && pm_exec okfit sync --staged) || exit 1
   fi

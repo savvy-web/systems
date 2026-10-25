@@ -2,7 +2,7 @@ import { isAbsolute, join, relative } from "node:path";
 import type { WorkspacePackage } from "@effected/workspaces";
 import { PublishTarget, PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";
 import { PublishTargetBindingError, ReleaseChannelError, trimTrailingSlashes } from "@savvy-web/silk-core";
-import { Effect, FileSystem, Layer } from "effect";
+import { Effect, FileSystem, Layer, Schema } from "effect";
 import { ChangesetConfig } from "./ChangesetConfig.js";
 
 /**
@@ -113,6 +113,46 @@ export interface TargetsBinding {
 	readonly groups: ReadonlyArray<TargetGroupBinding>;
 	readonly targets: ReadonlyArray<TargetBinding>;
 }
+
+/**
+ * Structural decoder for {@link TargetsBinding}.
+ *
+ * @remarks
+ * `releases` is decoded as `unknown` on purpose: an unrecognised channel must surface as a typed
+ * `ReleaseChannelError` from `releaseChannelOf` (which names the package and target), not collapse
+ * into a missing binding here. Every other field is validated structurally.
+ */
+const TargetsBindingSchema = Schema.Struct({
+	groups: Schema.Array(Schema.Struct({ id: Schema.String, name: Schema.String, dir: Schema.String })),
+	targets: Schema.Array(
+		Schema.Struct({
+			id: Schema.String,
+			group: Schema.String,
+			name: Schema.String,
+			registry: Schema.String,
+			releases: Schema.optionalKey(Schema.Unknown),
+			provenance: Schema.optionalKey(Schema.Boolean),
+		}),
+	),
+});
+
+type DecodedTargetsBinding = typeof TargetsBindingSchema.Type;
+
+// Drift guard, in two halves. Assignability catches a field retyped on the interface or dropped from the
+// schema. It cannot catch a field added to the interface alone (extra properties are assignable), and
+// decode would then strip that key while the cast in readTargetsBinding claims it is present. So the key
+// check below requires every interface key to exist in the schema; on a miss its type becomes the missing
+// key names and `true` fails to compile.
+const _bindingMatchesSchema = (b: TargetsBinding): DecodedTargetsBinding => b;
+type UnschemaedKeys =
+	| Exclude<keyof TargetGroupBinding, keyof DecodedTargetsBinding["groups"][number]>
+	| Exclude<keyof TargetBinding, keyof DecodedTargetsBinding["targets"][number]>;
+const _noUnschemaedKeys: [UnschemaedKeys] extends [never] ? true : UnschemaedKeys = true;
+void _bindingMatchesSchema;
+void _noUnschemaedKeys;
+
+/** `targets.json` file contents (a JSON string) decoded to a {@link TargetsBinding}. */
+const TargetsBindingFromJson = Schema.fromJsonString(TargetsBindingSchema);
 
 /**
  * A resolved publish target judged against a specific release version, with the facts a publisher needs alongside it.
@@ -673,11 +713,8 @@ const readRaw = (fs: FileSystem.FileSystem, packageJsonPath: string): Effect.Eff
  */
 export const readTargetsBinding = (fs: FileSystem.FileSystem, pkgPath: string): Effect.Effect<TargetsBinding | null> =>
 	fs.readFileString(join(pkgPath, "dist", "prod", "targets.json")).pipe(
-		Effect.flatMap((content) =>
-			Effect.try({
-				try: () => JSON.parse(content) as TargetsBinding,
-				catch: () => new Error("invalid targets.json"),
-			}),
-		),
+		Effect.flatMap(Schema.decodeUnknownEffect(TargetsBindingFromJson)),
+		// Narrows only `releases` (decoded as `unknown`), which `releaseChannelOf` validates downstream.
+		Effect.map((binding) => binding as TargetsBinding),
 		Effect.orElseSucceed(() => null),
 	);

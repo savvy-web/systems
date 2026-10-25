@@ -840,7 +840,7 @@ describe("Utility classes", () => {
 		});
 
 		it("should return correct exec prefix for each package manager", () => {
-			expect(Command.getExecPrefix("npm")).toEqual(["npx", "--no"]);
+			expect(Command.getExecPrefix("npm")).toEqual(["npx", "--no", "--"]);
 			expect(Command.getExecPrefix("pnpm")).toEqual(["pnpm", "exec"]);
 			expect(Command.getExecPrefix("yarn")).toEqual(["yarn", "exec"]);
 			expect(Command.getExecPrefix("bun")).toEqual(["bun", "x", "--no-install"]);
@@ -851,6 +851,31 @@ describe("Utility classes", () => {
 			const first = Command.detectPackageManager();
 			const second = Command.detectPackageManager();
 			expect(first).toBe(second);
+		});
+
+		it("findTool prefers a global install", () => {
+			Command.clearCache();
+			expect(Command.findTool("node")).toEqual({ available: true, command: "node", source: "global" });
+		});
+
+		it("findTool reports an absent tool as unavailable", () => {
+			Command.clearCache();
+			expect(Command.findTool("definitely-not-a-real-command-12345")).toEqual({
+				available: false,
+				command: undefined,
+				source: undefined,
+			});
+		});
+
+		it("findTool rejects invalid command names", () => {
+			expect(() => Command.findTool("node; rm -rf /")).toThrow(/Invalid command name/);
+		});
+
+		it("clearCache resets detection", () => {
+			Command.detectPackageManager();
+			Command.clearCache();
+			expect(Command.detectPackageManager()).toBe("pnpm");
+			expect(Command.findTool("node").source).toBe("global");
 		});
 
 		it("should have clearCache method", () => {
