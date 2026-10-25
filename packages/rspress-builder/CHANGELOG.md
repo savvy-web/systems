@@ -1,5 +1,22 @@
 # @savvy-web/rspress-builder
 
+## 1.3.31
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/bundler | dependency | updated | 2.6.0 | 2.6.1 |
+| @tsdown/css | dependency | updated | ^0.23.1 | ^0.23.2 |
+
+[#820][#820]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#820]: https://github.com/savvy-web/systems/pull/820
+
 ## 1.3.30
 
 ### Build System
