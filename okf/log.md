@@ -3,6 +3,18 @@
 ## 2026-10-25
 
 * Updated silk-effects
+* Updated @savvy-web/bundler
+* Updated @savvy-web/tsdown-plugins
+* Added A green bundle followed by EISDIR from inside API Extractor's SourceMapper is a declaration-map segment with no source, not a filesystem problem
+* Updated Catalog and workspace resolution coverage lives only in e2e/
+* Added Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+* Updated Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
+* Updated Split the build orchestrator from the plugin pack
+* Added The tsgo generator fails with "No TypeScript Go project found" when the dts-emit tsconfig does not describe the package's files canonically
+* Updated bundler tsconfig preset
+* Updated cli
+* Updated e2e
+* Updated pnpm-plugin-silk
 
 ## 2026-10-23
 
