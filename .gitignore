@@ -83,10 +83,11 @@ packages/bundler/__test__/integration/fixtures/exe/bin/
 packages/bundler/__test__/integration/fixtures/dual-format/dist/
 
 # e2e bundler fixture build artifacts and test-written files
-e2e/bundler/__test__/e2e/fixtures/*/next-versions.json
-e2e/bundler/__test__/e2e/fixtures/*/dist/
-e2e/bundler/__test__/e2e/fixtures/*/models/
-e2e/bundler/__test__/e2e/fixtures/*/tsdoc.json
+packages/bundler/__test__/e2e/fixtures/*/next-versions.json
+packages/bundler/__test__/e2e/fixtures/*/dist/
+packages/bundler/__test__/e2e/fixtures/*/models/
+packages/bundler/__test__/e2e/fixtures/*/tsdoc.json
+packages/bundler/__test__/e2e/fixtures/node_modules/
 
 # Claude Code autonomous-loop wakeup lock (transient harness artifact)
 .claude/scheduled_tasks.lock

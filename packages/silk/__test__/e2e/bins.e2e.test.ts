@@ -41,7 +41,7 @@ const command = (name: string, args: ReadonlyArray<string> = []) =>
 	ChildProcess.make(process.execPath, [resolve(binDir, name), ...args], { env: ENV });
 
 describe("@savvy-web/silk carrier bins (dist/dev)", () => {
-	it.effect(
+	it.live(
 		"savvy.js runs and reports a version",
 		() =>
 			Effect.gen(function* () {
@@ -52,7 +52,7 @@ describe("@savvy-web/silk carrier bins (dist/dev)", () => {
 		BIN_TIMEOUT_MS,
 	);
 
-	it.effect(
+	it.live(
 		"savvy-mcp.js completes an initialize handshake on stdout, silent on stderr, exit 0",
 		() =>
 			Effect.gen(function* () {

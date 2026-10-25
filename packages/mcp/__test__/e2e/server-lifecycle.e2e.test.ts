@@ -52,7 +52,7 @@ const callTool = (server: McpProcess, id: number, name: string, args: unknown) =
 	});
 
 describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
-	it.effect("completes the initialize handshake on stdout with EMPTY stderr and exits 0 on stdin close", () =>
+	it.live("completes the initialize handshake on stdout with EMPTY stderr and exits 0 on stdin close", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const probe = yield* McpProbe.initialize(command([dir]));
@@ -69,7 +69,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 		}).pipe(Effect.scoped, Effect.timeout("30 seconds"), Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect("tools/list returns ten tools", () =>
+	it.live("tools/list returns ten tools", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const server = yield* Mcp.spawn(command([dir]));
@@ -84,7 +84,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect(
+	it.live(
 		"tools/call workspace_info against a tmp fixture returns structuredContent and the same object as JSON text",
 		() =>
 			Effect.gen(function* () {
@@ -107,7 +107,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 			}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect("answers a non-JSON stdin line with a -32700 parse error and keeps serving", () =>
+	it.live("answers a non-JSON stdin line with a -32700 parse error and keeps serving", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const server = yield* Mcp.spawn(command([dir]));
@@ -127,7 +127,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 		}).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 	);
 
-	it.effect(`skips an unsubstituted ${UNSUBSTITUTED} argument and roots in SAVVY_MCP_PROJECT_DIR`, () =>
+	it.live(`skips an unsubstituted ${UNSUBSTITUTED} argument and roots in SAVVY_MCP_PROJECT_DIR`, () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const server = yield* Mcp.spawn(command([UNSUBSTITUTED], { SAVVY_MCP_PROJECT_DIR: dir }));
@@ -144,7 +144,7 @@ describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
 	// carries only JSON-RPC (`readUntilResponse` would fail on anything else)
 	// and stderr stays empty. The response is read BEFORE stdin closes: a piped
 	// EOF interrupts an in-flight call and its response is never written.
-	it.effect("a failing tools/call answers isError on the wire, logs nothing, and still exits 0", () =>
+	it.live("a failing tools/call answers isError on the wire, logs nothing, and still exits 0", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");
 			const server = yield* Mcp.spawn(command([dir]));

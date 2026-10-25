@@ -6,7 +6,7 @@ status: stable
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T15:37:52Z
+  at: 2026-10-25T14:59:20Z
 sources:
   - id: bundler-arch
     resource: ../../packages/bundler/package.json
@@ -19,13 +19,15 @@ verified:
     at: 2026-10-13T17:19:17Z
   - by: human:spencer
     at: 2026-10-23T15:45:32Z
+  - by: human:spencer
+    at: 2026-10-25T14:56:24Z
 integrity:
   generated:
-    body: 0bdddb85171b7423
+    body: 414d029f20901260
   verified:
     by: human:spencer
-    at: 2026-10-23T15:45:32Z
-    content: e40e758e4b4f0fb5
+    at: 2026-10-25T14:56:24Z
+    content: ade5cbeec14ee981
 ---
 
 # Split the build orchestrator from the plugin pack
@@ -69,7 +71,9 @@ See [modules/bundler.md](../modules/bundler.md) and
   or peer `tsdown` resolves against whatever TypeScript major the
   consumer workspace pins, which broke declaration emit outright once
   that major was TypeScript 7 (see
-  [decisions/typescript-6-dts-pin.md](typescript-6-dts-pin.md)); a peer on
+  [decisions/typescript-6-dts-pin.md](typescript-6-dts-pin.md), since
+  superseded by
+  [decisions/typescript-7-1-dts-api.md](typescript-7-1-dts-api.md)); a peer on
   the bundler core is exactly the drift this design avoids — the
   predecessor toolchain carried a maintained `@rslib/core` peer that had
   to be firefought across the ecosystem on every upgrade.

@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-10-25T14:59:20Z
 integrity:
   generated:
-    body: 5fed326922cd14cb
+    body: b19dfbdedf4b59a3
 ---
 
 # pnpm-plugin-silk
@@ -29,7 +29,7 @@ The emitted plugin exports `{ hooks }` with a single `updateConfig(config)` that
 
 ## Two load-bearing managed entries
 
-- **TS7 compatibility shim.** The catalogs put `typescript` on the TS7 line, but `@microsoft/api-extractor` pins TS ~5.9 and TS 7.0 ships no stable compiler API until 7.1, so `overrides` forces TypeScript 6 into api-extractor's dependency graph (`@microsoft/api-extractor>typescript`). Every consuming repo and the exported root workspace config inherit it; drop it when API Extractor supports TS7.[^arch]
+- **API Extractor's TypeScript 6 override.** The catalogs put `typescript` on the TS7 line and declaration emit runs on TypeScript 7.1's API (see [the TS 7.1 dts decision](../decisions/typescript-7-1-dts-api.md)), but `@microsoft/api-extractor` still depends on `typescript@5.9` and is written against the TS 5/6 JavaScript API, so `overrides` forces TypeScript 6 into its dependency graph (`@microsoft/api-extractor>typescript: ^6.0.3`). Every consuming repo and the exported root workspace config inherit it; drop it when API Extractor supports TS7 (microsoft/rushstack#6033). The `catalog:build` api-extractor set is `^7.59.4` / api-extractor-model `^7.33.15` / tsdoc `~0.17.1` / tsdoc-config `~0.18.3` — the 2026-09-24 rollback for microsoft/tsdoc#493 was lifted once tsdoc 0.17.1 shipped the fix. `@typescript/native-preview` is gone from `catalog:silk`, `silk:peers` and `publicHoistPattern` (TypeScript 7 ships the Go compiler inside `typescript` itself), and so is the `@savvy-web/bundler>typescript` `allowedVersions` rule, since nothing provides TypeScript 6 to the bundler any more.[^arch]
 - **`@savvy-web/changelog` is hoisted; `@savvy-web/cli` and `@savvy-web/mcp` no longer are.** `publicHoistPattern` hoists `@savvy-web/changelog` because the changesets engine resolves the changelog id named in `.changeset/config.json` by name from the consumer root — a resolution need, not a bin. `@savvy-web/silk` now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so a consumer's `node_modules/.bin` is populated off the single silk dependency with no hoist needed for cli/mcp. `excludeByRepo` drops changelog for `savvy-web-systems` — this repo consumes it as a `workspace:*` link and a public hoist would shadow it. Release order is load-bearing here: a silk that carries the bins must ship before or with the pnpm-plugin-silk that stops hoisting, or a consumer on a bin-less silk loses `savvy` from PATH.[^arch]
 
 ## Build mechanism
@@ -45,6 +45,6 @@ The monorepo that produces this package cannot install it as a config dependency
 - **`savvy.build.ts` is the lone source of truth** for catalogs, overrides, `allowBuilds`, hoist patterns, peer rules, release-age gating and security defaults; do not look for the config anywhere else.[^arch]
 - **Catalog `range` and `peer` deliberately diverge** — peer ranges are looser than direct ranges so consumers' peer constraints stay satisfiable as direct ranges advance. `strategy` (`lock` or `lock-minor`) is a CLI-only recompute directive for the `upgrade` command; the runtime merge ignores it.[^arch]
 - **After any upgrade the export step must re-run** to re-materialize the root workspace config, since the monorepo consumes the config by export rather than by install.[^arch]
-- **Versions independently** with `private: true` in source, `publishConfig.access: public`, an npm-only target, and the repo-wide `updateInternalDependencies: patch`. Carries `prepare: turbo run build:dev` because `e2e/pnpm-plugin-silk` consumes it as a `workspace:*` dependency.[^arch]
+- **Versions independently** with `private: true` in source, `publishConfig.access: public`, an npm-only target, and the repo-wide `updateInternalDependencies: patch`. It still carries `prepare: turbo run build:dev`, though since savvy-web/systems#680 retired the `@e2e/pnpm-plugin-silk` harness no `package.json` in the repo consumes it as a `workspace:*` dependency; its only e2e, `__test__/e2e/pnpmfile-contract.e2e.test.ts`, imports the built `dist/dev/pkg/index.js` and `pnpmfile.mjs` BY PATH, because a bare `@savvy-web/pnpm-plugin-silk` import inside the package would self-reference the source manifest's `exports` (see [`modules/e2e.md`](e2e.md)). `vitest` is a devDependency for that suite.[^arch]
 
 [^arch]: `../../packages/pnpm-plugin-silk/savvy.build.ts`

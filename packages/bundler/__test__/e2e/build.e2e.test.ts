@@ -53,3 +53,25 @@ describe("e2e: multi-target build", () => {
 		expect(npmPkg.publishConfig).toBeUndefined();
 	}, 120_000);
 });
+
+describe("e2e: meta pass survives a compiler-synthesized mixin base (#817)", () => {
+	it("builds prod with API Extractor over a rollup whose map carries source-less segments", () => {
+		// `AuditedRecord extends withAuditTrail()` makes TypeScript hoist `declare const AuditedRecord_base`
+		// with no source position; rolldown 1.2.15+ records that as a generated-only mapping segment,
+		// which api-extractor's SourceMapper resolved to the pkg/ DIRECTORY and died on (EISDIR).
+		runFixtureBuild("issue817-probe", ["--target", "prod"]);
+		const fix = fixtureDir("issue817-probe");
+		const issues = JSON.parse(readFileSync(join(fix, "dist/prod/issues.json"), "utf-8")) as {
+			buildOk: boolean;
+			errors: unknown[];
+			failure?: unknown;
+		};
+		expect(issues.failure).toBeUndefined();
+		expect(issues.buildOk).toBe(true);
+		expect(issues.errors).toEqual([]);
+		expect(readFileSync(join(fix, "dist/prod/npm/pkg/index.d.ts"), "utf-8")).toMatch(
+			/declare const AuditedRecord_base/,
+		);
+		expect(existsSync(join(fix, "dist/prod/npm/meta/issue817-probe.api.json"))).toBe(true);
+	}, 120_000);
+});

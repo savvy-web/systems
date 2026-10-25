@@ -1,7 +1,7 @@
 // packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
+import { dirname, isAbsolute, join, resolve } from "node:path";
 import { TsconfigLoaderSync } from "@effected/tsconfig-json";
 import { tsconfigSyncOptions } from "../tsconfig/sync-options.js";
 
@@ -120,6 +120,57 @@ export function buildResolvedTsconfig(options: ResolvedTsconfigOptions): Resolve
 }
 
 /**
+ * The base's `files`/`include`/`exclude` (through its whole `extends` chain) as absolute CANONICAL
+ * paths under `baseDir`; a base declaring neither `files` nor `include` gets TypeScript's default
+ * `**\/*` pinned to `baseDir` explicitly. Paths the base already spelled absolutely (the
+ * `writeResolvedTsconfig` output builds them from the package cwd) are canonicalized too, so a
+ * symlinked cwd cannot smuggle a non-canonical name past the canonical `extends`. A base the loader
+ * cannot resolve contributes nothing (the wrapper then inherits whatever the base declares, as before).
+ */
+function absoluteFileSet(
+	configPath: string,
+	baseDir: string,
+): { files?: string[]; include?: string[]; exclude?: string[] } {
+	let resolved: { files?: ReadonlyArray<string>; include?: ReadonlyArray<string>; exclude?: ReadonlyArray<string> };
+	try {
+		resolved = TsconfigLoaderSync.resolve(configPath, tsconfigSyncOptions);
+	} catch {
+		return {};
+	}
+	const abs = (p: string): string => canonicalGlob(isAbsolute(p) ? p : join(baseDir, p));
+	const files = resolved.files?.map(abs);
+	const include = resolved.include?.map(abs) ?? (files === undefined ? [join(baseDir, "**/*")] : undefined);
+	const exclude = resolved.exclude?.map(abs);
+	return {
+		...(files !== undefined ? { files } : {}),
+		...(include !== undefined ? { include } : {}),
+		...(exclude !== undefined ? { exclude } : {}),
+	};
+}
+
+const GLOB_CHARS = /[*?{[]/;
+
+/**
+ * Resolve symlinks in the literal directory prefix of an absolute path or glob (everything before the
+ * first segment carrying a glob character), leaving the pattern tail untouched. A prefix that does not
+ * exist is returned unchanged.
+ */
+function canonicalGlob(absPath: string): string {
+	const segments = absPath.split("/");
+	let firstGlob = segments.findIndex((seg) => GLOB_CHARS.test(seg));
+	if (firstGlob === -1) firstGlob = segments.length;
+	const prefix = segments.slice(0, firstGlob).join("/") || "/";
+	const tail = segments.slice(firstGlob);
+	let canonicalPrefix: string;
+	try {
+		canonicalPrefix = realpathSync.native(prefix);
+	} catch {
+		return absPath;
+	}
+	return tail.length === 0 ? canonicalPrefix : join(canonicalPrefix, ...tail);
+}
+
+/**
  * Write the resolved tsconfig to a temp file and return its absolute path.
  *
  * @public
@@ -134,12 +185,25 @@ export function writeResolvedTsconfig(options: ResolvedTsconfigOptions): string 
 /**
  * Derive a dts-EMIT variant of an already-written resolved tsconfig that adds
  * `stableTypeOrdering: true`, and return its path. This makes the TypeScript declaration emitter
- * (rolldown-plugin-dts on `typescript@6`) order union/type members deterministically, so a
- * multi-union `.d.ts` (e.g. an Effect `Layer.Layer<…>` requirement channel) does not flip member
- * order across otherwise-identical builds (#156). It is kept in a SEPARATE file from the
- * api-extractor tsconfig on purpose: `@microsoft/api-extractor` pins `typescript ~5.9`, which
- * predates the flag and hard-errors on the unknown compiler option — so only the emit passes
- * (which run on TS6) ever see it, while the api-extractor compile reads the original clean config.
+ * (rolldown-plugin-dts' tsgo generator over this package's `typescript`) order union/type members
+ * deterministically, so a multi-union `.d.ts` (e.g. an Effect `Layer.Layer<…>` requirement channel)
+ * does not flip member order across otherwise-identical builds (#156). It is kept in a SEPARATE file
+ * from the api-extractor tsconfig on purpose: `@microsoft/api-extractor` compiles with its own
+ * bundled TypeScript 6, which predates the flag and hard-errors on the unknown compiler option — so
+ * only the emit passes ever see it, while the api-extractor compile reads the original clean config.
+ *
+ * The wrapper is written for the tsgo generator, which opens it as a TypeScript PROJECT and then
+ * looks every entry up by the realpath'd module id rolldown hands it — so it has to describe the
+ * same file set under the same names:
+ *
+ * - `extends` names the base by its CANONICAL (symlink-free) path. Root files are resolved relative
+ *   to the base's directory, and on a symlinked base dir (macOS `/var` resolving to `/private/var`, a linked
+ *   checkout) a non-canonical name would key them differently from rolldown's ids and every entry
+ *   would fail with "No TypeScript Go project found".
+ * - `files`/`include`/`exclude` are restated as ABSOLUTE paths under the base's directory. A base
+ *   that declares none would otherwise get TypeScript's default `**\/*` resolved against the
+ *   wrapper's own directory — the OS temp dir — so the project would be every stray temp file on
+ *   the machine and never the package's sources.
  *
  * Best-effort: if the base tsconfig cannot be read or parsed (e.g. a synthetic test path that was
  * never written), the original path is returned unchanged — the emit then simply keeps TS's
@@ -152,13 +216,20 @@ export function writeDtsEmitTsconfig(resolvedTsconfigPath: string): string {
 	// Best-effort: a base that does not exist (e.g. a synthetic test path) gets no variant — return it
 	// unchanged so the emit keeps TS's default ordering rather than aborting at this layer.
 	if (!existsSync(absBase)) return resolvedTsconfigPath;
-	// A thin wrapper that `extends` the base by ABSOLUTE path and adds only `stableTypeOrdering`. Written
-	// to the OS temp dir (NOT next to the base) so it never pollutes the source tree when the base is an
-	// in-tree `tsconfig.json`, and the absolute `extends` keeps the base's own relative `extends`/paths
-	// resolving from the base's location. The filename is deterministic per (pid, base), so repeated calls
-	// within a process overwrite the same file rather than accumulating; cross-process temp files are left
-	// for the OS to reap, intentionally consistent with `writeResolvedTsconfig`'s pid-scoped temp pattern.
-	const cfg = { extends: absBase, compilerOptions: { stableTypeOrdering: true } };
+	const canonicalBase = realpathSync.native(absBase);
+	const baseDir = dirname(canonicalBase);
+	// A thin wrapper that `extends` the base by ABSOLUTE (canonical) path and adds only
+	// `stableTypeOrdering` plus the absolutized file set. Written to the OS temp dir (NOT next to the
+	// base) so it never pollutes the source tree when the base is an in-tree `tsconfig.json`, and the
+	// absolute `extends` keeps the base's own relative `extends`/paths resolving from the base's
+	// location. The filename is deterministic per (pid, base), so repeated calls within a process
+	// overwrite the same file rather than accumulating; cross-process temp files are left for the OS
+	// to reap, intentionally consistent with `writeResolvedTsconfig`'s pid-scoped temp pattern.
+	const cfg = {
+		extends: canonicalBase,
+		compilerOptions: { stableTypeOrdering: true },
+		...absoluteFileSet(canonicalBase, baseDir),
+	};
 	const path = join(tmpdir(), `tsconfig-dts-emit-${process.pid}-${absBase.replace(/[^\w]/g, "_")}.json`);
 	writeFileSync(path, `${JSON.stringify(cfg, null, "\t")}\n`, "utf-8");
 	return path;

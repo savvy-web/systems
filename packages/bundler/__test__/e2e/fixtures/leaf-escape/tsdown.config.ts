@@ -1,7 +1,10 @@
 import { defineConfig } from "tsdown";
-import { emitManifest, packageJsonEntries, writeResolvedTsconfig } from "@savvy-web/tsdown-plugins";
+import { dtsPassDtsOptions, emitManifest, packageJsonEntries, writeResolvedTsconfig } from "@savvy-web/tsdown-plugins";
 
 const cwd = import.meta.dirname;
+const tsconfig = writeResolvedTsconfig({ cwd });
+// Only the generator choice is borrowed: the escape hatch emits JS too, so not `emitDtsOnly`.
+const { generator, tsgo } = dtsPassDtsOptions(tsconfig);
 
 // outDir uses a dedicated path so the escape-hatch test does not compete with
 // build tests for the same dist/prod/npm/pkg directory.
@@ -15,7 +18,9 @@ export default defineConfig({
 	fixedExtension: false,
 	// Unminified, mirroring the front door's default (Node libraries favor readable output).
 	minify: false,
-	dts: { tsconfig: writeResolvedTsconfig({ cwd }) },
+	// Declarations through tsdown-plugins' own TypeScript 7.1 (generator + moduleUrl), never whatever
+	// `typescript` tsdown happens to peer-resolve here — an escape-hatch consumer does the same.
+	dts: { tsconfig, generator, tsgo },
 	define: { "process.env.__PACKAGE_VERSION__": JSON.stringify("1.2.3") },
 	plugins: [
 		emitManifest({

@@ -139,7 +139,7 @@ interface ServerInfo {
 const CARRIER_SUFFIX = ` via @savvy-web/silk ${SILK_VERSION}`;
 
 describe.skipIf(!RUNNABLE)("silk packed install outside the workspace", () => {
-	it.effect(
+	it.live(
 		"packs the closure and runs both carrier bins under every available manager",
 		() =>
 			Effect.gen(function* () {

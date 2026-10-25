@@ -1,0 +1,1 @@
+{ "extends": "../../../../../../packages/bundler/public/tsconfig/ecma.json", "compilerOptions": { "types": [] }, "include": ["src"] }

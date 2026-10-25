@@ -1,5 +1,21 @@
 // packages/tsdown-plugins/src/dts/reexport-stub.ts
-import ts from "typescript";
+import type { BindingName, SourceFile } from "typescript/ast";
+import {
+	ModifierFlags,
+	isBindingElement,
+	isClassDeclaration,
+	isEnumDeclaration,
+	isExportDeclaration,
+	isFunctionDeclaration,
+	isIdentifier,
+	isInterfaceDeclaration,
+	isModuleDeclaration,
+	isNamedExports,
+	isNamespaceExport,
+	isTypeAliasDeclaration,
+	isVariableStatement,
+} from "typescript/ast";
+import { withParsedSource } from "./parse.js";
 
 /**
  * The analysis of an entry source treated as a candidate re-export barrel.
@@ -36,10 +52,6 @@ export interface ModuleExportNames {
 	readonly complete: boolean;
 }
 
-function parse(source: string, fileName: string): ts.SourceFile {
-	return ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, /*setParentNodes*/ false, ts.ScriptKind.TS);
-}
-
 /**
  * Analyze an entry source as a candidate pure re-export barrel: classify its re-exported names into
  * value vs type-only and report whether it is expressible as a thin stub. Pure parsing — no I/O.
@@ -47,14 +59,17 @@ function parse(source: string, fileName: string): ts.SourceFile {
  * @public
  */
 export function analyzeReexportBarrel(source: string, fileName = "entry.ts"): ReexportBarrelAnalysis {
-	const sf = parse(source, fileName);
+	return withParsedSource(fileName, source, (sf) => analyzeBarrel(sf));
+}
+
+function analyzeBarrel(sf: SourceFile): ReexportBarrelAnalysis {
 	const valueNames: string[] = [];
 	const typeNames: string[] = [];
 	let pure = true;
 	for (const stmt of sf.statements) {
-		if (ts.isExportDeclaration(stmt) && stmt.moduleSpecifier !== undefined) {
+		if (isExportDeclaration(stmt) && stmt.moduleSpecifier !== undefined) {
 			const clause = stmt.exportClause;
-			if (clause !== undefined && ts.isNamedExports(clause)) {
+			if (clause !== undefined && isNamedExports(clause)) {
 				for (const el of clause.elements) {
 					(stmt.isTypeOnly || el.isTypeOnly ? typeNames : valueNames).push(el.name.text);
 				}
@@ -79,49 +94,51 @@ export function analyzeReexportBarrel(source: string, fileName = "entry.ts"): Re
  * @public
  */
 export function collectExportNames(source: string, fileName = "entry.ts"): ModuleExportNames {
-	const sf = parse(source, fileName);
+	return withParsedSource(fileName, source, (sf) => collectNames(sf));
+}
+
+function collectNames(sf: SourceFile): ModuleExportNames {
 	const names = new Set<string>();
 	let complete = true;
-	const addBindingName = (name: ts.BindingName): void => {
-		if (ts.isIdentifier(name)) {
+	const addBindingName = (name: BindingName): void => {
+		if (isIdentifier(name)) {
 			names.add(name.text);
 		} else {
 			// Destructuring `export const { a, b } = …` — collect each bound identifier.
 			for (const el of name.elements) {
-				if (ts.isBindingElement(el)) addBindingName(el.name);
+				if (isBindingElement(el) && el.name !== undefined) addBindingName(el.name);
 			}
 		}
 	};
 	for (const stmt of sf.statements) {
-		if (ts.isExportDeclaration(stmt)) {
+		if (isExportDeclaration(stmt)) {
 			const clause = stmt.exportClause;
 			if (clause === undefined) {
 				// `export * from "…"` — cannot enumerate the target's names from here.
 				if (stmt.moduleSpecifier !== undefined) complete = false;
 				continue;
 			}
-			if (ts.isNamespaceExport(clause)) {
+			if (isNamespaceExport(clause)) {
 				names.add(clause.name.text);
 				continue;
 			}
 			for (const el of clause.elements) names.add(el.name.text);
 			continue;
 		}
-		const isExported = ts.canHaveModifiers(stmt)
-			? (ts.getModifiers(stmt) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword)
-			: false;
-		if (!isExported) continue;
-		if (ts.isVariableStatement(stmt)) {
-			for (const decl of stmt.declarationList.declarations) addBindingName(decl.name);
+		// Only modifier-bearing statements (variable/function/class/… declarations) carry flags.
+		const modifierFlags = (stmt as { readonly modifierFlags?: ModifierFlags }).modifierFlags ?? 0;
+		if ((modifierFlags & ModifierFlags.Export) === 0) continue;
+		if (isVariableStatement(stmt)) {
+			for (const decl of stmt.declarationList.declarations) if (decl.name !== undefined) addBindingName(decl.name);
 		} else if (
-			(ts.isFunctionDeclaration(stmt) ||
-				ts.isClassDeclaration(stmt) ||
-				ts.isInterfaceDeclaration(stmt) ||
-				ts.isTypeAliasDeclaration(stmt) ||
-				ts.isEnumDeclaration(stmt) ||
-				ts.isModuleDeclaration(stmt)) &&
+			(isFunctionDeclaration(stmt) ||
+				isClassDeclaration(stmt) ||
+				isInterfaceDeclaration(stmt) ||
+				isTypeAliasDeclaration(stmt) ||
+				isEnumDeclaration(stmt) ||
+				isModuleDeclaration(stmt)) &&
 			stmt.name !== undefined &&
-			ts.isIdentifier(stmt.name)
+			isIdentifier(stmt.name)
 		) {
 			names.add(stmt.name.text);
 		}

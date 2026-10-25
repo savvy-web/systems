@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
 import type { ExtractorMessage } from "@microsoft/api-extractor";
@@ -10,8 +9,6 @@ import { MetaGenerationError } from "../errors.js";
 import type { DiagnosticInput } from "../report/collector.js";
 import type { WarningSuppressionRule } from "./config.js";
 import { createMessageSuppressor } from "./message-suppressor.js";
-
-const require_ = createRequire(import.meta.url);
 
 export interface RunApiExtractorOptions {
 	readonly cwd: string;
@@ -150,8 +147,10 @@ export function mapExtractorMessage(message: ExtractorMessage): DiagnosticInput 
 /** Run API Extractor over a single entry's .d.ts, writing the .api.json (and optionally tsdoc-metadata.json). Throws on failure. */
 export function runApiExtractor(options: RunApiExtractorOptions): void {
 	const suppressor = createMessageSuppressor(options.suppressWarnings);
-	// api-extractor needs the folder of the typescript it should compile with.
-	const typescriptCompilerFolder = dirname(require_.resolve("typescript/package.json"));
+	// api-extractor compiles with its OWN bundled TypeScript (the TS 5/6 JavaScript compiler API it is
+	// written against; see rushstack#6033 for the TypeScript 7 port). This package's `typescript` is
+	// 7.1+, whose main export is a version stub with no compiler API, so it must NOT be handed over as
+	// `typescriptCompilerFolder` — leave the option unset and api-extractor resolves its own dependency.
 	const tsdocConfigFile = TSDocConfigFile.loadForFolder(dirname(options.tsdocConfigPath));
 
 	const extractorConfig = ExtractorConfig.prepare({
@@ -223,7 +222,6 @@ export function runApiExtractor(options: RunApiExtractorOptions): void {
 	} as Parameters<typeof ExtractorConfig.prepare>[0]);
 
 	const result = Extractor.invoke(extractorConfig, {
-		typescriptCompilerFolder,
 		localBuild: true,
 		showVerboseMessages: false,
 		messageCallback: (message: ExtractorMessage): void => {

@@ -9,7 +9,7 @@
 - `src/index.ts` and `src/pnpmfile.ts` are one-line re-exports of `rolldown-pnpm-config/virtual/{catalogs,pnpmfile}` — no hand-written logic lives in `src/`.
 - Self-consumption: the monorepo cannot be its own config dependency, so the config is materialized into the root `pnpm-workspace.yaml` via `pnpm pnpm:export`. Edit the config in `savvy.build.ts`, then run `pnpm pnpm:export` to refresh the local workspace yaml.
 - Maintainer commands at repo root (proxy to `rolldown-pnpm-config`): `pnpm pnpm:up` (interactive catalog bump), `pnpm pnpm:preview`, `pnpm pnpm:export`.
-- Managed `overrides` carry the TS7 compatibility shim: `@microsoft/api-extractor>typescript` forces TypeScript 6 into api-extractor's graph (it pins TS ~5.9; TS 7.0 has no stable compiler API until 7.1). Every consumer and the exported root workspace yaml inherit it; drop at TS 7.1.
+- Managed `overrides` carry the api-extractor compatibility shim: `@microsoft/api-extractor>typescript` forces TypeScript 6 into api-extractor's PRIVATE graph (it pins TS 5.9.3 and is written against the TS 5/6 JavaScript compiler API; the TypeScript 7 port is tracked in microsoft/rushstack#6033). This is independent of the workspace's own TypeScript — tsdown-plugins' declaration emit already runs on the 7.1 API — so every consumer and the exported root workspace yaml inherit it until api-extractor ships TS7 support.
 - Versions **independently** (as every package now does — `.changeset/config.json` defines no `fixed` or `linked` groups) and is **npm-registry-only**.
 
 ## Design

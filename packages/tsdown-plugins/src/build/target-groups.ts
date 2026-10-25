@@ -176,12 +176,46 @@ export interface DerivedDtsPassOptions {
 	readonly platform: "node";
 	readonly fixedExtension: false;
 	readonly entry: Record<string, string>;
-	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true; readonly generator: "tsc" };
+	readonly dts: DtsPassDtsOptions;
 	readonly define: Record<string, string>;
 	readonly isProd: boolean;
 	/** External packages to inline into the bundled dts (tsdown `deps.onlyBundle`). */
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
+
+/**
+ * The `dts` block both declaration passes hand to tsdown.
+ *
+ * The generator is pinned to `"tsgo"` — the TypeScript 7.1 declaration-emit API — and the
+ * TypeScript module is named explicitly via `tsgo.moduleUrl`, resolved from THIS package's own
+ * `typescript` dependency. rolldown-plugin-dts' auto-detection only inspects whatever
+ * `typescript` it can reach from its own location, which in a consumer workspace may be a
+ * hoisted copy with no API (TypeScript 7.0's main export is a version stub); naming the module
+ * makes the pass resolve the same compiler in every install topology.
+ *
+ * @public
+ */
+export interface DtsPassDtsOptions {
+	readonly tsconfig: string;
+	readonly emitDtsOnly: true;
+	readonly generator: "tsgo";
+	readonly tsgo: { readonly moduleUrl: string };
+}
+
+/** The `file://` URL of the TypeScript module this package resolves (its own pinned dependency). */
+const typescriptModuleUrl = (): string => import.meta.resolve("typescript");
+
+/**
+ * Build the {@link DtsPassDtsOptions} for a resolved tsconfig path.
+ *
+ * @public
+ */
+export const dtsPassDtsOptions = (tsconfig: string): DtsPassDtsOptions => ({
+	tsconfig,
+	emitDtsOnly: true,
+	generator: "tsgo",
+	tsgo: { moduleUrl: typescriptModuleUrl() },
+});
 
 /** The output dir for a group: dev -> dist/dev/pkg, prod -> dist/prod/<group>/pkg. */
 export const outDirFor = (cwd: string, group: TargetGroupId): string =>
@@ -251,11 +285,7 @@ export function deriveDtsPassOptions(options: DeriveOptions): DerivedDtsPassOpti
 		platform: "node",
 		fixedExtension: false,
 		entry,
-		// generator is pinned to "tsc" because rolldown-plugin-dts' auto-detect flips to its
-		// "tsgo" generator when a peer-resolved typescript >= 7 is installed (as in consumer
-		// repos), and tsgo derives --rootDir from the tmpdir tsconfig's dirname, so it emits
-		// nothing (TS6059).
-		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true, generator: "tsc" },
+		dts: dtsPassDtsOptions(options.tsconfigPath),
 		define: {
 			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
 			...options.define,
@@ -274,7 +304,7 @@ export interface DerivedDeclarationsPassOptions {
 	readonly platform: "node";
 	readonly fixedExtension: false;
 	readonly entry: Record<string, string>;
-	readonly dts: { readonly tsconfig: string; readonly emitDtsOnly: true; readonly generator: "tsc" };
+	readonly dts: DtsPassDtsOptions;
 	readonly define: Record<string, string>;
 	readonly bundledPackages?: ReadonlyArray<string> | undefined;
 }
@@ -296,7 +326,7 @@ export function deriveDeclarationsPassOptions(options: DeriveOptions): DerivedDe
 		platform: "node",
 		fixedExtension: false,
 		entry,
-		dts: { tsconfig: options.tsconfigPath, emitDtsOnly: true, generator: "tsc" },
+		dts: dtsPassDtsOptions(options.tsconfigPath),
 		define: {
 			"process.env.__PACKAGE_VERSION__": JSON.stringify(options.version),
 			...options.define,

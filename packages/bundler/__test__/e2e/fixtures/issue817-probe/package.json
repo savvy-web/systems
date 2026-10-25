@@ -1,0 +1,8 @@
+{
+	"name": "@fixture/issue817-probe",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"exports": { ".": "./src/index.ts" },
+	"publishConfig": { "access": "public", "directory": "dist/dev/pkg", "linkDirectory": true, "targets": { "npm": true } }
+}

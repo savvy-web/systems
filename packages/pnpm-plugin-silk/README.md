@@ -52,7 +52,7 @@ Five catalogs ship with the plugin, each paired with a `:peers` variant that car
 | `build` | `build:peers` | `tsdown`, `rolldown`, `@rsbuild/core`, the `@tsdown/*` add-ons, TypeScript, `tsx`, React and the matching `@types/*` packages |
 | `docs` | `docs:peers` | `@rspress/core` and its sitemap and mermaid plugins, VitePress, Vite, React and the matching `@types/*` packages |
 | `lint` | `lint:peers` | Biome, `@changesets/cli`, commitlint, husky, `lint-staged`, `markdownlint-cli2` and Turborepo |
-| `silk` | `silk:peers` | the shared repo toolchain that has no more specific home: TypeScript and the native-preview compiler, `tsx`, husky, `lint-staged`, `markdownlint-cli2`, React and the `@types/*` packages |
+| `silk` | `silk:peers` | the shared repo toolchain that has no more specific home: TypeScript, `tsx`, husky, `lint-staged`, `markdownlint-cli2`, React and the `@types/*` packages |
 | `test` | `test:peers` | Vitest and its Istanbul and V8 coverage providers |
 
 Effect is not one of them. `effect` and the whole `@effect/*` family come from [`@effected/pnpm-plugin-effect`](https://www.npmjs.com/package/@effected/pnpm-plugin-effect) as `catalog:effect` and `catalog:effect:peers`, so a repo that builds on Effect installs that config dependency alongside this one.

@@ -19,4 +19,4 @@
  *
  * @internal
  */
-export const BIOME_VERSION = "2.6.2";
+export const BIOME_VERSION = "2.6.3";

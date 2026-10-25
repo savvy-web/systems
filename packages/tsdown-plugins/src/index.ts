@@ -19,9 +19,10 @@ export type {
 	BuildPlatform,
 	DeriveOptions,
 	DerivedTsdownOptions,
+	DtsPassDtsOptions,
 	TargetGroupId,
 } from "./build/target-groups.js";
-export { deriveTargetGroupOptions } from "./build/target-groups.js";
+export { deriveTargetGroupOptions, dtsPassDtsOptions } from "./build/target-groups.js";
 export type { ManifestLike } from "./catalog/resolve-catalogs.js";
 export { resolveManifest } from "./catalog/resolve-catalogs.js";
 export type { NextVersions } from "./changesets/next-versions.js";
