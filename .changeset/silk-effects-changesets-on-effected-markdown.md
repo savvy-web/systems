@@ -14,7 +14,7 @@ These `Changesets` namespace exports are deleted:
 * `SilkChangesetPreset` and `SilkChangesetTransformPreset`
 * `ContentStructureRule`, `DependencyTableFormatRule`, `HeadingHierarchyRule`, `RequiredSectionsRule` and `UncategorizedContentRule`
 
-Migration: use `ChangelogTransformer` and `ChangesetLinter`, which keep their signatures and produce the same output. Code that composed the plugins or presets into its own unified pipeline must call these two instead.
+Migration: use `ChangelogTransformer` and `ChangesetLinter`, which keep their signatures and produce the same output, with one exception: CSH003 (`changeset-content-structure`) no longer reports an empty `##` section nested inside a blockquote or list item. That matches the markdownlint rule, which only checks top-level sections. Code that composed the plugins or presets into its own unified pipeline must call these two instead.
 
 ### DependencyTable types
 
