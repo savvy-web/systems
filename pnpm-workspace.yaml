@@ -31,7 +31,7 @@ catalogs:
     rolldown: ^1.2.15
     tsdown: ^0.23.2
     tsx: ^4.23.15
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
   build:peers:
     "@microsoft/api-extractor": ^7.59.4
     "@microsoft/api-extractor-model": ^7.33.15
@@ -49,7 +49,7 @@ catalogs:
     rolldown: ^1.2.0
     tsdown: ^0.23.0
     tsx: ^4.23.15
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
   docs:
     "@rspress/core": ^2.0.23
     "@rspress/plugin-sitemap": ^2.0.23
@@ -59,7 +59,7 @@ catalogs:
     react: ^19.3.1
     react-dom: ^19.3.1
     rspress-plugin-mermaid: ^1.0.3
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
     vite: ^8.3.5
     vitepress: ^2.0.0-alpha.20
   docs:peers:
@@ -71,7 +71,7 @@ catalogs:
     react: ^19.3.0
     react-dom: ^19.3.0
     rspress-plugin-mermaid: ^1.0.3
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.20
   lint:
@@ -107,7 +107,7 @@ catalogs:
     react: ^19.3.1
     react-dom: ^19.3.1
     tsx: ^4.23.15
-    typescript: ^7.0.2
+    typescript: ^7.1.0-beta
   silk:peers:
     "@types/bun": ^1.4.4
     "@types/node": ^26.6.0
@@ -121,7 +121,7 @@ catalogs:
     react: ^19.3.0
     react-dom: ^19.3.0
     tsx: ^4.23.15
-    typescript: ^7.0.0
+    typescript: ^7.1.0-beta
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5

@@ -86,9 +86,9 @@ await build({
 							strategy: "lock-minor",
 						},
 						typescript: {
-							range: "^7.0.2",
-							peer: "^7.0.0",
-							strategy: "lock-minor",
+							range: "^7.1.0-beta",
+							peer: "^7.1.0-beta",
+							strategy: "lock",
 						},
 						tsx: {
 							range: "^4.23.15",
@@ -140,9 +140,9 @@ await build({
 							strategy: "lock",
 						},
 						typescript: {
-							range: "^7.0.2",
-							peer: "^7.0.0",
-							strategy: "lock-minor",
+							range: "^7.1.0-beta",
+							peer: "^7.1.0-beta",
+							strategy: "lock",
 						},
 						vite: {
 							range: "^8.3.5",
@@ -268,9 +268,9 @@ await build({
 							strategy: "lock",
 						},
 						typescript: {
-							range: "^7.0.2",
-							peer: "^7.0.0",
-							strategy: "lock-minor",
+							range: "^7.1.0-beta",
+							peer: "^7.1.0-beta",
+							strategy: "lock",
 						},
 					},
 				},
