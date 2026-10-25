@@ -22,9 +22,14 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { detectFromLockfiles, parsePackageManagerField } from "../../commitlint/hook/diagnostics/package-manager.js";
+import type { ExecContext, ToolDiscoverySync } from "@effected/commands";
+import { LocalExec, Tool, makeToolDiscoverySync } from "@effected/commands";
+import { nodeSpawnSync } from "@effected/commands/node-sync";
+import { detectPackageManagerSync } from "@effected/workspaces";
+import { nodeSyncOps } from "@effected/workspaces/node-sync";
+import { Result } from "effect";
 
 /**
  * Supported package managers.
@@ -71,6 +76,19 @@ export class Command {
 	/** Cached project root path */
 	private static cachedRoot: string | null = null;
 
+	/** Memoizing tool discovery, created lazily and dropped by `clearCache` */
+	private static discovery: ToolDiscoverySync | null = null;
+
+	private static getDiscovery(): ToolDiscoverySync {
+		if (Command.discovery === null) {
+			const context: ExecContext = LocalExec.contextFor(Command.detectPackageManager(), {
+				directory: Command.findRoot(),
+			});
+			Command.discovery = makeToolDiscoverySync({ spawn: nodeSpawnSync, context });
+		}
+		return Command.discovery;
+	}
+
 	/**
 	 * Find the project root directory by walking up from `cwd`.
 	 *
@@ -114,9 +132,8 @@ export class Command {
 	/**
 	 * Detect the package manager declared by the root package.json.
 	 *
-	 * Reads `devEngines.packageManager.name` (the first entry when it is an array), then the
-	 * legacy `packageManager` field (e.g., `pnpm\@9.0.0`), then lockfile presence in priority
-	 * order pnpm, yarn, bun. Falls back to "npm" when none of them names a manager.
+	 * Delegates to the kit's `detectPackageManagerSync` (manifest fields, then workspace and
+	 * lockfile markers) at `cwd` without walking up. Falls back to "npm" when none names a manager.
 	 *
 	 * @param cwd - Directory to search for package.json (defaults to `Command.findRoot()`)
 	 * @returns The detected package manager
@@ -133,21 +150,8 @@ export class Command {
 			return Command.cachedPackageManager;
 		}
 
-		const packageJsonPath = join(cwd, "package.json");
-		let declared: PackageManager | null = null;
-		try {
-			declared = parsePackageManagerField(readFileSync(packageJsonPath, "utf-8"));
-		} catch {
-			// Missing or unreadable package.json; fall through to lockfile detection
-		}
-
-		Command.cachedPackageManager =
-			declared ??
-			detectFromLockfiles({
-				pnpm: existsSync(join(cwd, "pnpm-lock.yaml")),
-				yarn: existsSync(join(cwd, "yarn.lock")),
-				bun: existsSync(join(cwd, "bun.lock")),
-			});
+		const detected = detectPackageManagerSync(cwd, nodeSyncOps);
+		Command.cachedPackageManager = Result.isSuccess(detected) ? detected.success.name : "npm";
 		return Command.cachedPackageManager;
 	}
 
@@ -160,22 +164,13 @@ export class Command {
 	 * @example
 	 * ```typescript
 	 * Command.getExecPrefix('pnpm'); // ['pnpm', 'exec']
-	 * Command.getExecPrefix('npm');  // ['npx', '--no']
+	 * Command.getExecPrefix('npm');  // ['npx', '--no', '--']
 	 * Command.getExecPrefix('yarn'); // ['yarn', 'exec']
 	 * Command.getExecPrefix('bun');  // ['bun', 'x', "--no-install"]
 	 * ```
 	 */
 	static getExecPrefix(packageManager: PackageManager): string[] {
-		switch (packageManager) {
-			case "pnpm":
-				return ["pnpm", "exec"];
-			case "yarn":
-				return ["yarn", "exec"];
-			case "bun":
-				return ["bun", "x", "--no-install"];
-			default:
-				return ["npx", "--no"];
-		}
+		return [...LocalExec.contextFor(packageManager).prefix];
 	}
 
 	/**
@@ -185,6 +180,8 @@ export class Command {
 	static clearCache(): void {
 		Command.cachedPackageManager = null;
 		Command.cachedRoot = null;
+		Command.discovery?.invalidateAll();
+		Command.discovery = null;
 	}
 
 	/**
@@ -202,12 +199,7 @@ export class Command {
 	 */
 	static isAvailable(command: string): boolean {
 		validateCommandName(command);
-		try {
-			execSync(`command -v ${command}`, { stdio: "ignore" });
-			return true;
-		} catch {
-			return false;
-		}
+		return Command.getDiscovery().isAvailable(Tool.named(command, { source: "global" }));
 	}
 
 	/**
@@ -232,25 +224,16 @@ export class Command {
 	static findTool(tool: string): ToolSearchResult {
 		validateCommandName(tool);
 
-		// Check global first (preferred)
-		if (Command.isAvailable(tool)) {
-			return { available: true, command: tool, source: "global" };
+		const resolved = Command.getDiscovery().resolve(Tool.named(tool, { prefer: "global" }));
+		if (Result.isFailure(resolved)) {
+			return { available: false, command: undefined, source: undefined };
 		}
-
-		// Detect and use the project's package manager
-		const pm = Command.detectPackageManager();
-		const prefix = Command.getExecPrefix(pm);
-		const execCmd = [...prefix, tool].join(" ");
-
-		try {
-			// Check if the tool is available via the package manager
-			execSync(`${execCmd} --version`, { stdio: "ignore" });
-			return { available: true, command: execCmd, source: pm };
-		} catch {
-			// Not available via package manager
-		}
-
-		return { available: false, command: undefined, source: undefined };
+		const found = resolved.success;
+		return {
+			available: true,
+			command: found.argv().join(" "),
+			source: found.source === "global" ? "global" : Command.detectPackageManager(),
+		};
 	}
 
 	/**
@@ -302,6 +285,8 @@ export class Command {
 	/**
 	 * Execute a command and return its output.
 	 *
+	 * @deprecated No in-repo consumers; will be removed in a future major.
+	 *
 	 * @param command - The command to execute
 	 * @returns The command output as a string (trimmed)
 	 * @throws If the command fails
@@ -318,6 +303,8 @@ export class Command {
 
 	/**
 	 * Execute a command silently (ignore output).
+	 *
+	 * @deprecated No in-repo consumers; will be removed in a future major.
 	 *
 	 * @param command - The command to execute
 	 * @returns `true` if successful, `false` if failed
