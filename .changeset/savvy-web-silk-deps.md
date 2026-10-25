@@ -1,5 +1,5 @@
 ---
-"@savvy-web/silk": patch
+"@savvy-web/silk": minor
 ---
 
 ## Dependencies
