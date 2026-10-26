@@ -50,7 +50,7 @@
 		"picocolors": "^1.1.1",
 		"std-env": "^4.3.0",
 		"tsdown": "catalog:build",
-		"typescript": "7.1.0-beta"
+		"typescript": "7.1.0-dev.20261022.1"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effect",
