@@ -86,8 +86,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						typescript: {
-							range: "^7.1.0-beta",
-							peer: "^7.1.0-beta",
+							range: "7.1.0-beta",
+							peer: "7.1.0-beta",
 							strategy: "lock",
 						},
 						tsx: {
@@ -140,8 +140,8 @@ await build({
 							strategy: "lock",
 						},
 						typescript: {
-							range: "^7.1.0-beta",
-							peer: "^7.1.0-beta",
+							range: "7.1.0-beta",
+							peer: "7.1.0-beta",
 							strategy: "lock",
 						},
 						vite: {
@@ -150,8 +150,8 @@ await build({
 							strategy: "lock-minor",
 						},
 						vitepress: {
-							range: "^2.0.0-alpha.20",
-							peer: "^2.0.0-alpha.20",
+							range: "^2.0.0-alpha.21",
+							peer: "^2.0.0-alpha.21",
 							strategy: "lock",
 						},
 					},
@@ -268,8 +268,8 @@ await build({
 							strategy: "lock",
 						},
 						typescript: {
-							range: "^7.1.0-beta",
-							peer: "^7.1.0-beta",
+							range: "7.1.0-beta",
+							peer: "7.1.0-beta",
 							strategy: "lock",
 						},
 					},
@@ -377,14 +377,6 @@ await build({
 				// in resolution -- so the override is what actually forces the
 				// single Vitest 5 resolution.
 				"@effect/vitest>vitest": "^5.0.1",
-				// @effected/lockfiles 0.19.5 raised its @effected/npm peer from ^0.26.2 to ^0.27.0 in a
-				// patch. @effected/workspaces 0.38.1 (still pulled by @vitest-agent/* and
-				// rolldown-pnpm-config) ranges lockfiles ^0.19.4 beside npm ^0.26.2, so that graph got
-				// lockfiles 0.19.5 over npm 0.26.2 and its declarations fail to type-check
-				// (IntegrityHashStatics). Keep that graph on the last lockfiles whose peer range it
-				// satisfies. A no-op wherever workspaces 0.38.1 is absent; drop it once neither tool
-				// pulls 0.38.1.
-				"@effected/workspaces@0.38.1>@effected/lockfiles": "0.19.4",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {

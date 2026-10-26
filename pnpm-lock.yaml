@@ -218,7 +218,7 @@ catalogs:
       specifier: ^4.23.15
       version: 4.23.15
     typescript:
-      specifier: ^7.1.0-beta
+      specifier: 7.1.0-beta
       version: 7.1.0-beta
   docs:peers:
     '@rspress/core':
@@ -349,7 +349,7 @@ catalogs:
       specifier: ^19.3.1
       version: 19.3.1
     typescript:
-      specifier: ^7.1.0-beta
+      specifier: 7.1.0-beta
       version: 7.1.0-beta
   test:
     '@vitest/coverage-istanbul':
