@@ -1,5 +1,21 @@
 # @savvy-web/silk
 
+## 4.5.2
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/changelog | dependency | updated | 1.0.25 | 1.0.25 |
+| @savvy-web/cli | dependency | updated | 3.7.14 | 3.7.14 |
+| @savvy-web/mcp | dependency | updated | 3.4.17 | 3.4.17 |
+| @savvy-web/silk-effects | dependency | updated | 10.1.0 | 10.1.0 |
+| typescript | peerDependency | updated | ^7.1.0-beta | 7.1.0-beta |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 4.5.1
 
 ### Dependencies
