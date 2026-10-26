@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.51.1
+
+### Bug Fixes
+
+- Pins TypeScript 7.1-beta exactly to avoid dev nightly being pulled in.
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.51.0
 
 ### Features

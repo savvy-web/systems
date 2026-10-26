@@ -1,5 +1,17 @@
 # @savvy-web/bundler
 
+## 2.6.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| typescript | peerDependency | updated | ^7.1.0-beta | 7.1.0-beta |
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 2.6.2
 
 ### Dependencies
