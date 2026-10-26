@@ -45,10 +45,10 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
-		"@okfit/plugin": "^0.5.24",
+		"@okfit/plugin": "^0.5.25",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^5.6.1"
+		"@vitest-agent/plugin": "^5.6.2"
 	},
 	"engines": {
 		"node": ">=24.11.0"
