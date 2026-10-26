@@ -50,7 +50,7 @@
 		"@types/react-dom": "catalog:build",
 		"react": "catalog:build",
 		"react-dom": "catalog:build",
-		"satori": "^0.33.4",
+		"satori": "^0.63.2",
 		"tinyrainbow": "^3.1.1",
 		"tsdown": "catalog:build",
 		"typescript": "catalog:build",
@@ -63,7 +63,7 @@
 		"@types/react-dom": "catalog:build:peers",
 		"react": "catalog:build:peers",
 		"react-dom": "catalog:build:peers",
-		"satori": "^0.33.4",
+		"satori": "^0.63.2",
 		"typescript": "catalog:build:peers"
 	},
 	"peerDependenciesMeta": {
