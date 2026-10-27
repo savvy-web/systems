@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.51.2
+
+### Bug Fixes
+
+- Sets peerDependency allow rules for TypeScript 7.1.0-beta
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.51.1
 
 ### Bug Fixes
@@ -486,8 +496,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | :-- | :-- | :-- | :-- | :-- | --- |
   | rolldown-pnpm-config | devDependency | updated | ^0.6.3 | ^0.7.0 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#537]: https://github.com/savvy-web/systems/pull/537
 
 ## 0.29.0
@@ -596,8 +604,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | :-- | :-- | :-- | :-- | :-- | --- |
   | @changesets/cli | config | updated | ^3.0.0-next.10 | ^3.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#483]: https://github.com/savvy-web/systems/pull/483
 
