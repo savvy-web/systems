@@ -24,8 +24,9 @@
 
 import { CliExit, Doc } from "@effected/cli";
 import { Lint } from "@savvy-web/silk-effects";
-import { Effect, Path } from "effect";
+import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
+import { DisplayPath } from "../../internal/display-path.js";
 import { Report } from "../../internal/report.js";
 
 /* v8 ignore start -- CLI option definitions */
@@ -61,7 +62,6 @@ export interface RunLintTextOptions {
  */
 export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOptions = {}) =>
 	Effect.gen(function* () {
-		const path = yield* Path.Path;
 		const cwd = options.cwd ?? ".";
 		const staged = options.staged ?? false;
 		const targets = files.length > 0 ? files : yield* Lint.TextFiles.listTracked(cwd, { staged });
@@ -82,14 +82,6 @@ export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOp
 			return findings;
 		}
 
-		// The runner shows an annotation against a path relative to the
-		// workspace; one outside `cwd` keeps the path it was given.
-		const root = path.resolve(cwd);
-		const annotationPath = (file: string): string => {
-			const relative = path.relative(root, path.resolve(file));
-			return relative.startsWith("..") || path.isAbsolute(relative) ? file : relative;
-		};
-
 		const failedFiles = new Set([...findings.map((finding) => finding.path), ...unreadable.map((error) => error.path)])
 			.size;
 		yield* Report.print([
@@ -98,7 +90,7 @@ export const runLintText = (files: ReadonlyArray<string>, options: RunLintTextOp
 				Doc.annotation(
 					{
 						level: "error",
-						file: annotationPath(finding.path),
+						file: DisplayPath.under(cwd, finding.path),
 						line: finding.line,
 						col: finding.column,
 						title: "grep-invisible text",

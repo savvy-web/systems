@@ -9,8 +9,9 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { RuntimeEnv } from "@effected/env";
 import { Yaml } from "@effected/yaml";
-import { Context, Effect, Layer, Result, Schema } from "effect";
+import { Context, Effect, Layer, Option, Result, Schema } from "effect";
 import type { ValidationError } from "../errors.js";
 import {
 	ActionYmlMissing,
@@ -131,14 +132,17 @@ export type ActionYmlResult = typeof ActionYmlResultSchema.Type;
 // Pure Helper Functions
 // =============================================================================
 
-/* v8 ignore start - CI environment detection has multiple env var formats */
-/** Check if running in CI environment. */
-const isCI = (): boolean =>
-	process.env.CI === "true" || process.env.CI === "1" || process.env.GITHUB_ACTIONS === "true";
+/**
+ * Check if running in CI, by `@effected/env`'s one rule (a known provider's marker, or a truthy `CI` /
+ * `CONTINUOUS_INTEGRATION`) — the same rule `@savvy-web/bundler` and `@savvy-web/tsdown-plugins` use.
+ *
+ * @internal
+ */
+export const isCI = (env: Readonly<Record<string, string | undefined>> = process.env): boolean =>
+	Option.isSome(RuntimeEnv.fromRecord(env).ci);
 
 /** Resolve strict mode from config or environment. */
 const resolveStrict = (configStrict?: boolean): boolean => configStrict ?? isCI();
-/* v8 ignore stop */
 
 /** Create a validation warning, omitting undefined file. */
 const makeWarning = (code: string, message: string, suggestion: string, file?: string): ValidationWarning =>

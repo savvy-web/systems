@@ -43,7 +43,7 @@ export function runValidateFile(filePath: string) {
 		const result = yield* Effect.try({
 			try: () => ChangesetLinter.validateFile(filePath),
 			catch: (error) =>
-				CommandError.from(error instanceof Error ? error : String(error), {
+				CommandError.from(error, {
 					message: `could not validate ${filePath}`,
 				}),
 		});

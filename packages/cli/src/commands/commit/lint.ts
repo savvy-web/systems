@@ -11,16 +11,14 @@
  *
  * @internal
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { Run } from "@effected/commands";
 import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, CliError, Command } from "effect/cli";
+import { ChildProcess } from "effect/process";
 import { Report } from "../../internal/report.js";
 import { buildCommitlintInvocation } from "./commitlint-invocation.js";
-
-const execFileP = promisify(execFile);
 
 /** The repo root via `@effected/git`, degrading to `process.cwd()`. */
 const getRepoRoot: Effect.Effect<string, never, Git> = Effect.gen(function* () {
@@ -39,27 +37,30 @@ export interface CommitlintEditResult {
  *
  * A zero exit resolves to `passed: true`; a non-zero exit (commitlint's way
  * of signalling violations) resolves to `passed: false` with the captured
- * diagnostics — the promise never rejects.
+ * diagnostics. A run that never starts (the launcher is missing) or whose
+ * output is unusable also resolves to `passed: false`, its message standing
+ * in for stderr — the effect never fails.
  *
  * @internal
  */
-function runCommitlintEdit(root: string, file: string): Promise<CommitlintEditResult> {
-	return (async () => {
-		const pm = await Commitlint.detectPackageManager(root);
-		const configPath = await Commitlint.readCommitlintConfigPath(root);
+export function runCommitlintEdit(root: string, file: string) {
+	return Effect.gen(function* () {
+		const pm = yield* Effect.promise(() => Commitlint.detectPackageManager(root));
+		const configPath = yield* Effect.promise(() => Commitlint.readCommitlintConfigPath(root));
 		const { command, args } = buildCommitlintInvocation(pm, configPath, ["--edit", file]);
-		try {
-			const { stdout, stderr } = await execFileP(command, args, { cwd: root });
-			return { passed: true, stdout, stderr };
-		} catch (error) {
-			const e = error as { stdout?: string; stderr?: string; message?: string };
-			return {
-				passed: false,
-				stdout: e.stdout ?? "",
-				stderr: e.stderr ?? e.message ?? String(error),
-			};
-		}
-	})();
+		return yield* Run.collect(ChildProcess.make(command, args, { cwd: root })).pipe(
+			Effect.map(
+				(output): CommitlintEditResult => ({
+					passed: output.exitCode === 0,
+					stdout: output.stdout,
+					stderr: output.stderr,
+				}),
+			),
+			Effect.catch((error) =>
+				Effect.succeed<CommitlintEditResult>({ passed: false, stdout: "", stderr: error.message }),
+			),
+		);
+	});
 }
 
 /**
@@ -77,7 +78,7 @@ function runCommitlintEdit(root: string, file: string): Promise<CommitlintEditRe
 export function runCommitLint(file: string) {
 	return Effect.gen(function* () {
 		const root = yield* getRepoRoot;
-		const { passed, stdout, stderr } = yield* Effect.promise(() => runCommitlintEdit(root, file));
+		const { passed, stdout, stderr } = yield* runCommitlintEdit(root, file);
 
 		if (stdout.length > 0) {
 			yield* Effect.sync(() => process.stdout.write(stdout));

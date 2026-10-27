@@ -16,8 +16,7 @@ import { headingHierarchy } from "../rules/heading-hierarchy.js";
 import { requiredSections } from "../rules/required-sections.js";
 import type { LintRule } from "../rules/types.js";
 import { uncategorizedContent } from "../rules/uncategorized-content.js";
-import { parseKitMarkdown } from "../utils/markdown-emit.js";
-import { stripFrontmatter } from "../utils/strip-frontmatter.js";
+import { parseKitMarkdownBody } from "../utils/markdown-emit.js";
 
 /** The five changeset lint rules, in reporting order. */
 const RULES: ReadonlyArray<LintRule> = [
@@ -73,8 +72,8 @@ export interface LintMessage {
 	 * Line number where the issue was detected (1-based).
 	 *
 	 * @remarks
-	 * Line numbers are relative to the content after YAML frontmatter
-	 * stripping (the blank line after the closing `---` counts as line 1).
+	 * Line numbers are relative to the whole file, frontmatter block
+	 * included, so they match the lines an editor shows.
 	 */
 	line: number;
 
@@ -215,7 +214,7 @@ export class ChangesetLinter {
 	 * @returns Array of {@link LintMessage} diagnostics (empty if the content is valid)
 	 */
 	static validateContent(content: string, filePath = "<input>"): LintMessage[] {
-		const root = parseKitMarkdown(stripFrontmatter(content));
+		const root = parseKitMarkdownBody(content);
 		return RULES.flatMap((rule) =>
 			rule(root).map((finding) => ({
 				file: filePath,

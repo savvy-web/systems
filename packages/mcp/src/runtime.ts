@@ -12,6 +12,7 @@
  */
 
 import { ToolDiscovery } from "@effected/commands";
+import type { Git } from "@effected/git";
 import type { WorkspaceRoot } from "@effected/workspaces";
 import { Workspaces } from "@effected/workspaces";
 import {
@@ -37,7 +38,9 @@ import type { ChildProcessSpawner } from "effect/process";
  * {@link makeSilkRuntimeLayer} passes both through onto its own output via an
  * `Effect.context` identity layer, so they survive `main.ts`'s
  * `Layer.provide(NodeServices.layer)` instead of being fully discharged by
- * it.
+ * it. `ChildProcessSpawner` is passed through the same way, and `Git` (from the
+ * kit graph) plus the shared `ToolDiscovery` are exposed, because
+ * `biome_check` yields all three directly.
  *
  * @public
  */
@@ -52,6 +55,9 @@ export type McpServices =
 	| Repos.ReposManager
 	| Repos.ReposConfigStore
 	| Repos.ReposDrift
+	| Git
+	| ToolDiscovery
+	| ChildProcessSpawner.ChildProcessSpawner
 	| FileSystem.FileSystem
 	| Path.Path;
 
@@ -153,11 +159,18 @@ export const makeSilkRuntimeLayer = (
 	// `NodeServices.layer` at the host boundary (bin.ts) — both are already
 	// required inputs below (via `kitGraph`/`ReposManager`/`ReposDrift`), so
 	// this adds no new requirement.
-	const platformPassthrough = Layer.effectContext(Effect.context<FileSystem.FileSystem | Path.Path>());
+	// `ChildProcessSpawner` rides the same passthrough for `biome_check`'s
+	// `Run.collect`; it is already required by `kitGraph` and `toolDiscovery`.
+	const platformPassthrough = Layer.effectContext(
+		Effect.context<FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner>(),
+	);
 
 	return Layer.mergeAll(
 		SilkWorkspaceAnalyzer.layer.pipe(Layer.provide(analyzerDeps)),
 		Turbo.TurboInspector.layer.pipe(Layer.provide(toolDiscovery)),
+		// The same reference again, so `biome_check` resolves Biome through the
+		// one discovery instance (and probe cache) `TurboInspector` uses.
+		toolDiscovery,
 		inspectorAndAnalyzer,
 		depsRegen,
 		repos,

@@ -1,7 +1,16 @@
 // packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
-import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { GlobPattern, GlobPatternOptions } from "@effected/glob";
+import { descendSync } from "@effected/walker";
+import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
 import { decode, encode } from "@jridgewell/sourcemap-codec";
+import { Result } from "effect";
+
+/** Every declaration map, at any depth, dot-directories included. */
+const DECLARATION_MAPS = Result.getOrThrow(
+	GlobPattern.compileResult("**/*.d.{ts,cts,mts}.map", GlobPatternOptions.make({ dot: true })),
+);
 
 /**
  * Drop every source-less segment (a generated position with no original position) from a
@@ -42,17 +51,11 @@ export function scrubSourcelessMappings(mapPath: string): number {
  * @internal
  */
 export function scrubDeclarationMapsUnder(dir: string): number {
+	// prune: [] and followSymlinks: true keep the hand-rolled walk's reach (it stat-followed links and skipped nothing).
+	const maps = Result.getOrThrow(
+		descendSync(DECLARATION_MAPS, { cwd: dir, prune: [], followSymlinks: true, ...nodeWalkerSyncOps }),
+	);
 	let removed = 0;
-	let entries: string[];
-	try {
-		entries = readdirSync(dir);
-	} catch {
-		return 0;
-	}
-	for (const name of entries) {
-		const p = join(dir, name);
-		if (statSync(p).isDirectory()) removed += scrubDeclarationMapsUnder(p);
-		else if (/\.d\.[cm]?ts\.map$/.test(name)) removed += scrubSourcelessMappings(p);
-	}
+	for (const rel of maps) removed += scrubSourcelessMappings(join(dir, rel));
 	return removed;
 }

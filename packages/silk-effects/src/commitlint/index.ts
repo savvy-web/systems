@@ -250,12 +250,8 @@ export {
 	readOrFetchOpenIssues,
 	resolveIssuesCachePath,
 } from "./hook/diagnostics/open-issues.js";
-export type { LockfilePresence, PackageManager } from "./hook/diagnostics/package-manager.js";
-export {
-	detectFromLockfiles,
-	detectPackageManager,
-	parsePackageManagerField,
-} from "./hook/diagnostics/package-manager.js";
+export type { PackageManager } from "./hook/diagnostics/package-manager.js";
+export { detectPackageManager } from "./hook/diagnostics/package-manager.js";
 export type { RawSigningInputs, SigningDiagnostic } from "./hook/diagnostics/signing.js";
 export { buildSigningDiagnostic, parseGpgKeyExpiry, readSigningDiagnostic } from "./hook/diagnostics/signing.js";
 

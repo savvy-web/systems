@@ -11,7 +11,7 @@
 import { glob as nodeGlob, realpath, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
 import type { Block } from "@effected/cli";
-import { CliInteractive } from "@effected/cli";
+import { CliInteractive, Fmt } from "@effected/cli";
 import { CliUi } from "@effected/cli/ui";
 import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Console, Effect, PubSub } from "effect";
@@ -100,7 +100,7 @@ export function removeTargets(targets: ReadonlyArray<Target>, dryRun: boolean): 
 					: Effect.tryPromise(() => rm(target.path, { recursive: true, force: true })).pipe(
 							Effect.match({
 								onSuccess: () => ({ target, reason: null as string | null }),
-								onFailure: (e) => ({ target, reason: e instanceof Error ? e.message : String(e) }),
+								onFailure: (e) => ({ target, reason: Fmt.describe(e) }),
 							}),
 						),
 			{ concurrency: REMOVE_CONCURRENCY },

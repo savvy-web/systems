@@ -1,18 +1,22 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { GlobPattern, GlobPatternOptions } from "@effected/glob";
+import { descendSync } from "@effected/walker";
+import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
+import { Result } from "effect";
 import { findRelativeSpecifiers } from "../dts/relative-imports.js";
 import type { AmbientDtsEntry } from "../entry/ambient-dts.js";
 import { ConfigValidationError } from "../errors.js";
 
-/** Recursively collect every file path under `dir`, relative to `base`. */
-function listFilesRel(dir: string, base: string = dir): string[] {
-	const out: string[] = [];
-	for (const entry of readdirSync(dir, { withFileTypes: true })) {
-		const abs = join(dir, entry.name);
-		if (entry.isDirectory()) out.push(...listFilesRel(abs, base));
-		else out.push(relative(base, abs));
-	}
-	return out;
+/** Every file at any depth, dotfiles included. */
+const EVERY_FILE = Result.getOrThrow(GlobPattern.compileResult("**", GlobPatternOptions.make({ dot: true })));
+
+/**
+ * Every file path under `dir`, relative to it (POSIX separators, sorted). Nothing is pruned, so a
+ * `public/.well-known/` or `public/node_modules/` asset still copies; symlinked directories are not entered.
+ */
+function listFilesRel(dir: string): ReadonlyArray<string> {
+	return Result.getOrThrow(descendSync(EVERY_FILE, { cwd: dir, prune: [], ...nodeWalkerSyncOps }));
 }
 
 /** True when both files exist with identical size and bytes. Size is checked first so the byte read is skipped for the common changed case. */

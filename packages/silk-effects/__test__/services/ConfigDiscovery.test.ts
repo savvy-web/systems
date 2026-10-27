@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
 import type { ConfigLocation } from "@savvy-web/silk-core";
-import { Effect, FileSystem, Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { systemError } from "effect/PlatformError";
 import { ConfigDiscovery } from "../../src/services/ConfigDiscovery.js";
 
@@ -155,17 +155,21 @@ describe("ConfigDiscovery.findAll", () => {
 // ---------------------------------------------------------------------------
 
 describe("ConfigDiscovery error handling", () => {
-	// Deliberately NOT a memory volume: this is fault injection, not arrangement.
-	// A volume answers `exists` honestly (`false` for an absent path) and has no way
-	// to make the call *fail*, so proving `safeExists`' `orElseSucceed` recovery needs
-	// a stub. It must fail with a real `PlatformError` — the previous `new Error(...)`
-	// was not one, so the test never exercised the channel its name claims.
+	// A memory volume with an `exists` fault: the file is present, so only the
+	// injected `PlatformError` can make `find` come back empty, proving
+	// `safeExists`' `orElseSucceed` recovery rather than an honest miss.
 	it.effect("treats PlatformError from fs.exists as not found", () =>
 		Effect.gen(function* () {
 			const cwd = "/repo";
-			const errorFs = FileSystem.layerNoop({
-				exists: () => Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "exists" })),
-			});
+			const errorFs = MemoryFileSystem.layerWith(
+				{ "/repo/biome.json": "{}" },
+				{
+					faults: {
+						exists: () =>
+							Effect.fail(systemError({ _tag: "PermissionDenied", module: "FileSystem", method: "exists" })),
+					},
+				},
+			);
 			const layer = ConfigDiscovery.layer.pipe(Layer.provide(errorFs));
 
 			const result = yield* Effect.provide(

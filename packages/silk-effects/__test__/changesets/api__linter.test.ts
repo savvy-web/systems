@@ -6,10 +6,24 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ChangesetLinter } from "../../src/changesets/api/linter.js";
 
 describe("ChangesetLinter.validateContent", () => {
-	it("reports lines relative to the frontmatter-stripped body", () => {
+	it("reports file-relative lines, counting the frontmatter block", () => {
 		const [m] = ChangesetLinter.validateContent('---\n"@x/y": patch\n---\n\nStray paragraph\n');
 		expect(m.rule).toBe("changeset-uncategorized-content");
-		expect(m.line).toBe(2);
+		expect(m.line).toBe(5);
+	});
+
+	it("recognizes CRLF frontmatter and reports file-relative lines", () => {
+		expect(
+			ChangesetLinter.validateContent('---\r\n"@x/y": minor\r\n---\r\n\r\n## Features\r\n\r\n- Added lint rules\r\n'),
+		).toEqual([]);
+		const [m] = ChangesetLinter.validateContent('---\r\n"@x/y": patch\r\n---\r\n\r\nStray paragraph\r\n');
+		expect(m.rule).toBe("changeset-uncategorized-content");
+		expect(m.line).toBe(5);
+	});
+
+	it("does not treat a mid-document fence pair as frontmatter", () => {
+		const messages = ChangesetLinter.validateContent("## Features\n\n- One\n\n---\nsome: yaml\n---\n\nMore\n");
+		expect(messages.length).toBeGreaterThan(0);
 	});
 
 	it("returns no messages for valid content", () => {

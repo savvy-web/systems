@@ -28,8 +28,8 @@
  *    `Dependencies` type parameter defaults to `[]`, so
  *    `Tool.HandlerServices` infers `never` and a handler that yields a
  *    service fails `Toolkit.HandlersFrom`. Every tool here declares the
- *    services its handler yields; `biome_check` yields none and declares
- *    none.
+ *    services its handler yields (`biome_check` included: `Git`,
+ *    `ToolDiscovery`, `ChildProcessSpawner`).
  * 2. **`protocols` order is load-bearing.** The runtime
  *    (`ai/internal/mcpRuntime.ts`) routes a request that carries
  *    `_meta["io.modelcontextprotocol/protocolVersion"]` to that adapter,

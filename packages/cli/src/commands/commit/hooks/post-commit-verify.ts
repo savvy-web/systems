@@ -4,15 +4,13 @@
  *
  * @internal
  */
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import { Run } from "@effected/commands";
 import { Git } from "@effected/git";
 import { Commitlint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command } from "effect/cli";
+import { ChildProcess } from "effect/process";
 import { buildCommitlintInvocation } from "../commitlint-invocation.js";
-
-const execFileP = promisify(execFile);
 
 export interface PostCommitInputs {
 	commitlintFailed: boolean;
@@ -64,18 +62,22 @@ const getRepoRoot: Effect.Effect<string, never, Git> = Effect.gen(function* () {
 	return yield* git.repoRoot(process.cwd()).pipe(Effect.catch(() => Effect.succeed(process.cwd())));
 });
 
-function runCommitlintLast(root: string): Promise<boolean> {
-	return (async () => {
-		const pm = await Commitlint.detectPackageManager(root);
-		const configPath = await Commitlint.readCommitlintConfigPath(root);
+/**
+ * Replay commitlint against the most recent commit; `true` means it FAILED.
+ *
+ * A launcher that never starts counts as a failure too — `Run.succeeds`
+ * collapses it to `false`, the prior execFile catch's contract.
+ *
+ * @internal
+ */
+export function runCommitlintLast(root: string) {
+	return Effect.gen(function* () {
+		const pm = yield* Effect.promise(() => Commitlint.detectPackageManager(root));
+		const configPath = yield* Effect.promise(() => Commitlint.readCommitlintConfigPath(root));
 		const { command, args } = buildCommitlintInvocation(pm, configPath, ["--last"]);
-		try {
-			await execFileP(command, args, { cwd: root });
-			return false;
-		} catch {
-			return true;
-		}
-	})();
+		const passed = yield* Run.succeeds(ChildProcess.make(command, args, { cwd: root }));
+		return !passed;
+	});
 }
 
 export const postCommitVerifyCommand = Command.make("post-commit-verify", {}, () =>
@@ -85,7 +87,7 @@ export const postCommitVerifyCommand = Command.make("post-commit-verify", {}, ()
 		const signing = yield* Commitlint.readSigningDiagnostic();
 
 		const root = yield* getRepoRoot;
-		const commitlintFailed = yield* Effect.promise(() => runCommitlintLast(root));
+		const commitlintFailed = yield* runCommitlintLast(root);
 		// One `git log -1` read covers both the `%G?` verdict and the `%B` body;
 		// failure degrades to the prior per-call fallbacks ("N" / "").
 		const lastCommit = yield* git

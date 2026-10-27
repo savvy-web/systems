@@ -1,5 +1,5 @@
 // packages/tsdown-plugins/__test__/build/strip-maps.test.ts
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -40,5 +40,17 @@ describe("removeDeclarationMaps", () => {
 		expect(removeDeclarationMaps(dir)).toEqual([]);
 		expect(existsSync(join(dir, "node_modules", "dep.d.ts.map"))).toBe(true); // untouched
 		expect(removeDeclarationMaps(join(dir, "does-not-exist"))).toEqual([]);
+	});
+
+	it("strips under dot-directories but never enters a symlinked directory", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "strip-"));
+		mkdirSync(join(dir, ".hidden"));
+		writeFileSync(join(dir, ".hidden", "a.d.ts.map"), "{}");
+		const outside = await mkdtemp(join(tmpdir(), "strip-link-target-"));
+		writeFileSync(join(outside, "b.d.ts.map"), "{}");
+		symlinkSync(outside, join(dir, "linked"));
+
+		expect(removeDeclarationMaps(dir)).toEqual([join(dir, ".hidden", "a.d.ts.map")]);
+		expect(existsSync(join(outside, "b.d.ts.map"))).toBe(true);
 	});
 });

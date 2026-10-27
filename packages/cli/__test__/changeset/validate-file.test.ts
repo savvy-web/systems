@@ -71,7 +71,7 @@ describe("runValidateFile", () => {
 
 			const logs = yield* collectLogs(filePath);
 
-			expect(logs).toEqual([`${filePath}:2:1 changeset-heading-hierarchy ${H1_MESSAGE}`]);
+			expect(logs).toEqual([`${filePath}:5:1 changeset-heading-hierarchy ${H1_MESSAGE}`]);
 		}),
 	);
 
@@ -79,7 +79,7 @@ describe("runValidateFile", () => {
 		Effect.gen(function* () {
 			const filePath = join(tempDir, "bad.md");
 			writeFileSync(filePath, '---\n"@savvy-web/changesets": minor\n---\n\n# Bad Title\n');
-			const expected = [`${filePath}:2:1 changeset-heading-hierarchy ${H1_MESSAGE}`];
+			const expected = [`${filePath}:5:1 changeset-heading-hierarchy ${H1_MESSAGE}`];
 
 			const agent = yield* Capture.run(runValidateFile(filePath), { audience: "agent" });
 			const actions = yield* Capture.run(runValidateFile(filePath), { audience: "ci", githubActions: true });

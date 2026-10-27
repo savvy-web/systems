@@ -46,6 +46,7 @@ import {
 import { Effect } from "effect";
 import type { BuildConfig, BuildConfigInput } from "./config.js";
 import { defineBuild, parseArgs } from "./config.js";
+import { ProcessStdoutTerminal, isCi, reportNoColor } from "./runtime-env.js";
 
 /** @public */
 export interface RunOptions {
@@ -436,11 +437,13 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
 		renderAndWrite = async (): Promise<void> => {
 			const rendered = await Effect.runPromise(
-				renderReport(collector.snapshot(packageName), {
-					...(explicitFormat !== undefined ? { explicitFormat } : {}),
-					verbose,
-					noColor: process.env.NO_COLOR !== undefined || !process.stdout.isTTY,
-				}).pipe(Effect.provide(ReportPipeline)),
+				Effect.flatMap(reportNoColor, (noColor) =>
+					renderReport(collector.snapshot(packageName), {
+						...(explicitFormat !== undefined ? { explicitFormat } : {}),
+						verbose,
+						noColor,
+					}),
+				).pipe(Effect.provide(ReportPipeline), Effect.provide(ProcessStdoutTerminal)),
 			);
 			for (const output of rendered) writeOutput(output);
 		};
@@ -496,7 +499,7 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 			config.emitDts !== false &&
 			(config.exe === undefined || hasJsEntries)
 		) {
-			const ci = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+			const ci = isCi();
 			await runMetaPass({
 				cwd,
 				packageName,

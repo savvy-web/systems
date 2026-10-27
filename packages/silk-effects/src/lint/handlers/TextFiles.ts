@@ -7,8 +7,9 @@
 
 import type { GitCommandError, NotARepositoryError, UnknownRefError } from "@effected/git";
 import { Git } from "@effected/git";
+import { Walker } from "@effected/walker";
 import type { PlatformError } from "effect";
-import { Data, Effect, FileSystem, Path, Schema, Stream } from "effect";
+import { Data, Effect, FileSystem, Option, Path, Schema, Stream } from "effect";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import type { LintStagedHandler, TextFilesListOptions, TextFilesOptions } from "../types.js";
 import { Command } from "../utils/Command.js";
@@ -351,12 +352,11 @@ export class TextFiles {
 				const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
 				const fs = yield* FileSystem.FileSystem;
 				const pathService = yield* Path.Path;
-				let cwd = pathService.dirname(path);
-				while (!(yield* fs.exists(cwd))) {
-					const parent = pathService.dirname(cwd);
-					if (parent === cwd) break;
-					cwd = parent;
-				}
+				const chain = yield* Walker.ascend(pathService.dirname(path));
+				const cwd = Option.getOrElse(
+					yield* Walker.firstMatch(chain, (dir) => fs.exists(dir)),
+					() => chain[chain.length - 1] ?? pathService.dirname(path),
+				);
 				const relative = pathService.relative(cwd, path).split(pathService.sep).join("/");
 				const command = ChildProcess.make("git", ["cat-file", "blob", `:./${relative}`], { cwd });
 				const handle = yield* spawner.spawn(command);

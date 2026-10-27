@@ -2,24 +2,29 @@
  * Open-issue lookup via gh CLI, cached on disk.
  *
  * @remarks
- * The `gh` invocations are not git, so they stay hand-rolled — the spawn
- * mechanism moved from promisified `node:child_process.execFile` onto
- * `effect/process` `ChildProcess`. Any failure (gh missing, not
- * logged in, no repo, malformed JSON) degrades to `null`, preserving the
- * never-fails contract of the v3 implementation.
+ * The `gh` invocations run through `@effected/commands`' `Run`: the repo
+ * lookup is `Run.text`, the issue list is `Run.json` decoded against
+ * {@link OpenIssue}. Any failure (gh missing, not logged in, no repo, a
+ * non-zero exit, output that is not JSON or not an issue list) degrades to
+ * `null` and caches nothing, preserving the never-fails contract.
  *
  * @internal
  */
 import { resolve } from "node:path";
+import { Run } from "@effected/commands";
 import { Git } from "@effected/git";
-import { Effect } from "effect";
-import { ChildProcess, ChildProcessSpawner } from "effect/process";
+import { Effect, Schema } from "effect";
+import type { ChildProcessSpawner } from "effect/process";
+import { ChildProcess } from "effect/process";
 import { readCache, writeCache } from "./cache.js";
 
-export interface OpenIssue {
-	number: number;
-	title: string;
-}
+/** One open issue as `gh issue list --json number,title` prints it. */
+export const OpenIssue = Schema.Struct({ number: Schema.Number, title: Schema.String });
+
+/** The decoded {@link (OpenIssue:variable)}. */
+export type OpenIssue = typeof OpenIssue.Type;
+
+const OpenIssues = Schema.Array(OpenIssue);
 
 export const ISSUES_CACHE_TTL_SECONDS = 600;
 
@@ -59,15 +64,12 @@ export function fetchAndCacheOpenIssues(
 	cachePath: string,
 ): Effect.Effect<OpenIssue[] | null, never, ChildProcessSpawner.ChildProcessSpawner> {
 	return Effect.gen(function* () {
-		const spawner = yield* ChildProcessSpawner.ChildProcessSpawner;
-
-		const repoStdout = yield* spawner.string(
+		const repo = yield* Run.text(
 			ChildProcess.make("gh", ["repo", "view", "--json", "nameWithOwner", "-q", ".nameWithOwner"]),
 		);
-		const repo = repoStdout.trim();
 		if (!repo) return null;
 
-		const listStdout = yield* spawner.string(
+		const issues = yield* Run.json(
 			ChildProcess.make("gh", [
 				"issue",
 				"list",
@@ -80,8 +82,9 @@ export function fetchAndCacheOpenIssues(
 				"--json",
 				"number,title",
 			]),
+			OpenIssues,
 		);
-		const parsed = yield* Effect.try(() => JSON.parse(listStdout) as OpenIssue[]);
+		const parsed = [...issues];
 		yield* writeCache(cachePath, parsed);
 		return parsed;
 	}).pipe(Effect.orElseSucceed(() => null));

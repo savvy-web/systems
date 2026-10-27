@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { decode, encode } from "@jridgewell/sourcemap-codec";
@@ -55,5 +55,15 @@ describe("scrubSourcelessMappings", () => {
 		writeMap(join(nested, "c.d.ts.map"), false);
 		expect(scrubDeclarationMapsUnder(dir)).toBe(2);
 		expect(scrubDeclarationMapsUnder(join(dir, "does-not-exist"))).toBe(0);
+	});
+
+	it("reaches .d.mts maps, dot-directories and symlinked directories", () => {
+		const dir = mkdtempSync(join(tmpdir(), "scrub-reach-"));
+		mkdirSync(join(dir, ".hidden"));
+		writeMap(join(dir, ".hidden", "a.d.mts.map"), true);
+		const outside = mkdtempSync(join(tmpdir(), "scrub-link-target-"));
+		writeMap(join(outside, "b.d.ts.map"), true);
+		symlinkSync(outside, join(dir, "linked"));
+		expect(scrubDeclarationMapsUnder(dir)).toBe(2);
 	});
 });
