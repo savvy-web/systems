@@ -1,5 +1,21 @@
 # @savvy-web/templates
 
+## 1.2.18
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.26.0 | ^0.26.1 |
+
+[#835][#835]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#835]: https://github.com/savvy-web/systems/pull/835
+
 ## 1.2.17
 
 ### Dependencies
@@ -417,8 +433,6 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.10.0 | ^0.11.0 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#542]: https://github.com/savvy-web/systems/pull/542
 
 ## 1.1.0
@@ -441,8 +455,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.10.1 | ^0.10.2 | [#513][#513] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#513]: https://github.com/savvy-web/systems/pull/513
 
 ## 1.0.19
@@ -452,8 +464,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.10.0 | ^0.10.1 | [#511][#511] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#511]: https://github.com/savvy-web/systems/pull/511
 
@@ -467,8 +477,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/yaml | dependency | updated | ^0.9.0 | ^0.10.0 |  |
   | effect | peerDependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#502]: https://github.com/savvy-web/systems/pull/502
 
 ## 1.0.17
@@ -479,8 +487,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#498]: https://github.com/savvy-web/systems/pull/498
 
 ## 1.0.16
@@ -490,8 +496,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.8.0 | ^0.9.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#490]: https://github.com/savvy-web/systems/pull/490
 
@@ -515,8 +519,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.7.0 | ^0.8.0 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#467]: https://github.com/savvy-web/systems/pull/467
 
 ## 1.0.13
@@ -529,8 +531,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/yaml | dependency | updated | ^0.6.1 | ^0.7.0 |  |
   | effect | peerDependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#449]: https://github.com/savvy-web/systems/pull/449
 
 ## 1.0.12
@@ -540,8 +540,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.7.2 | ^0.7.3 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#427]: https://github.com/savvy-web/systems/pull/427
 
@@ -554,8 +552,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/package-json | dependency | updated | ^0.7.1 | ^0.7.2 |  |
   | @effected/yaml | dependency | updated | ^0.6.0 | ^0.6.1 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#416]: https://github.com/savvy-web/systems/pull/416
 
 ## 1.0.10
@@ -565,8 +561,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.6.1 | ^0.7.1 | [#400][#400] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#400]: https://github.com/savvy-web/systems/pull/400
 
@@ -578,8 +572,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.6.0 | ^0.6.1 | [#396][#396] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#396]: https://github.com/savvy-web/systems/pull/396
 
 ## 1.0.8
@@ -589,8 +581,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.5.2 | ^0.6.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#382]: https://github.com/savvy-web/systems/pull/382
 
@@ -603,8 +593,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/package-json | dependency | updated | ^0.5.1 | ^0.5.2 |  |
   | @effected/yaml | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#375]: https://github.com/savvy-web/systems/pull/375
 
 ## 1.0.6
@@ -616,8 +604,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/package-json | dependency | updated | ^0.5.0 | ^0.5.1 |  |
   | @effected/yaml | dependency | updated | ^0.5.0 | ^0.5.1 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#364]: https://github.com/savvy-web/systems/pull/364
 
 ## 1.0.5
@@ -628,8 +614,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.4.2 | ^0.5.0 | [#351][#351] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#351]: https://github.com/savvy-web/systems/pull/351
 
 ## 1.0.4
@@ -639,8 +623,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/package-json | dependency | updated | ^0.4.1 | ^0.4.2 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#342]: https://github.com/savvy-web/systems/pull/342
 
@@ -671,8 +653,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.3.1 | ^0.4.0 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#326]: https://github.com/savvy-web/systems/pull/326
 
@@ -715,8 +695,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | yaml-effect | dependency | updated | ^0.7.0 | ^0.7.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#232]: https://github.com/savvy-web/systems/pull/232
 

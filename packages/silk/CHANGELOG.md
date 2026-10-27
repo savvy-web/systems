@@ -1,5 +1,27 @@
 # @savvy-web/silk
 
+## 4.5.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/git | dependency | updated | ^0.25.1 | ^0.26.0 |
+| @effected/workspaces | dependency | updated | ^0.39.0 | ^0.39.1 |
+| @savvy-web/changelog | dependency | updated | 1.0.25 | 1.0.26 |
+| @savvy-web/cli | dependency | updated | 3.7.14 | 3.7.15 |
+| @savvy-web/mcp | dependency | updated | 3.4.17 | 3.4.18 |
+| @savvy-web/silk-effects | dependency | updated | 10.1.0 | 10.2.0 |
+
+[#835][#835]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#835]: https://github.com/savvy-web/systems/pull/835
+
 ## 4.5.2
 
 ### Dependencies
@@ -1328,8 +1350,6 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.2 | ^0.18.0 | [#547][#547] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#547]: https://github.com/savvy-web/systems/pull/547
 
 ## 3.10.0
@@ -1489,8 +1509,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | turbo | peerDependency | updated | ^2.10.10 | ^2.10.11 |  |
   | vitest | peerDependency | updated | ^4.1.10 | ^4.1.11 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#525]: https://github.com/savvy-web/systems/pull/525
 
 ## 3.8.1
@@ -1570,8 +1588,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/templates | dependency | updated | ^0.3.0 | ^0.4.0 | [#509][#509] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#509]: https://github.com/savvy-web/systems/pull/509
 
 ## 3.7.9
@@ -1588,8 +1604,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/templates | dependency | updated | ^0.2.0 | ^0.3.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#502]: https://github.com/savvy-web/systems/pull/502
 
@@ -1618,8 +1632,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @types/node | peerDependency | updated | ^26.1.2 | ^26.2.0 |  |
   | tsx | peerDependency | updated | ^4.23.4 | ^4.23.12 |  |
   | turbo | peerDependency | updated | ^2.10.8 | ^2.10.10 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#498]: https://github.com/savvy-web/systems/pull/498
 
@@ -1692,8 +1704,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | :-- | :-- | :-- | :-- | :-- | --- |
   | @changesets/cli | dependency | updated | ^3.0.0-next.10 | ^3.0.0 | [#483][#483] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#483]: https://github.com/savvy-web/systems/pull/483
 
@@ -1832,8 +1842,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/templates | dependency | updated | ^0.1.1 | ^0.2.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#449]: https://github.com/savvy-web/systems/pull/449
 
 ## 3.5.0
@@ -1950,8 +1958,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/templates | dependency | updated | ^0.1.0 | ^0.1.1 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#416]: https://github.com/savvy-web/systems/pull/416
 
@@ -2120,8 +2126,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/templates | dependency | added | — | ^0.1.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#382]: https://github.com/savvy-web/systems/pull/382
 
 ## 3.2.3
@@ -2190,8 +2194,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#364]: https://github.com/savvy-web/systems/pull/364
 
 ## 3.2.0
@@ -2257,8 +2259,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | prettier | dependency | updated | ^3.9.5 | ^3.9.6 | [#349][#349] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#349]: https://github.com/savvy-web/systems/pull/349
 
 ## 3.1.0
@@ -2302,8 +2302,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | lint-staged | peerDependency | updated | ^17.0.8 | ^17.1.0 |  |
   | markdownlint-cli2 | peerDependency | updated | ^0.23.0 | ^0.23.1 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#342]: https://github.com/savvy-web/systems/pull/342
 
 ## 3.0.5
@@ -2329,8 +2327,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#326]: https://github.com/savvy-web/systems/pull/326
 
@@ -2563,8 +2559,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | turbo | peerDependency | updated | ^2.10.2 | ^2.10.4 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#278]: https://github.com/savvy-web/systems/pull/278
 
 ## 2.3.0
@@ -2784,8 +2778,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | :-- | :-- | :-- | :-- | :-- | --- |
   | @savvy-web/changelog | workspace | added | — | 0.1.0 | [#223][#223] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#223]: https://github.com/savvy-web/systems/pull/223
 
 ## 2.0.0
@@ -2811,8 +2803,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 ### Maintenance
 
 - The force-bundled CJS entries (`./changesets/changelog`, `./changesets/markdownlint`) now steer `jsonc-parser` — pulled in transitively by the v3 engine — to its ESM build at bundle time. Its UMD `main` entry survives rolldown's single-file CJS output with unresolvable relative `require("./impl/*")` calls, which made both entries throw `Cannot find module` at load.
-
-### Patch Changes
 
 [#218]: https://github.com/savvy-web/systems/pull/218
 

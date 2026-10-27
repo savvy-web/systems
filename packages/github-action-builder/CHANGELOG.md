@@ -1,5 +1,25 @@
 # @savvy-web/github-action-builder
 
+## 2.4.22
+
+### Bug Fixes
+
+- CI detection, which gates validation strictness, now recognizes provider markers as CI, and `CI=false` or `CI=0` no longer count as CI. [#835][#835]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/env | dependency | added | — | ^0.6.0 |
+
+[#835][#835]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#835]: https://github.com/savvy-web/systems/pull/835
+
 ## 2.4.21
 
 ### Dependencies
@@ -521,8 +541,6 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.10.0 | ^0.11.0 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#542]: https://github.com/savvy-web/systems/pull/542
 
 ## 2.2.7
@@ -535,8 +553,6 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   | @effected/yaml | dependency | updated | ^0.9.0 | ^0.10.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#502]: https://github.com/savvy-web/systems/pull/502
 
 ## 2.2.6
@@ -548,8 +564,6 @@ Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their cont
   | @effected/yaml | dependency | updated | ^0.8.0 | ^0.9.0 |  |
   | @rsbuild/core | dependency | updated | ^2.1.9 | ^2.1.13 |  |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#498]: https://github.com/savvy-web/systems/pull/498
 
@@ -576,8 +590,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.7.0 | ^0.8.0 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#467]: https://github.com/savvy-web/systems/pull/467
 
 ## 2.2.3
@@ -590,8 +602,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/yaml | dependency | updated | ^0.6.1 | ^0.7.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#449]: https://github.com/savvy-web/systems/pull/449
 
 ## 2.2.2
@@ -601,8 +611,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.6.0 | ^0.6.1 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#416]: https://github.com/savvy-web/systems/pull/416
 
@@ -701,8 +709,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.5.1 | ^0.6.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#375]: https://github.com/savvy-web/systems/pull/375
 
 ## 2.0.5
@@ -715,8 +721,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/yaml | dependency | updated | ^0.5.0 | ^0.5.1 |  |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#364]: https://github.com/savvy-web/systems/pull/364
 
 ## 2.0.4
@@ -726,8 +730,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/yaml | dependency | updated | ^0.4.0 | ^0.5.0 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#336]: https://github.com/savvy-web/systems/pull/336
 
@@ -740,8 +742,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 |  |
   | @effected/yaml | dependency | updated | ^0.3.1 | ^0.4.0 |  |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#326]: https://github.com/savvy-web/systems/pull/326
 
@@ -804,8 +804,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @rsbuild/core | dependency | updated | ^2.1.4 | ^2.1.5 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#278]: https://github.com/savvy-web/systems/pull/278
 
 ## 1.1.1
@@ -815,8 +813,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | yaml-effect | dependency | updated | ^0.7.0 | ^0.7.2 | [#232][#232] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#232]: https://github.com/savvy-web/systems/pull/232
 
