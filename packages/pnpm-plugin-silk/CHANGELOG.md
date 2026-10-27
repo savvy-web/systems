@@ -1,5 +1,15 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.51.3
+
+### Bug Fixes
+
+- Adds more legal peerDependency versions for TypeScript 7.1.0-beta
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
 ## 0.51.2
 
 ### Bug Fixes
