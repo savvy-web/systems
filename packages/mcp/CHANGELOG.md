@@ -1,5 +1,31 @@
 # @savvy-web/mcp
 
+## 3.4.18
+
+### Bug Fixes
+
+- `biome_check` no longer blocks the server while Biome runs (it previously ran synchronously for up to 120 seconds per call). Concurrent `write` passes are serialized per server, while read-only checks still run concurrently. The result shape is unchanged.
+- Worktree containment checks now use git's own tree identity. [#835][#835]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/engine | dependency | updated | ^0.8.0 | ^0.9.0 |
+| @effected/git | dependency | updated | ^0.25.1 | ^0.26.0 |
+| @effected/mcp | dependency | updated | ^0.9.0 | ^0.10.0 |
+| @effected/workspaces | dependency | updated | ^0.39.0 | ^0.39.1 |
+| @savvy-web/silk-effects | dependency | updated | 10.1.0 | 10.2.0 |
+
+[#835][#835]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#835]: https://github.com/savvy-web/systems/pull/835
+
 ## 3.4.17
 
 ### Dependencies
@@ -989,8 +1015,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.1 | ^0.17.2 | [#542][#542] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#542]: https://github.com/savvy-web/systems/pull/542
 
 ## 2.5.1
@@ -1004,8 +1028,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.17.0 | ^0.17.1 | [#537][#537] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#537]: https://github.com/savvy-web/systems/pull/537
 
@@ -1044,8 +1066,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.16.0 | ^0.17.0 | [#532][#532] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#532]: https://github.com/savvy-web/systems/pull/532
 
 ## 2.4.9
@@ -1072,8 +1092,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.15.0 | ^0.15.1 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#525]: https://github.com/savvy-web/systems/pull/525
 
 ## 2.4.7
@@ -1087,8 +1105,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.2 | ^0.15.0 | [#522][#522] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#522]: https://github.com/savvy-web/systems/pull/522
 
@@ -1104,8 +1120,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.1 | ^0.14.2 | [#513][#513] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#513]: https://github.com/savvy-web/systems/pull/513
 
 ## 2.4.5
@@ -1119,8 +1133,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.14.0 | ^0.14.1 | [#511][#511] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#511]: https://github.com/savvy-web/systems/pull/511
 
@@ -1148,8 +1160,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/workspaces | dependency | updated | ^0.13.1 | ^0.14.0 |  |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#502]: https://github.com/savvy-web/systems/pull/502
 
 ## 2.4.2
@@ -1159,8 +1169,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @modelcontextprotocol/sdk | dependency | updated | ^1.29.0 | ^1.30.0 | [#500][#500] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#500]: https://github.com/savvy-web/systems/pull/500
 
@@ -1175,8 +1183,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.13.0 | ^0.13.1 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#498]: https://github.com/savvy-web/systems/pull/498
 
@@ -1212,8 +1218,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/git | dependency | updated | ^0.7.0 | ^0.8.0 |  |
   | @effected/workspaces | dependency | updated | ^0.12.0 | ^0.13.0 | [#490][#490] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#490]: https://github.com/savvy-web/systems/pull/490
 
 ## 2.3.4
@@ -1244,8 +1248,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.2 | ^0.12.0 | [#475][#475] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#475]: https://github.com/savvy-web/systems/pull/475
 
 ## 2.3.1
@@ -1259,8 +1261,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.1 | ^0.11.2 | [#467][#467] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#467]: https://github.com/savvy-web/systems/pull/467
 
@@ -1298,8 +1298,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.11.0 | ^0.11.1 | [#453][#453] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#453]: https://github.com/savvy-web/systems/pull/453
 
 ## 2.2.1
@@ -1317,8 +1315,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/git | dependency | updated | ^0.6.0 | ^0.7.0 |  |
   | @effected/workspaces | dependency | updated | ^0.10.2 | ^0.11.0 |  |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#449]: https://github.com/savvy-web/systems/pull/449
 
@@ -1383,8 +1379,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.9.4 | ^0.9.5 | [#427][#427] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#427]: https://github.com/savvy-web/systems/pull/427
 
 ## 2.0.18
@@ -1407,8 +1401,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/commands | dependency | updated | ^0.2.0 | ^0.2.1 |  |
   | @effected/workspaces | dependency | updated | ^0.9.3 | ^0.9.4 | [#416][#416] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#416]: https://github.com/savvy-web/systems/pull/416
 
@@ -1457,8 +1449,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/commands | dependency | updated | ^0.1.0 | ^0.2.0 |  |
   | @effected/workspaces | dependency | updated | ^0.9.0 | ^0.9.1 | [#396][#396] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#396]: https://github.com/savvy-web/systems/pull/396
 
 ## 2.0.13
@@ -1498,8 +1488,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/workspaces | dependency | updated | ^0.8.0 | ^0.9.0 |  |
   | @effected/commands | dependency | added | — | ^0.1.0 | [#382][#382] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#382]: https://github.com/savvy-web/systems/pull/382
 
 ## 2.0.9
@@ -1514,8 +1502,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.7.0 | ^0.8.0 | [#375][#375] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#375]: https://github.com/savvy-web/systems/pull/375
 
 ## 2.0.8
@@ -1529,8 +1515,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.6.2 | ^0.7.0 | [#369][#369] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#369]: https://github.com/savvy-web/systems/pull/369
 
@@ -1548,8 +1532,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effected/workspaces | dependency | updated | ^0.6.1 | ^0.6.2 |  |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#364]: https://github.com/savvy-web/systems/pull/364
 
 ## 2.0.6
@@ -1563,8 +1545,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.6.0 | ^0.6.1 | [#351][#351] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#351]: https://github.com/savvy-web/systems/pull/351
 
@@ -1588,8 +1568,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.5.2 | ^0.6.0 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#342]: https://github.com/savvy-web/systems/pull/342
 
 ## 2.0.3
@@ -1603,8 +1581,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @effected/workspaces | dependency | updated | ^0.4.1 | ^0.5.2 | [#336][#336] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#336]: https://github.com/savvy-web/systems/pull/336
 
@@ -1621,8 +1597,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @effect/platform-node | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 |  |
   | @effected/workspaces | dependency | updated | ^0.4.0 | ^0.4.1 |  |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#326]: https://github.com/savvy-web/systems/pull/326
 
@@ -1684,8 +1658,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | workspaces-effect | dependency | updated | ^2.0.3 | ^2.1.0 | [#304][#304] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#304]: https://github.com/savvy-web/systems/pull/304
 

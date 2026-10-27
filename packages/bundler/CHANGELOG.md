@@ -1,5 +1,31 @@
 # @savvy-web/bundler
 
+## 2.7.0
+
+### Features
+
+- Build-log colour now honours `FORCE_COLOR`: it forces colour on piped or CI output and takes precedence over `NO_COLOR`; `FORCE_COLOR=0` disables colour. A TTY with no `TERM` or `COLORTERM` hint now prints plain output.
+
+### Bug Fixes
+
+- CI detection now recognizes `CI=1`, `CONTINUOUS_INTEGRATION` and other providers' markers (GitLab, Buildkite and others) as CI. `CI=false` and `CI=0` no longer count as CI. [#835][#835]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.11.1 | 2.11.2 |
+| satori | peerDependency | updated | ^0.33.4 | ^0.63.2 |
+| @effected/env | dependency | added | — | ^0.6.0 |
+
+[#835][#835]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#835]: https://github.com/savvy-web/systems/pull/835
+
 ## 2.6.3
 
 ### Dependencies
@@ -732,8 +758,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | rolldown | dependency | updated | ^1.2.4 | ^1.2.5 | [#525][#525] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#525]: https://github.com/savvy-web/systems/pull/525
 
 ## 2.1.17
@@ -772,8 +796,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.107 | 4.0.0-rc.109 | [#502][#502] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#502]: https://github.com/savvy-web/systems/pull/502
 
 ## 2.1.13
@@ -788,8 +810,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | rolldown | dependency | updated | ^1.2.1 | ^1.2.4 |  |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#498]: https://github.com/savvy-web/systems/pull/498
 
@@ -845,8 +865,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.101 | 4.0.0-beta.107 | [#449][#449] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#449]: https://github.com/savvy-web/systems/pull/449
 
 ## 2.1.6
@@ -860,8 +878,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @savvy-web/tsdown-plugins | dependency | updated | 2.4.3 | 2.4.4 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#436]: https://github.com/savvy-web/systems/pull/436
 
@@ -1023,8 +1039,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.99 | 4.0.0-beta.101 | [#364][#364] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
 
-### Patch Changes
-
 [#364]: https://github.com/savvy-web/systems/pull/364
 
 ## 2.0.8
@@ -1056,8 +1070,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @tsdown/exe | dependency | updated | ^0.22.9 | ^0.22.12 |  |
   | tsdown | dependency | updated | ^0.22.9 | ^0.22.12 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#342]: https://github.com/savvy-web/systems/pull/342
 
 ## 2.0.5
@@ -1079,8 +1091,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | effect | dependency | updated | 4.0.0-beta.98 | 4.0.0-beta.99 | [#326][#326] Thanks [@savvy-web-bot](https://github.com/apps/savvy-web-bot)! |
-
-### Patch Changes
 
 [#326]: https://github.com/savvy-web/systems/pull/326
 
@@ -1195,8 +1205,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | rolldown | dependency | updated | ^1.1.4 | ^1.1.5 |  |
   | tsdown | dependency | updated | ^0.22.3 | ^0.22.4 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#278]: https://github.com/savvy-web/systems/pull/278
 
