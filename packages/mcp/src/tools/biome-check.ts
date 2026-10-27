@@ -153,8 +153,8 @@ export const buildBiomeResult = (params: {
 /**
  * Canonicalize a caller-supplied path, falling back to lexical resolution when
  * it does not exist (a non-existent target cannot be a symlink pointing out of
- * tree). Git's own answers (`TreeIdentity`) are already physical and are never
- * passed through here.
+ * tree). Also applied to a sibling worktree's `TreeIdentity.toplevel`, so the
+ * containment root is spelled the same way as the realpath'd caller paths.
  */
 const canonicalize = (p: string): string => {
 	try {
