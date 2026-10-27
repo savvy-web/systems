@@ -342,9 +342,11 @@ await build({
 			local: {
 				peerDependencyRules: {
 					allowedVersions: {
-						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
-						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
-						"@effect/vitest>vitest": "^5.0.1",
+						"@typescript/vfs>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"@commitlint/load>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"tsdown>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					},
 					ignoreMissing: [
 						"typescript",
@@ -369,14 +371,6 @@ await build({
 			},
 			overrides: {
 				"@microsoft/api-extractor>typescript": "^6.0.3",
-				// @effect/vitest still caps its vitest peer at ">=4.1.0 <5.0.0",
-				// which under autoInstallPeers drags a second, Vitest 4 copy into
-				// the graph and hoists it over the Vitest 5 one the suite expects.
-				// The allowedVersions entry below only silences the resulting
-				// warning -- pnpm consumes it in filterPeerDependencyIssues, not
-				// in resolution -- so the override is what actually forces the
-				// single Vitest 5 resolution.
-				"@effect/vitest>vitest": "^5.0.1",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {
@@ -433,9 +427,11 @@ await build({
 			blockExoticSubdeps: true,
 			peerDependencyRules: {
 				allowedVersions: {
-					"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
-					"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0",
-					"@effect/vitest>vitest": "^5.0.1",
+					"@typescript/vfs>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"@commitlint/load>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"tsdown>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 				},
 			},
 		}),

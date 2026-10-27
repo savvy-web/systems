@@ -170,8 +170,6 @@ minimumReleaseAgeExclude:
   - vitest-bats
   - yarn
 overrides:
-  "@effect/vitest>vitest": ^5.0.1
-  "@effected/workspaces@0.38.1>@effected/lockfiles": 0.19.4
   "@microsoft/api-extractor>typescript": ^6.0.3
 packages:
   - e2e/*
@@ -179,9 +177,11 @@ packages:
   - plugin
 peerDependencyRules:
   allowedVersions:
-    "@effect/vitest>vitest": ^5.0.1
-    twoslash-vue>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0
-    twoslash>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0
+    "@commitlint/load>typescript": ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta
+    "@typescript/vfs>typescript": ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta
+    tsdown>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta
+    twoslash-vue>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta
+    twoslash>typescript: ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta
   ignoreMissing:
     - "@changesets/cli"
     - "@commitlint/cli"
