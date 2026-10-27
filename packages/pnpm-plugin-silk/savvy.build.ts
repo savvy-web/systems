@@ -344,9 +344,12 @@ await build({
 					allowedVersions: {
 						"@typescript/vfs>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 						"@commitlint/load>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"@shikijs/twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 						"tsdown>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 						"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 						"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"cosmiconfig>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+						"vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					},
 					ignoreMissing: [
 						"typescript",
@@ -429,9 +432,12 @@ await build({
 				allowedVersions: {
 					"@typescript/vfs>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					"@commitlint/load>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"@shikijs/twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					"tsdown>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					"twoslash-vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 					"twoslash>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"cosmiconfig>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
+					"vue>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",
 				},
 			},
 		}),
