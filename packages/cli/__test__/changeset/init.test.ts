@@ -239,6 +239,21 @@ describe("ensureChangesetDir", () => {
 			}
 		}),
 	);
+
+	it.effect("describes a thrown non-Error by its message, not as [object Object]", () =>
+		Effect.gen(function* () {
+			vi.mocked(mkdirSync).mockImplementation(() => {
+				throw { code: "EACCES", message: "EACCES: permission denied" };
+			});
+
+			const result = yield* ensureChangesetDir("/readonly").pipe(Effect.result);
+
+			expect(result._tag).toBe("Failure");
+			if (result._tag === "Failure") {
+				expect(result.failure.reason).toBe("EACCES: permission denied");
+			}
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------

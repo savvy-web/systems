@@ -17,10 +17,10 @@ describe("buildCommitlintInvocation", () => {
 			});
 		});
 
-		it("uses bunx for bun projects", () => {
+		it("uses bun x --no-install for bun projects (never auto-installs)", () => {
 			expect(buildCommitlintInvocation("bun", "/r/cl.ts", ["--last"])).toEqual({
-				command: "bunx",
-				args: ["commitlint", "--config", "/r/cl.ts", "--last"],
+				command: "bun",
+				args: ["x", "--no-install", "commitlint", "--config", "/r/cl.ts", "--last"],
 			});
 		});
 
@@ -54,10 +54,10 @@ describe("buildCommitlintInvocation", () => {
 			});
 		});
 
-		it("uses bunx for bun projects", () => {
+		it("uses bun x --no-install for bun projects (never auto-installs)", () => {
 			expect(buildCommitlintInvocation("bun", "/r/cl.ts", ["--edit", "/tmp/MSG"])).toEqual({
-				command: "bunx",
-				args: ["commitlint", "--config", "/r/cl.ts", "--edit", "/tmp/MSG"],
+				command: "bun",
+				args: ["x", "--no-install", "commitlint", "--config", "/r/cl.ts", "--edit", "/tmp/MSG"],
 			});
 		});
 

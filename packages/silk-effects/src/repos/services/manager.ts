@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { GitmodulesEntry } from "@effected/git";
-import { Git, GitConfig, Gitmodules, LsRemoteEntry } from "@effected/git";
+import { Git, GitConfig, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
 import { Clock, Context, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import type { ReposLockdownError } from "../errors.js";
@@ -27,6 +27,28 @@ import { ReposLockdown, resolveModuleDir } from "./lockdown.js";
  * clears these before attempting to (re)initialize a submodule.
  */
 const STALE_LOCKS = ["index.lock", "shallow.lock"] as const;
+
+/**
+ * Default repo name for `add`: the last segment of the remote's repository
+ * path, as `@effected/git`'s `GitRemote.repositoryPath` reads it (one trailing
+ * `/` and one trailing `.git` dropped). Every remote form git accepts is
+ * covered, scp without a slash included — `git@host:repo.git` is `repo`.
+ *
+ * @internal
+ */
+export const repoSlug = (url: string): string => {
+	const trimmed = url.trim();
+	const path = Option.match(GitRemote.parse(trimmed), {
+		onNone: () => trimmed,
+		onSome: GitRemote.repositoryPath,
+	});
+	return (
+		path
+			.split("/")
+			.filter((segment) => segment.length > 0)
+			.pop() ?? path
+	);
+};
 
 /**
  * Minimum age (in milliseconds) a `.lock` file must reach before `sync` will
@@ -521,16 +543,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 
 					return { initialized, sparseApplied, upToDate, clearedLocks, urlSynced, registered, boundaryMarked };
 				});
-
-			/** Last path segment of a repo URL, with a trailing `.git` stripped. */
-			const repoSlug = (url: string): string => {
-				const last =
-					url
-						.split("/")
-						.filter((segment) => segment.length > 0)
-						.pop() ?? url;
-				return last.endsWith(".git") ? last.slice(0, -".git".length) : last;
-			};
 
 			/**
 			 * Fetch `ref` shallow into a submodule via the kit's `Git.fetchAny`:

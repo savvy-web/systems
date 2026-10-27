@@ -28,6 +28,16 @@ describe("copyPublicDir", () => {
 		expect(() => copyPublicDir(src, out)).not.toThrow();
 	});
 
+	it("copies dotfiles, dot-directories and node_modules/ under public", () => {
+		write(src, ".npmrc", "a");
+		write(src, ".well-known/security.txt", "b");
+		write(src, "node_modules/x/index.js", "c");
+		copyPublicDir(src, out);
+		expect(readFileSync(join(out, ".npmrc"), "utf-8")).toBe("a");
+		expect(readFileSync(join(out, ".well-known", "security.txt"), "utf-8")).toBe("b");
+		expect(readFileSync(join(out, "node_modules", "x", "index.js"), "utf-8")).toBe("c");
+	});
+
 	it("flattens public/<path> to the out root (drops the public/ segment)", () => {
 		write(src, "ecma.json", "{}");
 		write(src, "tsconfig/action.json", "{ }");

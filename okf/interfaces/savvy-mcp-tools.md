@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T22:54:36Z
+  at: 2026-10-27T18:01:51Z
 integrity:
   generated:
-    body: 6a1a745f92ed3b51
+    body: 2e131b16b7af3b8d
 ---
 
 # savvy-mcp tool surface
@@ -126,8 +126,13 @@ git-reversible.[^mcp-changeset-tools]
 
 ## biome_check — mutating, not destructive
 
-A thin proxy over the Biome CLI, not a silk-effects service — the only tool
-whose handler yields no service. `write`/`unsafe` apply fixes; both default
+A thin proxy over the Biome CLI, not a silk-effects service. Its handler
+depends on `Git` (worktree containment, via `Git.treeIdentity` and
+`TreeIdentity.relation`), `ToolDiscovery` (Biome resolution, global copy
+first) and `ChildProcessSpawner` (Biome runs through `@effected/commands`'
+`Run.collect`, not a blocking `spawnSync`). `--write` passes are serialized
+per server through one `@effected/engine` `Exclusive` lane; read-only checks
+stay concurrent. `write`/`unsafe` apply fixes; both default
 off, so a bare call only reads and reports. Fix-then-validate: when either
 flag is set it runs a fix pass, then always runs a read pass reporting what
 remains. Severities in the result are Biome's own project-configured

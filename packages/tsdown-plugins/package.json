@@ -32,6 +32,7 @@
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.2",
 		"@effect/platform-node": "catalog:effect",
+		"@effected/env": "catalog:effected",
 		"@effected/glob": "catalog:effected",
 		"@effected/images": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
@@ -48,7 +49,6 @@
 		"@tsdoctor/manifest": "^0.2.10",
 		"effect": "catalog:effect",
 		"picocolors": "^1.1.1",
-		"std-env": "^4.3.0",
 		"tsdown": "catalog:build",
 		"typescript": "7.1.0-beta"
 	},

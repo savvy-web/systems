@@ -50,6 +50,7 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effect",
+		"@effected/env": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@rsbuild/core": "catalog:build",
 		"effect": "catalog:effect",

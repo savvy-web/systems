@@ -36,7 +36,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CliDoc, CliExit, Doc } from "@effected/cli";
+import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli";
 import { TerminalEnv } from "@effected/env";
 import { Git } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
@@ -218,7 +218,7 @@ export function ensureChangesetDir(root: string): Effect.Effect<string, InitErro
 		catch: (error) =>
 			new InitError({
 				step: ".changeset directory",
-				reason: error instanceof Error ? error.message : String(error),
+				reason: Fmt.describe(error),
 			}),
 	});
 }
@@ -262,7 +262,7 @@ export function handleConfig(changesetDir: string, repoSlug: string, force: bool
 		catch: (error) =>
 			new InitError({
 				step: ".changeset/config.json",
-				reason: error instanceof Error ? error.message : String(error),
+				reason: Fmt.describe(error),
 			}),
 	});
 }
@@ -369,7 +369,7 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			return yield* Effect.fail(
 				new InitError({
 					step: "markdownlint config",
-					reason: error instanceof Error ? error.message : String(error),
+					reason: Fmt.describe(error),
 				}),
 			);
 		}
@@ -426,7 +426,7 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			return yield* Effect.fail(
 				new InitError({
 					step: "markdownlint config",
-					reason: error instanceof Error ? error.message : String(error),
+					reason: Fmt.describe(error),
 				}),
 			);
 		}
@@ -437,7 +437,7 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			return Effect.fail(
 				new InitError({
 					step: "markdownlint config",
-					reason: error instanceof Error ? error.message : String(error),
+					reason: Fmt.describe(error),
 				}),
 			);
 		}),
@@ -493,7 +493,7 @@ export function handleChangesetMarkdownlint(
 		catch: (error) =>
 			new InitError({
 				step: ".changeset/.markdownlint.json",
-				reason: error instanceof Error ? error.message : String(error),
+				reason: Fmt.describe(error),
 			}),
 	});
 }

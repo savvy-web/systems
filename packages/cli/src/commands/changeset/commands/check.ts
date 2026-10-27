@@ -22,12 +22,13 @@
  * @internal
  */
 
-import { isAbsolute, relative, resolve } from "node:path";
+import { resolve } from "node:path";
 import type { Block } from "@effected/cli";
 import { CliExit, Doc } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
+import { DisplayPath } from "../../../internal/display-path.js";
 import type { ReportEnv } from "../../../internal/report.js";
 import { Report } from "../../../internal/report.js";
 import type { CheckSection } from "../../check-section.js";
@@ -40,16 +41,6 @@ const SECTION_TITLE = "changesets";
 
 /** The columns of a file's findings table. */
 const FINDING_COLUMNS = [{ header: "position" }, { header: "rule" }, { header: "message" }] as const;
-
-/**
- * A finding's file as the report and the runner show it: relative to the
- * working directory when it lies under it (what a GitHub Actions annotation
- * resolves against the workspace), absolute otherwise.
- */
-const displayPath = (cwd: string, file: string): string => {
-	const rel = relative(cwd, file);
-	return rel === "" || rel.startsWith("..") || isAbsolute(rel) ? file : rel;
-};
 
 /* v8 ignore next */
 const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset"));
@@ -102,7 +93,7 @@ export function changesetCheckSection(dir: string): Effect.Effect<CheckSection, 
 		const cwd = resolve();
 		const blocks: Block[] = [];
 		for (const [file, fileMessages] of byFile) {
-			const display = displayPath(cwd, file);
+			const display = DisplayPath.under(cwd, file);
 			blocks.push(
 				Doc.section(Doc.file(display), [
 					Doc.table(

@@ -2,7 +2,7 @@ import { describe, expect, it, layer } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";
-import { Effect, FileSystem, Layer, Path, Result, Schema } from "effect";
+import { Effect, Layer, Path, Result, Schema } from "effect";
 import { systemError } from "effect/PlatformError";
 
 import { ReposInspectMode, ReposInspectResult, reposInspect } from "../../src/tools/repos-inspect.js";
@@ -13,17 +13,15 @@ const WorkspaceRootTest = Layer.succeed(
 );
 
 /**
- * Neither `Path.layer` nor a bare `FileSystem.layerNoop` needs a platform
+ * Neither `Path.layer` nor an empty `@effected/memfs` volume needs a platform
  * package (per the house testing convention) — `Path.layer` does real
- * path-joining, and the default `readFileString` noop fails every read,
- * matching a workspace with no `.gitmodules` for the status/config/drift
- * tests below (which never reach the `gitmodules` branch but still need the
- * handler's declared `R` satisfied).
+ * path-joining, and the empty volume fails a `.gitmodules` read with
+ * `NotFound`, matching a workspace with no `.gitmodules` for the
+ * status/config/drift tests below (which never reach the `gitmodules` branch
+ * but still need the handler's declared `R` satisfied).
  */
 const PathTest = Path.layer;
-const FileSystemAbsentTest = FileSystem.layerNoop({
-	readFileString: () => Effect.fail(systemError({ _tag: "NotFound", module: "FileSystem", method: "readFileString" })),
-});
+const FileSystemAbsentTest = MemoryFileSystem.layerWith();
 
 const ReposManagerTest = Layer.succeed(
 	Repos.ReposManager,

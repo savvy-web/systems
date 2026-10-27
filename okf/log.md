@@ -1,5 +1,9 @@
 # Log
 
+## 2026-10-27
+
+* Updated savvy-mcp tool surface
+
 ## 2026-10-25
 
 * Updated silk-effects

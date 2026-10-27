@@ -29,6 +29,7 @@ const details = (
 	isNotInteractive: flags.isNotInteractive ?? false,
 	defaultLines: KIT_REPORT,
 	lines: () => KIT_REPORT,
+	exitCode: 1,
 });
 
 const typed = (error: unknown) => FailureLine.render(error, details(Cause.fail(error), false));

@@ -7,14 +7,16 @@
  * @packageDocumentation
  */
 
-import { spawnSync } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
-import type { Remediation } from "@effected/engine";
+import { Tool as CommandTool, Run, ToolDiscovery } from "@effected/commands";
+import type { Exclusive, Remediation } from "@effected/engine";
+import type { GitShape } from "@effected/git";
+import { Git, TreeIdentity } from "@effected/git";
 import { ToolFailure, ToolRefusal } from "@effected/mcp";
-import { Lint } from "@savvy-web/silk-effects";
-import { Effect, Schema } from "effect";
+import { Effect, Option, Schema } from "effect";
 import { Tool } from "effect/ai";
+import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { BiomeFailed, McpToolError } from "../errors.js";
 
 /** Normalized diagnostic severity. */
@@ -149,8 +151,10 @@ export const buildBiomeResult = (params: {
 };
 
 /**
- * Canonicalize a path, falling back to lexical resolution when it does not exist
- * (a non-existent target cannot be a symlink pointing out of tree).
+ * Canonicalize a caller-supplied path, falling back to lexical resolution when
+ * it does not exist (a non-existent target cannot be a symlink pointing out of
+ * tree). Also applied to a sibling worktree's `TreeIdentity.toplevel`, so the
+ * containment root is spelled the same way as the realpath'd caller paths.
  */
 const canonicalize = (p: string): string => {
 	try {
@@ -160,69 +164,50 @@ const canonicalize = (p: string): string => {
 	}
 };
 
-/** What {@link resolveContainmentRoot} needs to know about a directory's git identity. */
-export interface GitWorktreeIdentity {
-	/** The shared git dir — identical across every worktree of one repository. */
-	readonly commonDir: string;
-	/** The top level of the specific worktree the directory belongs to. */
-	readonly topLevel: string;
-}
-
-/** Probe a directory's git identity. Returns null when it is not inside a repository. */
-export type GitWorktreeProbe = (dir: string) => GitWorktreeIdentity | null;
-
-/** Real git probe. One `rev-parse` yielding both paths already absolute. */
-const gitWorktreeProbe: GitWorktreeProbe = (dir) => {
-	const res = spawnSync(
-		"git",
-		["-C", dir, "rev-parse", "--path-format=absolute", "--git-common-dir", "--show-toplevel"],
-		{
-			encoding: "utf8",
-			timeout: 10_000,
-		},
-	);
-	if (res.error || (res.status ?? 1) !== 0) return null;
-	const [commonDir, topLevel] = (res.stdout ?? "").trim().split("\n");
-	if (!commonDir || !topLevel) return null;
-	return { commonDir: canonicalize(commonDir.trim()), topLevel: canonicalize(topLevel.trim()) };
-};
+/**
+ * The working-tree identity of `dir`, or `Option.none` when it is in no
+ * working tree. A git failure (git missing, too old for `--path-format`) also
+ * answers `none`: the caller then rejects the cwd, which is what an unknown
+ * identity must mean for a mutating tool.
+ */
+const treeIdentity = (git: GitShape, dir: string): Effect.Effect<Option.Option<TreeIdentity>> =>
+	git.treeIdentity(dir).pipe(Effect.orElseSucceed(() => Option.none<TreeIdentity>()));
 
 /**
  * Decide which directory tree this run may touch.
  *
  * @remarks A cwd inside the server's root keeps that root. A cwd OUTSIDE it is
- * accepted only when it belongs to a DIFFERENT worktree of the same repository —
- * a shared git common dir but a different top level — and containment then follows
- * that worktree rather than the server's start directory (systems#482). Binding to the start directory
- * meant a call from a sibling worktree silently mutated the main checkout, which in
- * a parallel multi-agent session is another agent's tree. Returns null to reject.
+ * accepted only when it belongs to a DIFFERENT worktree of the same repository
+ * (`TreeIdentity.relation` answers `"sibling-worktree"`), and containment then
+ * follows that worktree's toplevel rather than the server's start directory
+ * (systems#482). Binding to the start directory meant a call from a sibling
+ * worktree silently mutated the main checkout, which in a parallel multi-agent
+ * session is another agent's tree.
+ *
+ * `"same-tree"` is rejected: `root` can be a strict subdirectory of its own
+ * worktree (dev tooling launches the server from packages/mcp/), and a cwd
+ * elsewhere in that same checkout must not widen a --write pass to the whole
+ * repo, including the .repos/** vendored trees. `"different-repo"`, or either
+ * directory being in no working tree, is rejected too.
  *
  * @param root - the server's workspace root, already canonicalized
  * @param cwd - the requested working directory, already canonicalized
- * @param probe - git identity probe; injectable for tests
- * @returns the directory tree to contain to, or null if the cwd must be rejected
+ * @returns the directory tree to contain to, or `Option.none` to reject
  */
-export const resolveContainmentRoot = (
+export const resolveContainmentRoot = Effect.fn("biome_check.resolveContainmentRoot")(function* (
 	root: string,
 	cwd: string,
-	probe: GitWorktreeProbe = gitWorktreeProbe,
-): string | null => {
-	if (cwd === root || cwd.startsWith(`${root}${sep}`)) return root;
-	const from = probe(cwd);
-	if (!from) return null;
-	const home = probe(root);
-	if (!home) return null;
-	if (from.commonDir !== home.commonDir) return null;
-	// Same repository — but that alone does not earn a wider tree. When the two
-	// share a top level, `root` is a strict subdirectory of its own worktree (dev
-	// tooling launches the server from packages/mcp/), and the cwd is simply
-	// elsewhere in that same checkout. Widening to the top level there would hand
-	// a --write pass the entire repo, including the .repos/** vendored trees, for
-	// a request that was rejected before worktree support existed. Only a genuinely
-	// different worktree gets its own tree.
-	if (from.topLevel === home.topLevel) return null;
-	return from.topLevel;
-};
+) {
+	if (cwd === root || cwd.startsWith(`${root}${sep}`)) return Option.some(root);
+	const git = yield* Git;
+	const from = yield* treeIdentity(git, cwd);
+	if (Option.isNone(from)) return Option.none<string>();
+	const home = yield* treeIdentity(git, root);
+	if (Option.isNone(home)) return Option.none<string>();
+	return TreeIdentity.relation(from.value, home.value) === "sibling-worktree"
+		? Option.some(canonicalize(from.value.toplevel))
+		: Option.none<string>();
+});
 
 /** Remediation for a path or cwd that escapes the containment tree. */
 const CONTAINMENT_REMEDIATION: Remediation = {
@@ -247,6 +232,42 @@ const biomeFailed = (raw: string, exitCode?: number): BiomeFailed =>
 		remediation: BIOME_FAILED_REMEDIATION,
 	});
 
+/**
+ * The Biome tool, global copy first — the same lookup order as silk-effects'
+ * `Lint.Biome.findBiome` (`Command.findTool` resolves
+ * `Tool.named(name, { prefer: "global" })`). One module-level value, so every
+ * call hits the same `ToolDiscovery` probe-cache entry.
+ */
+const BIOME_TOOL = CommandTool.named("biome", { prefer: "global" });
+
+/** Per-stream captured-output ceiling for one Biome run. */
+const MAX_OUTPUT_BYTES = 64 * 1024 * 1024;
+
+/**
+ * Hard cap so a hung Biome process (password prompt, deadlock, stalled
+ * watcher) can't block the MCP server. Expiry fails the run as a
+ * `CommandFailedError` of kind `"timeout"`.
+ */
+const BIOME_TIMEOUT = "120 seconds";
+
+/**
+ * Backstop on the write lane, a little above {@link BIOME_TIMEOUT} so the run's
+ * own typed timeout fires first; the lane only bounds how long one write may
+ * hold the permit, never the wait for it.
+ */
+const WRITE_LANE_TIMEOUT = "125 seconds";
+
+/**
+ * Re-scope a resolved Biome command to the request's `cwd` (a local
+ * resolution is scoped to the server's root by its `ExecContext`; paths are
+ * relative to `cwd`) and kill it with `SIGKILL` on timeout — core's default
+ * `SIGTERM` with no `forceKillAfter` would wait on a child that ignores it.
+ */
+const scoped = (command: ChildProcess.Command, cwd: string): ChildProcess.Command =>
+	command._tag === "StandardCommand"
+		? ChildProcess.make(command.command, command.args, { ...command.options, cwd, killSignal: "SIGKILL" })
+		: ChildProcess.setCwd(command, cwd);
+
 /** Arguments for the {@link runBiomeCheck} handler. */
 export interface BiomeCheckArgs {
 	readonly paths?: readonly string[];
@@ -262,80 +283,93 @@ export interface BiomeCheckArgs {
  * Run Biome and return structured diagnostics. When `write`/`unsafe` is set,
  * runs a fix pass first, then a read-only gitlab pass to report what remains.
  *
- * @remarks Resolves the Biome binary via {@link Lint.Biome.findBiome} (global
- * first, then the project's package manager). Throws a typed
- * {@link McpToolError} member — a `ToolRefusal` for a cwd/path outside the
- * containment tree or when no binary is found, {@link BiomeFailed} when Biome
- * exits with status > 1 (Biome itself failed, vs. status 1 = lint issues
- * found) — which {@link handleBiomeCheck} lifts into the Effect error channel
- * unchanged.
+ * @remarks Resolves the Biome binary through `ToolDiscovery` (global first,
+ * then the project's package manager — {@link BIOME_TOOL}) and runs it with
+ * `Run.collect`. Fails with a {@link McpToolError} member: a `ToolRefusal` for
+ * a cwd/path outside the containment tree or when no binary resolves,
+ * {@link BiomeFailed} when Biome exits with status > 1 (Biome itself failed,
+ * vs. status 1 = lint issues found), cannot spawn, times out, or overflows the
+ * output cap. The write pass runs on `lane`, one permit per server, so two
+ * concurrent write calls never interleave on a tree.
+ *
+ * @param args - the decoded tool parameters
+ * @param fallbackCwd - the server's project directory
+ * @param lane - the server's write lane
  */
-export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): Promise<BiomeCheckResultType> => {
+export const runBiomeCheck = Effect.fn("biome_check.run")(function* (
+	args: BiomeCheckArgs,
+	fallbackCwd: string,
+	lane: Exclusive,
+) {
 	const mode = args.mode ?? "check";
 
 	// Containment: this is a mutating tool, so keep cwd and every target path inside
-	// one tree. Canonicalize with realpathSync so a symlink whose target escapes
-	// can't pass a purely lexical prefix check. The tree is the server's root, or —
-	// when cwd names a worktree of the same repository — that worktree (systems#482).
+	// one tree. Canonicalize caller paths with realpathSync so a symlink whose target
+	// escapes can't pass a purely lexical prefix check. The tree is the server's
+	// root, or — when cwd names a worktree of the same repository — that worktree
+	// (systems#482).
 	const root = canonicalize(fallbackCwd);
 	const cwd = canonicalize(args.cwd ?? fallbackCwd);
-	const containmentRoot = resolveContainmentRoot(root, cwd);
-	if (containmentRoot === null) {
-		throw ToolRefusal.refuse(
+	const contained = yield* resolveContainmentRoot(root, cwd);
+	if (Option.isNone(contained)) {
+		return yield* ToolRefusal.refuse(
 			`cwd escapes the workspace root: ${ToolFailure.truncate(args.cwd ?? fallbackCwd)}.`,
 			CONTAINMENT_REMEDIATION,
 		);
 	}
+	const containmentRoot = contained.value;
 	const within = (abs: string): boolean => abs === containmentRoot || abs.startsWith(`${containmentRoot}${sep}`);
 	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
-	const paths = rawPaths.map((p) => {
+	const paths: string[] = [];
+	for (const p of rawPaths) {
 		const lexical = resolve(cwd, p);
 		if (!within(canonicalize(lexical))) {
-			throw ToolRefusal.refuse(`path escapes the workspace root: ${ToolFailure.truncate(p)}.`, CONTAINMENT_REMEDIATION);
+			return yield* ToolRefusal.refuse(
+				`path escapes the workspace root: ${ToolFailure.truncate(p)}.`,
+				CONTAINMENT_REMEDIATION,
+			);
 		}
-		return relative(cwd, lexical) || ".";
-	});
+		paths.push(relative(cwd, lexical) || ".");
+	}
 	const doWrite = Boolean(args.write || args.unsafe);
 
-	const biomeCmd = Lint.Biome.findBiome();
-	if (!biomeCmd) {
-		throw ToolRefusal.refuse("Biome not found.", BIOME_REMEDIATION);
-	}
-	// `findBiome()` returns "biome", or a package-manager exec form whose final
-	// token is always the tool name: "pnpm exec biome", "npx --no biome",
-	// "bun x --no-install biome". Splitting on spaces and running parts[0] with
-	// parts.slice(1) as the prefix yields a valid invocation in every case (the
-	// exec verb + its flags stay ahead of the biome subcommand). `findTool`
-	// rejects names with spaces, so a space here is always an argv separator,
-	// never part of a path. If `findBiome()`'s output format changes, revisit.
-	const parts = biomeCmd.split(" ");
-	const bin = parts[0];
-	const prefix = parts.slice(1);
-	const maxBuffer = 64 * 1024 * 1024;
-	// Hard cap so a hung Biome process (password prompt, deadlock, stalled watcher)
-	// can't block the MCP server; spawnSync sets result.error to ETIMEDOUT, which
-	// the existing `throw *.error` checks surface.
-	const timeout = 120_000;
-	const killSignal = "SIGKILL" as const;
+	const discovery = yield* ToolDiscovery;
+	const biome = yield* discovery
+		.resolve(BIOME_TOOL)
+		.pipe(
+			Effect.mapError((error) =>
+				error._tag === "ToolNotFoundError"
+					? ToolRefusal.refuse("Biome not found.", BIOME_REMEDIATION)
+					: ToolRefusal.refuse(`Biome could not be resolved: ${error.message}`, BIOME_REMEDIATION),
+			),
+		);
+
+	/** One Biome pass; exit 0/1 is a result, anything else a {@link BiomeFailed}. */
+	const pass = (label: string, argv: ReadonlyArray<string>) =>
+		Run.collect(scoped(biome.command(...argv), cwd), { timeout: BIOME_TIMEOUT, maxOutputBytes: MAX_OUTPUT_BYTES }).pipe(
+			Effect.mapError((error) => biomeFailed(`${label} could not run: ${error.message}`, error.exitCode)),
+			Effect.flatMap((output) =>
+				output.exitCode > 1
+					? Effect.fail(
+							biomeFailed(
+								`${label} failed (exit ${output.exitCode}): ${output.stderr.trim() || "unknown error"}`,
+								output.exitCode,
+							),
+						)
+					: Effect.succeed(output),
+			),
+		);
 
 	let wrote = false;
 	if (doWrite) {
-		const writeArgs = [
-			...prefix,
-			mode,
-			"--write",
-			...(args.unsafe ? ["--unsafe"] : []),
-			"--no-errors-on-unmatched",
-			...paths,
-		];
-		const fix = spawnSync(bin, writeArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
-		if (fix.error) throw biomeFailed(`Biome --write could not run: ${fix.error.message}`);
-		if ((fix.status ?? 0) > 1) {
-			throw biomeFailed(
-				`Biome --write failed (exit ${fix.status}): ${(fix.stderr ?? "").trim() || "unknown error"}`,
-				fix.status ?? undefined,
+		const writeArgs = [mode, "--write", ...(args.unsafe ? ["--unsafe"] : []), "--no-errors-on-unmatched", ...paths];
+		yield* lane
+			.run(pass("Biome --write", writeArgs), { timeout: WRITE_LANE_TIMEOUT })
+			.pipe(
+				Effect.catchTag("ExclusiveTimeout", (timeout) =>
+					Effect.fail(biomeFailed(`Biome --write did not finish: ${timeout.message}`)),
+				),
 			);
-		}
 		wrote = true;
 	}
 
@@ -343,22 +377,14 @@ export const runBiomeCheck = async (args: BiomeCheckArgs, fallbackCwd: string): 
 	// severities so this tool agrees with the project's own `biome check`.
 	// Strict upgrading happens in-process (buildBiomeResult) so the original
 	// severity is preserved on each diagnostic.
-	const readArgs = [...prefix, mode, "--reporter=gitlab", "--no-errors-on-unmatched", ...paths];
-	const read = spawnSync(bin, readArgs, { cwd, encoding: "utf8", maxBuffer, timeout, killSignal });
-	if (read.error) throw biomeFailed(`Biome could not run: ${read.error.message}`);
-	if ((read.status ?? 0) > 1) {
-		throw biomeFailed(
-			`Biome failed (exit ${read.status}): ${(read.stderr ?? "").trim() || "unknown error"}`,
-			read.status ?? undefined,
-		);
-	}
+	const read = yield* pass("Biome", [mode, "--reporter=gitlab", "--no-errors-on-unmatched", ...paths]);
 
 	return buildBiomeResult({
-		diagnostics: parseBiomeGitlab(read.stdout ?? ""),
+		diagnostics: parseBiomeGitlab(read.stdout),
 		wrote,
 		...(args.strict !== undefined ? { strict: args.strict } : {}),
 	});
-};
+});
 
 /** Wire parameters for `biome_check`. */
 export const BiomeCheckParams = Schema.Struct({
@@ -390,8 +416,9 @@ export type BiomeCheckParams = typeof BiomeCheckParams.Type;
 
 /**
  * The `biome_check` tool value. Mutating when `write`/`unsafe` is set, so it is
- * annotated non-read-only and non-idempotent; `dependencies` is empty because
- * the handler shells out directly and yields no service.
+ * annotated non-read-only and non-idempotent. `dependencies` lists what the
+ * handler yields: `Git` (worktree containment), `ToolDiscovery` (the Biome
+ * binary) and core's `ChildProcessSpawner` (`Run.collect`).
  */
 export const biomeCheckTool = Tool.make("biome_check", {
 	description:
@@ -399,6 +426,7 @@ export const biomeCheckTool = Tool.make("biome_check", {
 	parameters: BiomeCheckParams,
 	success: BiomeCheckResult,
 	failure: McpToolError,
+	dependencies: [Git, ToolDiscovery, ChildProcessSpawner.ChildProcessSpawner],
 })
 	.annotate(Tool.Title, "Biome check")
 	.annotate(Tool.Readonly, false)
@@ -407,24 +435,17 @@ export const biomeCheckTool = Tool.make("biome_check", {
 	.annotate(Tool.OpenWorld, false);
 
 /**
- * Every declared failure, recognized from the one union the tool declares, so
- * a member added to {@link McpToolError} is passed through here without a
- * second list to keep in step.
+ * Wire handler: {@link runBiomeCheck} with its error channel closed over
+ * {@link McpToolError}. A defect (a bug in the parser, say) is reported as
+ * {@link BiomeFailed} rather than reaching core, which would scrub it to a
+ * generic internal-error text.
+ *
+ * @param fallbackCwd - the server's project directory
+ * @param lane - the server's one write lane, built once in `ToolsLayer`
  */
-const isMcpToolError = Schema.is(McpToolError);
-
-/**
- * Wire handler: {@link runBiomeCheck} lifted into Effect. The typed members it
- * throws pass through unchanged; anything else (a defect in the parser, say)
- * is reported as {@link BiomeFailed} so the error channel stays closed over
- * {@link McpToolError} — nothing undeclared reaches core, which would scrub
- * it to a generic internal-error text.
- */
-export const handleBiomeCheck = (fallbackCwd: string, params: BiomeCheckParams) =>
-	Effect.tryPromise({
-		try: () => runBiomeCheck(params, fallbackCwd),
-		catch: (cause) =>
-			isMcpToolError(cause)
-				? cause
-				: biomeFailed(`Biome check failed: ${cause instanceof Error ? cause.message : String(cause)}`),
-	});
+export const handleBiomeCheck = (fallbackCwd: string, params: BiomeCheckParams, lane: Exclusive) =>
+	runBiomeCheck(params, fallbackCwd, lane).pipe(
+		Effect.catchDefect((defect) =>
+			Effect.fail(biomeFailed(`Biome check failed: ${defect instanceof Error ? defect.message : String(defect)}`)),
+		),
+	);

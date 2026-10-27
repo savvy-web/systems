@@ -19,7 +19,7 @@
  */
 
 import type { FlowContent, Root as KitRoot } from "@effected/markdown";
-import { Code, Markdown, MarkdownTransform, Mdast } from "@effected/markdown";
+import { Code, Markdown, MarkdownParseOptions, MarkdownTransform, Mdast, Root } from "@effected/markdown";
 import { Result } from "effect";
 
 /**
@@ -90,6 +90,33 @@ export function parseKitMarkdown(text: string): KitRoot {
 	// as fidelity fields that the emitter honours; the mdast round trip strips
 	// them so output stays canonical.
 	return unwrap(Mdast.fromMdastResult(Mdast.toMdast(parsed)), "markdown parse: fidelity strip failed");
+}
+
+const FRONTMATTER_CAPTURE = MarkdownParseOptions.make({ frontmatter: true });
+
+/**
+ * Parse a changeset file into a kit root with its frontmatter block removed.
+ *
+ * @remarks
+ * Parses with the kit's frontmatter capture on, so a `---` block at offset 0
+ * is recognized whatever its line endings (CRLF included), then drops the
+ * `frontmatter` head node. The text is never sliced, so every remaining
+ * node's position is relative to the whole file — the lines a linter reports
+ * match the lines an editor shows. A fence pair later in the document is not
+ * frontmatter and parses as ordinary content.
+ *
+ * @param text - The raw changeset source, frontmatter included
+ * @returns The parsed kit root, without its frontmatter node
+ *
+ * @internal
+ */
+export function parseKitMarkdownBody(text: string): KitRoot {
+	const parsed = unwrap(Markdown.parseResult(text, FRONTMATTER_CAPTURE), "markdown parse: canonical parse failed");
+	const body = new Root({
+		children: parsed.children.filter((node) => node.type !== "frontmatter"),
+		position: parsed.position,
+	});
+	return unwrap(Mdast.fromMdastResult(Mdast.toMdast(body)), "markdown parse: fidelity strip failed");
 }
 
 /**

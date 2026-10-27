@@ -6,7 +6,9 @@
  * @packageDocumentation
  */
 
+import { Exclusive } from "@effected/engine";
 import type { Layer } from "effect";
+import { Effect } from "effect";
 import type { Tool } from "effect/ai";
 import { Toolkit } from "effect/ai";
 
@@ -69,20 +71,27 @@ export const SilkToolkit: Toolkit.Toolkit<SilkTools> = Toolkit.make(
  * The handler layer. `cwd` — the project directory `main.ts` resolved once at
  * startup — is closed over as every handler's fallback when a call omits its
  * own `cwd`; the handlers' declared service dependencies are discharged by
- * `makeSilkRuntimeLayer(cwd)` in `server.ts`.
+ * `makeSilkRuntimeLayer(cwd)` in `server.ts`. Building the layer mints the
+ * server's ONE `Exclusive` write lane, so concurrent `biome_check` write passes
+ * are serialized per server.
  *
  * @public
  */
 export const ToolsLayer = (cwd: string): Layer.Layer<Tool.HandlersFor<SilkTools>> =>
-	SilkToolkit.toLayer({
-		workspace_info: (params) => handleWorkspaceInfo(cwd, params),
-		turbo_inspect: (params) => handleTurboInspect(cwd, params),
-		changeset_inspect: (params) => handleChangesetInspect(cwd, params),
-		changeset_validate: (params) => handleChangesetValidate(cwd, params),
-		changeset_deps_detect: (params) => handleChangesetDepsDetect(cwd, params),
-		changeset_preview: (params) => handleChangesetPreview(cwd, params),
-		changeset_deps_regen: (params) => handleChangesetDepsRegen(cwd, params),
-		repos_inspect: (params) => handleReposInspect(cwd, params),
-		repos_manage: handleReposManage(cwd),
-		biome_check: (params) => handleBiomeCheck(cwd, params),
-	});
+	SilkToolkit.toLayer(
+		Effect.map(Exclusive.make, (biomeWriteLane) => ({
+			workspace_info: (params: Tool.Parameters<typeof workspaceInfoTool>) => handleWorkspaceInfo(cwd, params),
+			turbo_inspect: (params: Tool.Parameters<typeof turboInspectTool>) => handleTurboInspect(cwd, params),
+			changeset_inspect: (params: Tool.Parameters<typeof changesetInspectTool>) => handleChangesetInspect(cwd, params),
+			changeset_validate: (params: Tool.Parameters<typeof changesetValidateTool>) =>
+				handleChangesetValidate(cwd, params),
+			changeset_deps_detect: (params: Tool.Parameters<typeof changesetDepsDetectTool>) =>
+				handleChangesetDepsDetect(cwd, params),
+			changeset_preview: (params: Tool.Parameters<typeof changesetPreviewTool>) => handleChangesetPreview(cwd, params),
+			changeset_deps_regen: (params: Tool.Parameters<typeof changesetDepsRegenTool>) =>
+				handleChangesetDepsRegen(cwd, params),
+			repos_inspect: (params: Tool.Parameters<typeof reposInspectTool>) => handleReposInspect(cwd, params),
+			repos_manage: handleReposManage(cwd),
+			biome_check: (params: Tool.Parameters<typeof biomeCheckTool>) => handleBiomeCheck(cwd, params, biomeWriteLane),
+		})),
+	);
