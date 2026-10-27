@@ -27,9 +27,10 @@ const STRIPPABLE_MAPS = Result.getOrThrow(
  * @public
  */
 export function removeDeclarationMaps(pkgDir: string): string[] {
-	// An absent dir walks to no matches. Symlinked directories are not entered (the old Dirent walk never did).
+	// An absent dir walks to no matches, and an unreadable one is skipped, as the old walk's readdir catch did.
+	// Symlinked directories are not entered (the old Dirent walk never did).
 	const maps = Result.getOrThrow(
-		descendSync(STRIPPABLE_MAPS, { cwd: pkgDir, prune: ["node_modules"], ...nodeWalkerSyncOps }),
+		descendSync(STRIPPABLE_MAPS, { cwd: pkgDir, prune: ["node_modules"], onUnreadable: "skip", ...nodeWalkerSyncOps }),
 	);
 	return maps.map((rel) => {
 		const full = join(pkgDir, rel);

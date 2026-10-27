@@ -205,7 +205,7 @@ export const resolveContainmentRoot = Effect.fn("biome_check.resolveContainmentR
 	const home = yield* treeIdentity(git, root);
 	if (Option.isNone(home)) return Option.none<string>();
 	return TreeIdentity.relation(from.value, home.value) === "sibling-worktree"
-		? Option.some(from.value.toplevel)
+		? Option.some(canonicalize(from.value.toplevel))
 		: Option.none<string>();
 });
 

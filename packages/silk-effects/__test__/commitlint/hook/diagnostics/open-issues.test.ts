@@ -117,6 +117,14 @@ describe("fetchAndCacheOpenIssues", () => {
 		}).pipe(Effect.provide(gh({ stdout: '{"message":"rate limited"}' }).layer));
 	});
 
+	it.effect("returns null and caches nothing for an issue with a wrongly typed field", () => {
+		const path = join(dir, "issues.json");
+		return Effect.gen(function* () {
+			expect(yield* fetchAndCacheOpenIssues(path)).toBeNull();
+			expect(yield* readOpenIssuesFromCache(path, 600)).toBeNull();
+		}).pipe(Effect.provide(gh({ stdout: '[{"number":"42","title":"Improve commit hooks"}]' }).layer));
+	});
+
 	it.effect("returns null for output that is not JSON", () =>
 		fetchAndCacheOpenIssues(join(dir, "issues.json")).pipe(
 			Effect.map((out) => expect(out).toBeNull()),

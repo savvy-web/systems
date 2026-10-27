@@ -51,9 +51,16 @@ export function scrubSourcelessMappings(mapPath: string): number {
  * @internal
  */
 export function scrubDeclarationMapsUnder(dir: string): number {
-	// prune: [] and followSymlinks: true keep the hand-rolled walk's reach (it stat-followed links and skipped nothing).
+	// prune: [], followSymlinks: true and onUnreadable: "skip" keep the hand-rolled walk's reach: it stat-followed links,
+	// pruned nothing, and skipped a directory it could not read.
 	const maps = Result.getOrThrow(
-		descendSync(DECLARATION_MAPS, { cwd: dir, prune: [], followSymlinks: true, ...nodeWalkerSyncOps }),
+		descendSync(DECLARATION_MAPS, {
+			cwd: dir,
+			prune: [],
+			followSymlinks: true,
+			onUnreadable: "skip",
+			...nodeWalkerSyncOps,
+		}),
 	);
 	let removed = 0;
 	for (const rel of maps) removed += scrubSourcelessMappings(join(dir, rel));
