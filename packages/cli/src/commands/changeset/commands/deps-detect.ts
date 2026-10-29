@@ -23,9 +23,9 @@
  */
 
 import { resolve } from "node:path";
-import { CliExit } from "@effected/cli";
+import { CliExit, CliFormat } from "@effected/cli";
 import { Changesets } from "@savvy-web/silk-effects";
-import { Console, Effect, Option } from "effect";
+import { Effect, Option } from "effect";
 import { Command, Flag } from "effect/cli";
 import { Report } from "../../../internal/report.js";
 
@@ -113,7 +113,7 @@ export function runDepsDetect(
 			return;
 		}
 
-		yield* Console.log(JSON.stringify(diffs, null, 2));
+		yield* CliFormat.printJson(diffs);
 	});
 }
 

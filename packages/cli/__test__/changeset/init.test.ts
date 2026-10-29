@@ -125,6 +125,41 @@ describe("detectGitHubRepo", () => {
 			expect(yield* detectWith(Effect.succeed(Option.some("https://gitlab.com/owner/repo.git")))).toBeNull();
 		}),
 	);
+
+	it.effect("keeps a dot in the repository name", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https://github.com/owner/repo.js.git")))).toBe(
+				"owner/repo.js",
+			);
+			expect(yield* detectWith(Effect.succeed(Option.some("git@github.com:owner/repo.js")))).toBe("owner/repo.js");
+		}),
+	);
+
+	it.effect("returns null for a host that only ends in github.com", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https://notgithub.com/owner/repo.git")))).toBeNull();
+			expect(yield* detectWith(Effect.succeed(Option.some("git@evilgithub.com:owner/repo.git")))).toBeNull();
+		}),
+	);
+
+	it.effect("reads the address behind a transport helper", () =>
+		Effect.gen(function* () {
+			expect(yield* detectWith(Effect.succeed(Option.some("https::https://github.com/owner/repo.git")))).toBe(
+				"owner/repo",
+			);
+		}),
+	);
+
+	it.effect("returns null when github.com appears only after an @ in the path", () =>
+		Effect.gen(function* () {
+			expect(
+				yield* detectWith(Effect.succeed(Option.some("https://other.example/path@github.com/owner/repo.git"))),
+			).toBeNull();
+			expect(yield* detectWith(Effect.succeed(Option.some("https://user@github.com/owner/repo.git")))).toBe(
+				"owner/repo",
+			);
+		}),
+	);
 });
 
 // ---------------------------------------------------------------------------

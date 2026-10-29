@@ -1,6 +1,6 @@
 // packages/tsdown-plugins/src/build/strip-maps.ts
 import { rmSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { GlobPattern, GlobPatternOptions } from "@effected/glob";
 import { descendSync } from "@effected/walker";
 import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
@@ -30,7 +30,12 @@ export function removeDeclarationMaps(pkgDir: string): string[] {
 	// An absent dir walks to no matches, and an unreadable one is skipped, as the old walk's readdir catch did.
 	// Symlinked directories are not entered (the old Dirent walk never did).
 	const maps = Result.getOrThrow(
-		descendSync(STRIPPABLE_MAPS, { cwd: pkgDir, prune: ["node_modules"], onUnreadable: "skip", ...nodeWalkerSyncOps }),
+		descendSync(STRIPPABLE_MAPS, {
+			cwd: resolve(pkgDir),
+			prune: ["node_modules"],
+			onUnreadable: "skip",
+			...nodeWalkerSyncOps,
+		}),
 	);
 	return maps.map((rel) => {
 		const full = join(pkgDir, rel);

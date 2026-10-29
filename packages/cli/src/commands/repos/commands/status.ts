@@ -31,9 +31,9 @@
  */
 
 import type { Block } from "@effected/cli";
-import { CliExit, Doc, Status } from "@effected/cli";
+import { CliExit, CliFormat, Doc, Status } from "@effected/cli";
 import { Repos } from "@savvy-web/silk-effects";
-import { Console, Effect } from "effect";
+import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";
 import type { CommandError } from "../../../internal/command-error.js";
 import type { ReportEnv } from "../../../internal/report.js";
@@ -106,7 +106,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 
 		if (json) {
 			const payload = driftReport === undefined ? report : { ...report, drift: driftReport };
-			yield* Console.log(JSON.stringify(payload, null, 2));
+			yield* CliFormat.printJson(payload);
 			return;
 		}
 		const blocks: Array<Block> = [
@@ -120,7 +120,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 		Effect.catchTag("ReposConfigError", (error): Effect.Effect<void, CommandError, CliExit | ReportEnv> => {
 			if (error.kind === "missing") {
 				if (json) {
-					return Console.log(JSON.stringify({ repos: [], clean: true }, null, 2));
+					return CliFormat.printJson({ repos: [], clean: true });
 				}
 				return Report.print([Report.skip("no .repos/config.json — nothing vendored")]);
 			}
@@ -128,7 +128,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 			// document there, exactly as it has always been; the message goes to stderr.
 			if (json) {
 				return CliExit.set(1).pipe(
-					Effect.andThen(Console.log(JSON.stringify({ error: error.message, clean: false }, null, 2))),
+					Effect.andThen(CliFormat.printJson({ error: error.message, clean: false })),
 					Effect.andThen(Effect.logError(error.message)),
 				);
 			}
@@ -139,7 +139,7 @@ export const runReposStatus = (cwd: string, json: boolean, drift = false) =>
 		Effect.catchTag("GitSubmoduleError", (error) =>
 			json
 				? CliExit.set(1).pipe(
-						Effect.andThen(Console.log(JSON.stringify({ error: error.message, clean: false }, null, 2))),
+						Effect.andThen(CliFormat.printJson({ error: error.message, clean: false })),
 						Effect.andThen(Effect.logError(error.message)),
 					)
 				: ReposCli.fail("check the vendored repos")(error),

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { GitmodulesEntry } from "@effected/git";
-import { Git, GitConfig, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
+import { Git, GitConfig, GitFile, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
 import { Clock, Context, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import type { ReposLockdownError } from "../errors.js";
@@ -1574,11 +1574,11 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					if (Option.isNone(content)) {
 						return fallback;
 					}
-					const match = /^gitdir:\s*(.+)$/m.exec(content.value);
-					if (!match?.[1]) {
+					const gitFile = GitFile.parseResult(content.value);
+					if (Result.isFailure(gitFile)) {
 						return fallback;
 					}
-					const pointer = match[1].trim();
+					const pointer = gitFile.success.gitdir;
 					const gitdir = path.isAbsolute(pointer) ? pointer : path.resolve(root, pointer);
 					const commondir = yield* fs.readFileString(path.join(gitdir, "commondir")).pipe(Effect.option);
 					if (Option.isSome(commondir)) {

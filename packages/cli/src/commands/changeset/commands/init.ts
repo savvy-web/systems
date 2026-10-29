@@ -38,7 +38,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli";
 import { TerminalEnv } from "@effected/env";
-import { Git } from "@effected/git";
+import { Git, GitRemote } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
@@ -140,11 +140,18 @@ export function detectGitHubRepo(cwd: string): Effect.Effect<string | null, neve
 		// as the previous execSync form.
 		const url = yield* git.remoteUrl(cwd).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())));
 		if (Option.isNone(url)) return null;
-		const https = url.value.match(/github\.com\/([^/]+)\/([^/.]+)/);
-		if (https) return `${https[1]}/${https[2]}`;
-		const ssh = url.value.match(/github\.com:([^/]+)\/([^/.]+)/);
-		if (ssh) return `${ssh[1]}/${ssh[2]}`;
-		return null;
+		const remote = GitRemote.parse(url.value);
+		if (Option.isNone(remote)) return null;
+		// A transport helper (`https::https://...`) names its host in the address behind it.
+		const form = remote.value._tag === "GitRemoteTransport" ? remote.value.address : remote.value;
+		// Only a URL or scp remote names a host; a path remote is never GitHub.
+		if (form._tag !== "GitRemoteUrl" && form._tag !== "GitRemoteScp") return null;
+		// The authority ends at the first `/`, `?` or `#`, so a user holding one means the parse read past the
+		// real host (`https://other.example/path@github.com/...` is other.example, not github.com).
+		if (form._tag === "GitRemoteUrl" && form.user !== undefined && /[/?#]/.test(form.user)) return null;
+		if (form.host.toLowerCase() !== "github.com") return null;
+		const [owner, repo] = GitRemote.repositoryPath(form).split("/");
+		return owner && repo ? `${owner}/${repo}` : null;
 	});
 }
 

@@ -1,4 +1,5 @@
-import { Context, Effect, Exit, FileSystem, Layer, Option, Path } from "effect";
+import { GitFile } from "@effected/git";
+import { Context, Effect, Exit, FileSystem, Layer, Option, Path, Result } from "effect";
 import { REPOS_DIR } from "../constants.js";
 import { ReposLockdownError } from "../errors.js";
 
@@ -77,11 +78,11 @@ export const resolveModuleDir = (
 		if (Option.isNone(content)) {
 			return fallback;
 		}
-		const match = /^gitdir:\s*(.+)$/m.exec(content.value);
-		if (!match?.[1]) {
+		const gitFile = GitFile.parseResult(content.value);
+		if (Result.isFailure(gitFile)) {
 			return fallback;
 		}
-		const pointer = match[1].trim();
+		const pointer = gitFile.success.gitdir;
 		const resolved = path.isAbsolute(pointer) ? pointer : path.resolve(path.dirname(dotGit), pointer);
 
 		// A hand-edited (or otherwise malicious) `gitdir:` pointer could escape

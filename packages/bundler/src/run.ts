@@ -46,7 +46,7 @@ import {
 import { Effect } from "effect";
 import type { BuildConfig, BuildConfigInput } from "./config.js";
 import { defineBuild, parseArgs } from "./config.js";
-import { ProcessStdoutTerminal, isCi, reportNoColor } from "./runtime-env.js";
+import { isCi, reportNoColor } from "./runtime-env.js";
 
 /** @public */
 export interface RunOptions {
@@ -437,13 +437,11 @@ export async function runBuild(config: BuildConfig, options: RunOptions): Promis
 		const writeOutput = options.writeOutput ?? ((o: RenderedOutput) => process.stdout.write(`${o.content}\n`));
 		renderAndWrite = async (): Promise<void> => {
 			const rendered = await Effect.runPromise(
-				Effect.flatMap(reportNoColor, (noColor) =>
-					renderReport(collector.snapshot(packageName), {
-						...(explicitFormat !== undefined ? { explicitFormat } : {}),
-						verbose,
-						noColor,
-					}),
-				).pipe(Effect.provide(ReportPipeline), Effect.provide(ProcessStdoutTerminal)),
+				renderReport(collector.snapshot(packageName), {
+					...(explicitFormat !== undefined ? { explicitFormat } : {}),
+					verbose,
+					noColor: reportNoColor(),
+				}).pipe(Effect.provide(ReportPipeline)),
 			);
 			for (const output of rendered) writeOutput(output);
 		};

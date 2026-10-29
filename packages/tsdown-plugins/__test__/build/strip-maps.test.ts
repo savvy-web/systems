@@ -42,6 +42,20 @@ describe("removeDeclarationMaps", () => {
 		expect(removeDeclarationMaps(join(dir, "does-not-exist"))).toEqual([]);
 	});
 
+	it("accepts a directory relative to the process cwd", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "strip-"));
+		mkdirSync(join(dir, "pkg"));
+		writeFileSync(join(dir, "pkg", "index.d.ts.map"), "{}");
+		const prevCwd = process.cwd();
+		process.chdir(dir);
+		try {
+			expect(removeDeclarationMaps("pkg")).toEqual([join("pkg", "index.d.ts.map")]);
+		} finally {
+			process.chdir(prevCwd);
+		}
+		expect(existsSync(join(dir, "pkg", "index.d.ts.map"))).toBe(false);
+	});
+
 	it("strips under dot-directories but never enters a symlinked directory", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "strip-"));
 		mkdirSync(join(dir, ".hidden"));

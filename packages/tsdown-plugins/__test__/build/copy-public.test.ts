@@ -28,6 +28,18 @@ describe("copyPublicDir", () => {
 		expect(() => copyPublicDir(src, out)).not.toThrow();
 	});
 
+	it("accepts a source directory relative to the process cwd", () => {
+		write(src, "a.txt", "a");
+		const prevCwd = process.cwd();
+		process.chdir(root);
+		try {
+			copyPublicDir("public", out);
+		} finally {
+			process.chdir(prevCwd);
+		}
+		expect(readFileSync(join(out, "a.txt"), "utf-8")).toBe("a");
+	});
+
 	it("copies dotfiles, dot-directories and node_modules/ under public", () => {
 		write(src, ".npmrc", "a");
 		write(src, ".well-known/security.txt", "b");
