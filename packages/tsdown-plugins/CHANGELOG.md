@@ -1,5 +1,21 @@
 # @savvy-web/tsdown-plugins
 
+## 2.11.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @tsdoctor/manifest | dependency | updated | ^0.2.10 | ^0.2.11 |
+
+[#843][#843]
+
+### Thanks
+
+Thanks to [@savvy-web-bot](https://github.com/apps/savvy-web-bot) for their contributions!
+
+[#843]: https://github.com/savvy-web/systems/pull/843
+
 ## 2.11.3
 
 ### Bug Fixes
