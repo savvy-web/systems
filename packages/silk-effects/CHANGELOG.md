@@ -1,5 +1,41 @@
 # @savvy-web/silk-effects
 
+## 10.2.1
+
+### Bug Fixes
+
+- `Repos` reads a submodule's `.git` pointer file by git's own rules (`@effected/git`'s `GitFile`). A pointer git refuses, such as `gitdir:` with no space, is no longer followed; the name-based module path is used instead, as it already was for a pointer that escapes the repository.
+
+### Refactoring
+
+- `Lint`'s `Command.findRoot` and the commitlint DCO detection find the nearest marker with `@effected/walker`'s synchronous upward walk instead of a hand-written loop. The roots they find are unchanged. [#841][#841]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/glob | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/jsonc | dependency | updated | ^0.20.1 | ^0.21.0 |
+| @effected/markdown | dependency | updated | ^0.23.0 | ^0.24.0 |
+| @effected/package-json | dependency | updated | ^0.26.1 | ^0.27.0 |
+| @effected/toml | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/walker | dependency | updated | ^0.21.0 | ^0.22.0 |
+| @effected/yaml | dependency | updated | ^0.25.1 | ^0.26.0 |
+| @savvy-web/silk-core | dependency | updated | 0.5.2 | 0.5.3 |
+| @effected/commands | peerDependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/git | peerDependency | updated | ^0.26.0 | ^0.27.0 |
+| @effected/templates | peerDependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/workspaces | peerDependency | updated | ^0.39.0 | ^0.40.0 |
+
+[#841][#841]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#841]: https://github.com/savvy-web/systems/pull/841
+
 ## 10.2.0
 
 ### Bug Fixes

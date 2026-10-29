@@ -1,5 +1,27 @@
 # @savvy-web/bundler
 
+## 2.7.1
+
+### Refactoring
+
+- The build report's colour decision reads `@effected/env`'s pure `TerminalEnv.colorLevelFrom` instead of building a stand-in `Stdio` layer. The rule is unchanged: `FORCE_COLOR` decides alone when set, then a non-TTY stdout, `NO_COLOR` / `TERM=dumb`, and the terminal table. [#841][#841]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/env | dependency | updated | ^0.6.0 | ^0.7.0 |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.11.2 | 2.11.3 |
+| effect | dependency | updated | ^4.0.6 | ^4.0.7 |
+
+[#841][#841]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#841]: https://github.com/savvy-web/systems/pull/841
+
 ## 2.7.0
 
 ### Features
