@@ -1,5 +1,36 @@
 # @savvy-web/tsdown-plugins
 
+## 2.11.3
+
+### Bug Fixes
+
+- `removeDeclarationMaps`, `copyPublicDir` and the declaration-map scrub accept a directory relative to the working directory again. `@effected/walker` 0.22 refuses a relative walk root, so a build called with a relative `cwd` would otherwise have thrown while stripping declaration maps. [#841][#841]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.6 | ^4.0.7 |
+| @effected/env | dependency | updated | ^0.6.0 | ^0.7.0 |
+| @effected/glob | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/images | dependency | updated | ^0.6.2 | ^0.7.0 |
+| @effected/jsonc | dependency | updated | ^0.20.1 | ^0.21.0 |
+| @effected/npm | dependency | updated | ^0.27.1 | ^0.28.0 |
+| @effected/package-json | dependency | updated | ^0.26.1 | ^0.27.0 |
+| @effected/semver | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/tsconfig-json | dependency | updated | ^0.17.4 | ^0.18.0 |
+| @effected/walker | dependency | updated | ^0.21.0 | ^0.22.0 |
+| @effected/workspaces | dependency | updated | ^0.39.1 | ^0.40.0 |
+| effect | dependency | updated | ^4.0.6 | ^4.0.7 |
+
+[#841][#841]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#841]: https://github.com/savvy-web/systems/pull/841
+
 ## 2.11.2
 
 ### Bug Fixes
