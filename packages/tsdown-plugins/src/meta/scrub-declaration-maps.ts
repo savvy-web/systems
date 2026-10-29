@@ -1,6 +1,6 @@
 // packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
 import { readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { GlobPattern, GlobPatternOptions } from "@effected/glob";
 import { descendSync } from "@effected/walker";
 import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
@@ -55,7 +55,7 @@ export function scrubDeclarationMapsUnder(dir: string): number {
 	// pruned nothing, and skipped a directory it could not read.
 	const maps = Result.getOrThrow(
 		descendSync(DECLARATION_MAPS, {
-			cwd: dir,
+			cwd: resolve(dir),
 			prune: [],
 			followSymlinks: true,
 			onUnreadable: "skip",

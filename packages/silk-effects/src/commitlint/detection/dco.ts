@@ -5,6 +5,9 @@
  */
 import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { Walker } from "@effected/walker";
+import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
+import { Option } from "effect";
 
 /** Filename for the DCO file that indicates signoff is required. */
 const DCO_FILENAME = "DCO";
@@ -21,20 +24,9 @@ const ROOT_MARKERS = ["pnpm-workspace.yaml", ".git", "package.json"];
  * @internal
  */
 function findProjectRoot(cwd: string): string | null {
-	let dir = resolve(cwd);
-
-	while (true) {
-		for (const marker of ROOT_MARKERS) {
-			if (existsSync(join(dir, marker))) {
-				return dir;
-			}
-		}
-		const parent = dirname(dir);
-		if (parent === dir) {
-			return null;
-		}
-		dir = parent;
-	}
+	const dirs = Walker.ascendSync(resolve(cwd), { path: nodeWalkerSyncOps.path });
+	const marker = Walker.findUpwardSync(dirs, (dir) => ROOT_MARKERS.map((name) => join(dir, name)), nodeWalkerSyncOps);
+	return Option.match(marker, { onNone: () => null, onSome: dirname });
 }
 
 /**

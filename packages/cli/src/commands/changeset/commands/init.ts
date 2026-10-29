@@ -38,7 +38,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli";
 import { TerminalEnv } from "@effected/env";
-import { Git } from "@effected/git";
+import { Git, GitRemote } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
@@ -140,11 +140,14 @@ export function detectGitHubRepo(cwd: string): Effect.Effect<string | null, neve
 		// as the previous execSync form.
 		const url = yield* git.remoteUrl(cwd).pipe(Effect.catch(() => Effect.succeed(Option.none<string>())));
 		if (Option.isNone(url)) return null;
-		const https = url.value.match(/github\.com\/([^/]+)\/([^/.]+)/);
-		if (https) return `${https[1]}/${https[2]}`;
-		const ssh = url.value.match(/github\.com:([^/]+)\/([^/.]+)/);
-		if (ssh) return `${ssh[1]}/${ssh[2]}`;
-		return null;
+		const remote = GitRemote.parse(url.value);
+		if (Option.isNone(remote)) return null;
+		const form = remote.value;
+		// Only a URL or scp remote names a host; a path or transport remote is never GitHub.
+		if (form._tag !== "GitRemoteUrl" && form._tag !== "GitRemoteScp") return null;
+		if (form.host.toLowerCase() !== "github.com") return null;
+		const [owner, repo] = GitRemote.repositoryPath(form).split("/");
+		return owner && repo ? `${owner}/${repo}` : null;
 	});
 }
 

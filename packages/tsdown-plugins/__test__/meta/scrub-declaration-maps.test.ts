@@ -66,4 +66,17 @@ describe("scrubSourcelessMappings", () => {
 		symlinkSync(outside, join(dir, "linked"));
 		expect(scrubDeclarationMapsUnder(dir)).toBe(2);
 	});
+
+	it("accepts a directory relative to the process cwd", () => {
+		const dir = mkdtempSync(join(tmpdir(), "scrub-rel-"));
+		mkdirSync(join(dir, "dts"));
+		writeMap(join(dir, "dts", "a.d.ts.map"), true);
+		const prevCwd = process.cwd();
+		process.chdir(dir);
+		try {
+			expect(scrubDeclarationMapsUnder("dts")).toBe(1);
+		} finally {
+			process.chdir(prevCwd);
+		}
+	});
 });

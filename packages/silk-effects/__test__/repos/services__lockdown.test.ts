@@ -141,6 +141,36 @@ describe("ReposLockdown — divergent submodule name", () => {
 	);
 });
 
+describe("ReposLockdown — gitdir pointer git refuses", () => {
+	// git requires exactly `gitdir: ` ("invalid gitfile format" otherwise), so a
+	// pointer without the space names nothing git would use. `resolveModuleDir`
+	// must fall back to the name-based path rather than follow it.
+	let root: string;
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-badgitfile-"));
+		mkdirSync(join(root, ".repos/malformed/src"), { recursive: true });
+		writeFileSync(join(root, ".repos/malformed/src/a.ts"), "export {}\n");
+		mkdirSync(join(root, ".git/modules/.repos/malformed-old"), { recursive: true });
+		writeFileSync(join(root, ".git/modules/.repos/malformed-old/config"), "[core]\n");
+		writeFileSync(join(root, ".repos/malformed/.git"), "gitdir:../../.git/modules/.repos/malformed-old\n");
+	});
+	afterAll(() => {
+		chmodSync(join(root, ".git/modules/.repos/malformed-old/config"), 0o644);
+		rmSync(root, { recursive: true, force: true });
+	});
+
+	it.effect("unlock does not follow a malformed pointer", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			chmodSync(join(root, ".git/modules/.repos/malformed-old/config"), 0o444);
+			yield* lockdown.lock(root, "malformed");
+			yield* lockdown.unlock(root, "malformed");
+			expect(mode(join(root, ".repos/malformed/src/a.ts"))).toBe(0o644);
+			expect(mode(join(root, ".git/modules/.repos/malformed-old/config"))).toBe(0o444);
+		}).pipe(Effect.provide(layer)),
+	);
+});
+
 describe("ReposLockdown — gitdir pointer containment", () => {
 	// A hand-edited (or otherwise malicious) `gitdir:` pointer can escape the
 	// repository root entirely. `resolveModuleDir` must fall back to the

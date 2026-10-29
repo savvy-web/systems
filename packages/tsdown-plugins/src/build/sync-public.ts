@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { GlobPattern, GlobPatternOptions } from "@effected/glob";
 import { descendSync } from "@effected/walker";
 import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
@@ -16,7 +16,7 @@ const EVERY_FILE = Result.getOrThrow(GlobPattern.compileResult("**", GlobPattern
  * `public/.well-known/` or `public/node_modules/` asset still copies; symlinked directories are not entered.
  */
 function listFilesRel(dir: string): ReadonlyArray<string> {
-	return Result.getOrThrow(descendSync(EVERY_FILE, { cwd: dir, prune: [], ...nodeWalkerSyncOps }));
+	return Result.getOrThrow(descendSync(EVERY_FILE, { cwd: resolve(dir), prune: [], ...nodeWalkerSyncOps }));
 }
 
 /** True when both files exist with identical size and bytes. Size is checked first so the byte read is skipped for the common changed case. */

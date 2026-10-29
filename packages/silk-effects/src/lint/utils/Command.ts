@@ -22,14 +22,15 @@
  */
 
 import { execSync } from "node:child_process";
-import { existsSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import type { ExecContext, ToolDiscoverySync } from "@effected/commands";
 import { LocalExec, Tool, makeToolDiscoverySync } from "@effected/commands";
 import { nodeSpawnSync } from "@effected/commands/node-sync";
+import { Walker } from "@effected/walker";
+import { nodeWalkerSyncOps } from "@effected/walker/node-sync";
 import { detectPackageManagerSync } from "@effected/workspaces";
 import { nodeSyncOps } from "@effected/workspaces/node-sync";
-import { Result } from "effect";
+import { Option, Result } from "effect";
 
 /**
  * Supported package managers.
@@ -114,19 +115,10 @@ export class Command {
 			return Command.cachedRoot;
 		}
 
-		let dir = resolve(cwd);
-		while (true) {
-			if (existsSync(join(dir, "package.json"))) {
-				Command.cachedRoot = dir;
-				return dir;
-			}
-			const parent = dirname(dir);
-			if (parent === dir) break;
-			dir = parent;
-		}
-
-		Command.cachedRoot = cwd;
-		return cwd;
+		const dirs = Walker.ascendSync(resolve(cwd), { path: nodeWalkerSyncOps.path });
+		const manifest = Walker.findUpwardSync(dirs, (dir) => [join(dir, "package.json")], nodeWalkerSyncOps);
+		Command.cachedRoot = Option.match(manifest, { onNone: () => cwd, onSome: dirname });
+		return Command.cachedRoot;
 	}
 
 	/**
