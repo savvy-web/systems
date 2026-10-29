@@ -1,3 +1,7 @@
+packages:
+  - e2e/*
+  - packages/*
+  - plugin
 allowBuilds:
   "@parcel/watcher": true
   better-sqlite3: true
@@ -173,10 +177,6 @@ minimumReleaseAgeExclude:
   - yarn
 overrides:
   "@microsoft/api-extractor>typescript": ^6.0.3
-packages:
-  - e2e/*
-  - packages/*
-  - plugin
 peerDependencyRules:
   allowedVersions:
     "@commitlint/load>typescript": ^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta

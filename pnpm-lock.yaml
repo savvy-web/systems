@@ -411,7 +411,7 @@ importers:
   .:
     devDependencies:
       '@okfit/plugin':
-        specifier: ^0.5.26
+        specifier: ^0.5.27
         version: 0.5.27(@effected/memfs@0.21.0(effect@4.0.7))(@types/react@19.3.0)(redis@6.3.0)
       '@savvy-web/changelog':
         specifier: workspace:*
@@ -420,7 +420,7 @@ importers:
         specifier: workspace:*
         version: link:packages/silk/dist/dev/pkg
       '@vitest-agent/plugin':
-        specifier: ^6.0.1
+        specifier: ^6.0.2
         version: 6.0.2(@effected/jsonc@0.21.0(effect@4.0.7))(@effected/memfs@0.21.0(effect@4.0.7))(@effected/toml@0.17.0(effect@4.0.7))(@effected/yaml@0.26.0(effect@4.0.7))(@types/react@19.3.0)(@vitest/coverage-istanbul@5.0.5)(@vitest/coverage-v8@5.0.5)(ink@8.0.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(redis@6.3.0)(vitest@5.0.5)
 
   e2e/silk:
@@ -775,7 +775,7 @@ importers:
         specifier: catalog:build
         version: 26.6.5
       rolldown-pnpm-config:
-        specifier: ^2.2.0
+        specifier: ^2.2.1
         version: 2.2.1(@effected/config-file@0.22.0(@effected/glob@0.16.0(effect@4.0.7))(@effected/jsonc@0.21.0(effect@4.0.7))(@effected/toml@0.17.0(effect@4.0.7))(@effected/walker@0.22.0(@effected/glob@0.16.0(effect@4.0.7))(effect@4.0.7))(@effected/yaml@0.26.0(effect@4.0.7))(effect@4.0.7))(@types/react@19.3.0)(redis@6.3.0)(rolldown@1.2.15)
       typescript:
         specifier: catalog:build
@@ -1158,7 +1158,7 @@ importers:
         specifier: catalog:build
         version: 0.18.3
       '@tsdoctor/manifest':
-        specifier: ^0.2.10
+        specifier: ^0.2.11
         version: 0.2.11(effect@4.0.7)
       effect:
         specifier: catalog:effect
@@ -1205,7 +1205,7 @@ importers:
         specifier: catalog:effect
         version: 4.0.7
       pluginfinity:
-        specifier: ^0.3.10
+        specifier: ^0.3.11
         version: 0.3.11(@effected/jsonc@0.21.0(effect@4.0.7))(@effected/toml@0.17.0(effect@4.0.7))(@effected/yaml@0.26.0(effect@4.0.7))(@types/react@19.3.0)(ink@8.0.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(redis@6.3.0)
       vitest:
         specifier: catalog:test
