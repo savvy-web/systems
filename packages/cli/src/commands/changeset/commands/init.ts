@@ -142,9 +142,13 @@ export function detectGitHubRepo(cwd: string): Effect.Effect<string | null, neve
 		if (Option.isNone(url)) return null;
 		const remote = GitRemote.parse(url.value);
 		if (Option.isNone(remote)) return null;
-		const form = remote.value;
-		// Only a URL or scp remote names a host; a path or transport remote is never GitHub.
+		// A transport helper (`https::https://...`) names its host in the address behind it.
+		const form = remote.value._tag === "GitRemoteTransport" ? remote.value.address : remote.value;
+		// Only a URL or scp remote names a host; a path remote is never GitHub.
 		if (form._tag !== "GitRemoteUrl" && form._tag !== "GitRemoteScp") return null;
+		// The authority ends at the first `/`, `?` or `#`, so a user holding one means the parse read past the
+		// real host (`https://other.example/path@github.com/...` is other.example, not github.com).
+		if (form._tag === "GitRemoteUrl" && form.user !== undefined && /[/?#]/.test(form.user)) return null;
 		if (form.host.toLowerCase() !== "github.com") return null;
 		const [owner, repo] = GitRemote.repositoryPath(form).split("/");
 		return owner && repo ? `${owner}/${repo}` : null;
