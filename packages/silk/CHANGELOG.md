@@ -1,5 +1,35 @@
 # @savvy-web/silk
 
+## 4.5.5
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/git | dependency | updated | ^0.27.0 | ^0.29.0 |
+| @effected/templates | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.27 | 1.0.28 |
+| @savvy-web/cli | dependency | updated | 3.7.16 | 3.7.17 |
+| @savvy-web/mcp | dependency | updated | 3.4.19 | 3.4.20 |
+| @savvy-web/silk-effects | dependency | updated | 10.2.1 | 11.0.0 |
+| effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+| @biomejs/biome | peerDependency | updated | 2.6.3 | 2.6.4 |
+| @types/node | peerDependency | updated | ^26.6.5 | ^26.6.6 |
+
+[#855][#855]
+
+### Maintenance
+
+- Biome moves to 2.6.4. `savvy lint` and `savvy check` now sync each consumer `biome.json(c)` `$schema` URL to 2.6.4, and the shipped `@savvy-web/silk/biome` preset points at the 2.6.4 schema. [#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 4.5.4
 
 ### Dependencies

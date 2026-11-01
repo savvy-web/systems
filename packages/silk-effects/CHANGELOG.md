@@ -1,5 +1,52 @@
 # @savvy-web/silk-effects
 
+## 11.0.0
+
+### Breaking Changes
+
+- Peer dependency ranges tightened: `effect` is now `~4.1.1` (previously `^4.0.0`), and the `@effected/*` kit peers moved to their current minors (for example `@effected/workspaces` `^0.41.0`, previously `^0.40.0`). Consumers on `effect` 4.0.x no longer satisfy the peer range and must upgrade to `effect` 4.1.x. Kit peers affected: `@effected/commands` `^0.19.0`, `@effected/git` `^0.29.0`, `@effected/templates` `^0.16.0`, `@effected/workspaces` `^0.41.0`. [#855][#855]
+
+### Bug Fixes
+
+- The commit-message pre-tool-use guard now checks chained commands. `Commitlint.parseBashCommand` used to drop shell operators and inspect only the first words, so the guard skipped these shapes entirely:
+
+- `git add -A && git commit -m "…"`
+
+- `cd pkg && git commit …`
+
+- `FOO=1 git commit …`
+
+- a `gh pr create` that follows a `;`
+
+- The command is now split on its control operators (`&&`, `||`, `;`, `|`, `&` and subshell parentheses) and on unquoted newlines, leading variable assignments are skipped, and the first `git commit` or `gh pr create`/`edit` is classified. A later command's flags no longer leak into the commit's: `git commit -m "…" && git push --no-verify` no longer reports `noVerify`. An operator inside a quoted message is still part of the message. A newline inside quotes or `$(…)` does not split, a backslash-continued line is joined, and a heredoc body is treated as input text, never as commands. [#855][#855]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/glob | dependency | updated | ^0.16.0 | ^0.17.0 |
+| @effected/jsonc | dependency | updated | ^0.21.0 | ^0.22.0 |
+| @effected/markdown | dependency | updated | ^0.24.0 | ^0.25.0 |
+| @effected/package-json | dependency | updated | ^0.27.0 | ^0.28.0 |
+| @effected/toml | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/walker | dependency | updated | ^0.22.0 | ^0.24.0 |
+| @effected/yaml | dependency | updated | ^0.26.0 | ^0.27.0 |
+| @savvy-web/silk-core | dependency | updated | 0.5.3 | 0.6.0 |
+| @effected/commands | peerDependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/git | peerDependency | updated | ^0.27.0 | ^0.29.0 |
+| @effected/templates | peerDependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | peerDependency | updated | ^0.40.0 | ^0.41.0 |
+| effect | peerDependency | updated | ^4.0.0 | ~4.1.1 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 10.2.1
 
 ### Bug Fixes

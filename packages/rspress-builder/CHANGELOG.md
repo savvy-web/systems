@@ -1,5 +1,22 @@
 # @savvy-web/rspress-builder
 
+## 1.3.34
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/bundler | dependency | updated | 2.7.1 | 2.7.2 |
+| @tsdown/css | dependency | updated | ^0.23.2 | ^0.23.4 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 1.3.33
 
 ### Dependencies
@@ -615,8 +632,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @types/node | peerDependency | updated | ^26.1.0 | ^26.2.0 | [#498][#498] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#498]: https://github.com/savvy-web/systems/pull/498
 
 ## 1.1.13
@@ -690,8 +705,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
 - | Dependency | Type | Action | From | To |  |
   | --- | --- | --- | --- | --- | --- |
   | @savvy-web/bundler | dependency | updated | 2.1.4 | 2.1.5 | [#436][#436] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#436]: https://github.com/savvy-web/systems/pull/436
 
@@ -862,8 +875,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | --- | --- | --- | --- | --- | --- |
   | @tsdown/css | dependency | updated | ^0.22.9 | ^0.22.12 | [#342][#342] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
 
-### Patch Changes
-
 [#342]: https://github.com/savvy-web/systems/pull/342
 
 ## 1.0.22
@@ -982,8 +993,6 @@ Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributio
   | @typescript/native-preview | peerDependency | removed | ^7.0.0-dev.20260612.1 | — |  |
   | @tsdown/css | dependency | updated | ^0.22.3 | ^0.22.4 |  |
   | typescript | peerDependency | updated | ^6.0.0 | ^7.0.0 | [#278][#278] Thanks [@spencerbeggs](https://github.com/spencerbeggs)! |
-
-### Patch Changes
 
 [#278]: https://github.com/savvy-web/systems/pull/278
 

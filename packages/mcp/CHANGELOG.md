@@ -1,5 +1,33 @@
 # @savvy-web/mcp
 
+## 3.4.20
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | ^4.0.7 | ~4.1.1 |
+| @effected/commands | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/engine | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @effected/git | dependency | updated | ^0.27.0 | ^0.29.0 |
+| @effected/mcp | dependency | updated | ^0.11.0 | ^0.12.0 |
+| @effected/templates | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
+| @savvy-web/silk-effects | dependency | updated | 10.2.1 | 11.0.0 |
+| effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+
+[#855][#855]
+
+### Maintenance
+
+- Adapted the server wiring to Effect 4.1: the stdio server is now built with `McpStdio.layer` registrations and a `McpServer` middleware that supplies each tool's runtime dependencies per request. The tool surface is unchanged. [#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 3.4.19
 
 ### Dependencies
