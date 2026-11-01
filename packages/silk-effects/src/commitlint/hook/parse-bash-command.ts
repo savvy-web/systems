@@ -99,6 +99,11 @@ function separateLines(command: string): string {
 			i += 2;
 			continue;
 		}
+		if (ch === "#" && (out === "" || /[\s;&|(]$/.test(out))) {
+			// A comment runs to the end of its line; `shell-quote` would extend it to the end of the input.
+			while (i < command.length && command[i] !== "\n") i += 1;
+			continue;
+		}
 		if (ch === "'" || ch === '"') {
 			quote = ch;
 			out += ch;
