@@ -1,8 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
+import { TsconfigLoaderSync } from "@effected/tsconfig-json";
 import { afterEach, describe, expect, it } from "vitest";
 import { writeApiExtractorTsconfig } from "../../src/meta/api-extractor.js";
+import { tsconfigSyncOptions } from "../../src/tsconfig/sync-options.js";
 
 const cleanup: string[] = [];
 afterEach(() => {
@@ -48,7 +50,7 @@ describe("writeApiExtractorTsconfig — self-reference paths (#771)", () => {
 			paths: { "@scope/pkg": ["/decl/index.d.ts"] },
 		});
 		expect(read(out).compilerOptions?.paths).toEqual({
-			"~/*": ["./src/*"],
+			"~/*": [join(dir, "src/*")],
 			"@scope/pkg": ["/decl/index.d.ts"],
 		});
 	});
@@ -71,9 +73,54 @@ describe("writeApiExtractorTsconfig — self-reference paths (#771)", () => {
 			paths: { "@scope/pkg": ["/decl/index.d.ts"] },
 		});
 		expect(read(out).compilerOptions?.paths).toEqual({
-			"~/*": ["./src/*"],
+			"~/*": [join(dir, "src/*")],
 			"@scope/pkg": ["/decl/index.d.ts"],
 		});
+	});
+
+	it("anchors re-emitted targets to the base's baseUrl when one is in effect", () => {
+		const { dir, base, entry } = scaffold(
+			JSON.stringify({ compilerOptions: { baseUrl: "./lib", paths: { "~/*": ["./src/*"] } } }),
+		);
+		const out = writeApiExtractorTsconfig({ cwd: dir, tsconfigPath: base, entryDtsPath: entry, paths: { a: ["/a"] } });
+		expect(read(out).compilerOptions?.paths?.["~/*"]).toEqual([join(dir, "lib/src/*")]);
+	});
+
+	it("keeps paths the base inherits from further up its extends chain", () => {
+		const root = mkdtempSync(join(tmpdir(), "ae-paths-chain-"));
+		cleanup.push(root);
+		writeFileSync(
+			join(root, "tsconfig.root.json"),
+			JSON.stringify({ compilerOptions: { paths: { "~/*": ["./src/*"] } } }),
+		);
+		mkdirSync(join(root, "pkg"));
+		const base = join(root, "pkg", "tsconfig.json");
+		writeFileSync(base, JSON.stringify({ extends: "../tsconfig.root.json" }));
+		const out = writeApiExtractorTsconfig({
+			cwd: join(root, "pkg"),
+			tsconfigPath: base,
+			entryDtsPath: join(root, "pkg", "index.d.ts"),
+			paths: { a: ["/a"] },
+		});
+		// TypeScript resolves an inherited `paths` against the config that declared it: the root.
+		expect(read(out).compilerOptions?.paths?.["~/*"]).toEqual([join(root, "src/*")]);
+	});
+
+	it("resolves a base mapping through the derived config to the real file", () => {
+		const { dir, base, entry } = scaffold(JSON.stringify({ compilerOptions: { paths: { "~/*": ["./src/*"] } } }));
+		mkdirSync(join(dir, "src"));
+		writeFileSync(join(dir, "src", "util.ts"), "export const x = 1;\n");
+		const out = writeApiExtractorTsconfig({ cwd: dir, tsconfigPath: base, entryDtsPath: entry, paths: { a: ["/a"] } });
+		cleanup.push(out);
+		// Resolve the DERIVED config with the same tsc-parity loader, then map "~/util" the way
+		// TypeScript does: substitute the wildcard and anchor at baseUrl, else at pathsBase.
+		const derived = TsconfigLoaderSync.resolve(out, tsconfigSyncOptions);
+		const anchor = derived.compilerOptions.baseUrl ?? derived.pathsBase ?? dirname(out);
+		const target = derived.compilerOptions.paths?.["~/*"]?.[0];
+		expect(target).toBeDefined();
+		const mapped = resolve(anchor, (target ?? "").replace("*", "util.ts"));
+		expect(existsSync(mapped)).toBe(true);
+		expect(realpathSync(mapped)).toBe(realpathSync(join(dir, "src", "util.ts")));
 	});
 
 	it("tolerates an unparseable base file when merging", () => {

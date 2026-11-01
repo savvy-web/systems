@@ -11,3 +11,5 @@
 | @effected/templates | dependency | updated | ^0.15.0 | ^0.16.0 |
 | @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
 | effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+| @biomejs/biome | peerDependency | updated | 2.6.3 | 2.6.4 |
+| @types/node | peerDependency | updated | ^26.6.5 | ^26.6.6 |

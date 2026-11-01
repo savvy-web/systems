@@ -19,3 +19,4 @@
 | @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
 | @tsdoctor/manifest | dependency | updated | ^0.2.11 | ^0.3.0 |
 | effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+| tsdown | dependency | updated | ^0.23.2 | ^0.23.4 |

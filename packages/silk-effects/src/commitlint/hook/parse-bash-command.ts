@@ -7,12 +7,17 @@
  * Heredocs surface as already-substituted strings inside Claude's tool
  * envelope, so we don't need full shell semantics — just argv tokenization.
  *
- * Operators (`&&`, `||`, `|`, `;`) are filtered out by `shell-quote`. The
- * parser inspects only `tokens[0]` and `tokens[1]`, so a compound command
- * like `true && git commit -m "x"` will be classified as `unknown` rather
- * than recursed into. That is the intended behaviour for the scaffold:
- * compound shapes are uncommon in agent-emitted commands, and silently
- * dropping them is safer than misattributing extracted state.
+ * `shell-quote` returns control operators (`&&`, `||`, `;`, `|`, `&`, and
+ * the subshell parentheses) as `{ op }` objects. The command is split on them
+ * into simple commands, leading `NAME=value` assignments are dropped from each,
+ * and the FIRST simple command that is a `git commit` or `gh pr create`/`edit`
+ * is classified. Splitting is what keeps attribution exact: a chained
+ * `git add -A && git commit …` is still checked, and a later command's flags
+ * (`… && git push --no-verify`) never leak into the commit's. An operator
+ * inside quotes is part of a word, never a split point (#856).
+ *
+ * Interim: spencerbeggs/effected#1204 proposes a kit shell-syntax segmenter
+ * that would replace `shell-quote` here.
  *
  * @internal
  */
@@ -35,8 +40,44 @@ function emptyFlags(): ParsedCommit["flags"] {
 	return { sign: "default", noVerify: false, amend: false };
 }
 
+/** Control operators that end one simple command and start the next. */
+const CONTROL_OPERATORS: ReadonlySet<string> = new Set(["&&", "||", ";", ";;", "|", "|&", "&", "(", ")"]);
+
+/** A leading shell variable assignment (`NAME=value`), which is not the command name. */
+const ASSIGNMENT = /^[A-Za-z_][A-Za-z0-9_]*=/;
+
+/**
+ * Split a command string into its simple commands' word lists. Non-control
+ * operator objects (redirections, globs, comments) are dropped, as before.
+ */
+function simpleCommands(command: string): ReadonlyArray<ReadonlyArray<string>> {
+	const segments: string[][] = [];
+	let current: string[] = [];
+	for (const entry of shellParse(command)) {
+		if (typeof entry === "string") {
+			current.push(entry);
+		} else if ("op" in entry && CONTROL_OPERATORS.has(entry.op)) {
+			if (current.length > 0) segments.push(current);
+			current = [];
+		}
+	}
+	if (current.length > 0) segments.push(current);
+	return segments.map((words) => {
+		let start = 0;
+		while (start < words.length && ASSIGNMENT.test(words[start] ?? "")) start += 1;
+		return words.slice(start);
+	});
+}
+
 export function parseBashCommand(command: string): ParsedCommit {
-	const tokens = shellParse(command).filter((t): t is string => typeof t === "string");
+	for (const tokens of simpleCommands(command)) {
+		const parsed = classify(tokens);
+		if (parsed.kind !== "unknown") return parsed;
+	}
+	return { kind: "unknown", message: null, flags: emptyFlags(), source: "none" };
+}
+
+function classify(tokens: ReadonlyArray<string>): ParsedCommit {
 	if (tokens.length === 0) return { kind: "unknown", message: null, flags: emptyFlags(), source: "none" };
 
 	if (tokens[0] === "git" && tokens[1] === "commit") {

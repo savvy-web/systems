@@ -31,18 +31,18 @@ await build({
 							strategy: "lock",
 						},
 						"@tsdown/exe": {
-							range: "^0.23.2",
+							range: "^0.23.4",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@tsdown/css": {
-							range: "^0.23.2",
+							range: "^0.23.4",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
 						"@rsbuild/core": {
-							range: "^2.2.14",
-							peer: "^2.2.0",
+							range: "^2.3.0",
+							peer: "^2.3.0",
 							strategy: "lock-minor",
 						},
 						"@types/bun": {
@@ -51,7 +51,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.5",
+							range: "^26.6.6",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -76,12 +76,12 @@ await build({
 							strategy: "lock-minor",
 						},
 						rolldown: {
-							range: "^1.2.15",
+							range: "^1.2.16",
 							peer: "^1.2.0",
 							strategy: "lock-minor",
 						},
 						tsdown: {
-							range: "^0.23.2",
+							range: "^0.23.4",
 							peer: "^0.23.0",
 							strategy: "lock-minor",
 						},
@@ -110,7 +110,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.5",
+							range: "^26.6.6",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},
@@ -159,8 +159,8 @@ await build({
 				lint: {
 					packages: {
 						"@biomejs/biome": {
-							range: "2.6.3",
-							peer: "2.6.3",
+							range: "2.6.4",
+							peer: "2.6.4",
 							strategy: "lock",
 						},
 						"@changesets/cli": {
@@ -213,7 +213,7 @@ await build({
 							strategy: "lock",
 						},
 						"@types/node": {
-							range: "^26.6.5",
+							range: "^26.6.6",
 							peer: "^26.6.0",
 							strategy: "lock-minor",
 						},

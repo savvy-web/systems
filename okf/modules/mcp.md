@@ -23,10 +23,10 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T17:38:16Z
+  at: 2026-11-01T18:04:28Z
 integrity:
   generated:
-    body: edda1859a3a67773
+    body: 6d1ba5e783990339
 ---
 
 # mcp
@@ -70,7 +70,7 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 - **`src/index.ts` never exports `main`.**[^arch]
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
-- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness.[^tests]
+- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process server suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness. The one exception is `server.strict.test.ts`, which pins `Tool.Strict` on a fixture toolkit over core `effect/ai`'s in-memory `McpTest.makeClient` (protocols `McpStdio.protocols`, `2025-11-25`), since its subject is the registration, not stdio.[^tests]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]
 - **The runtime is root-bound at layer build.** One server instance serves one project dir; per-call `cwd` arguments walk up to a workspace root but do not rebuild the layer.[^arch]
 

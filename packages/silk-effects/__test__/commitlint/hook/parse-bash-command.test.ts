@@ -83,3 +83,53 @@ describe("parseBashCommand — gh pr", () => {
 		expect(r.message).toBeNull();
 	});
 });
+
+describe("parseBashCommand — compound commands (#856)", () => {
+	it("finds a git commit chained after another command", () => {
+		const r = parseBashCommand(`git add -A && git commit -m "feat: x"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("finds a git commit after cd", () => {
+		const r = parseBashCommand(`cd packages/cli && git commit -m "feat: x"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("skips leading environment assignments", () => {
+		const r = parseBashCommand(`FOO=1 BAR=two git commit -m "feat: x"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("finds gh pr create after a semicolon", () => {
+		const r = parseBashCommand(`gh pr view 1; gh pr create --title t --body "b"`);
+		expect(r.kind).toBe("gh-pr-create");
+		expect(r.message).toBe("b");
+	});
+
+	it("finds a git commit inside a subshell", () => {
+		const r = parseBashCommand(`(cd packages/cli && git commit -m "feat: x")`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("does not attribute a later command's flags to the commit", () => {
+		const r = parseBashCommand(`git commit -m "feat: x" && git push --no-verify`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.flags.noVerify).toBe(false);
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("keeps an operator inside a quoted message as text", () => {
+		const r = parseBashCommand(`git commit -m "feat: a && b; c | d"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: a && b; c | d");
+	});
+
+	it("stays unknown when no segment is a commit or PR command", () => {
+		const r = parseBashCommand(`git status && git log --oneline -1 | head`);
+		expect(r.kind).toBe("unknown");
+	});
+});
