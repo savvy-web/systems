@@ -1,5 +1,26 @@
 # @savvy-web/changelog
 
+## 1.0.28
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/git | dependency | updated | ^0.27.0 | ^0.29.0 |
+| @effected/templates | dependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
+| @savvy-web/silk-effects | dependency | updated | 10.2.1 | 11.0.0 |
+| effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 1.0.27
 
 ### Dependencies

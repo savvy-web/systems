@@ -1,5 +1,28 @@
 # @savvy-web/silk-core
 
+## 0.6.0
+
+### Breaking Changes
+
+- Peer dependency ranges tightened: `effect` is now `~4.1.1` (previously `^4.0.0`), and the `@effected/*` kit peers moved to their current minors (for example `@effected/workspaces` `^0.41.0`, previously `^0.40.0`). Consumers on `effect` 4.0.x no longer satisfy the peer range and must upgrade to `effect` 4.1.x. [#855][#855]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github-references | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/templates | peerDependency | updated | ^0.15.0 | ^0.16.0 |
+| @effected/workspaces | peerDependency | updated | ^0.40.0 | ^0.41.0 |
+| effect | peerDependency | updated | ^4.0.0 | ~4.1.1 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 0.5.3
 
 ### Dependencies

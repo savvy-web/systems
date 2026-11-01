@@ -1,5 +1,26 @@
 # @savvy-web/github-action-builder
 
+## 2.4.24
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| picocolors | dependency | removed | ^1.1.1 | — |
+| @effect/platform-node | dependency | updated | ^4.0.7 | ~4.1.1 |
+| @effected/env | dependency | updated | ^0.7.0 | ^0.9.0 |
+| @effected/yaml | dependency | updated | ^0.26.0 | ^0.27.0 |
+| @rsbuild/core | dependency | updated | ^2.2.14 | ^2.3.0 |
+| effect | dependency | updated | ^4.0.7 | ~4.1.1 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 2.4.23
 
 ### Dependencies

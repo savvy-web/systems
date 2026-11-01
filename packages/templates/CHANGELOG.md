@@ -1,5 +1,27 @@
 # @savvy-web/templates
 
+## 2.0.0
+
+### Breaking Changes
+
+- The `effect` peer dependency is now `~4.1.1` (previously `^4.0.0`). Consumers on `effect` 4.0.x no longer satisfy the peer range and must upgrade to `effect` 4.1.x. [#855][#855]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.27.0 | ^0.28.0 |
+| @effected/yaml | dependency | updated | ^0.26.0 | ^0.27.0 |
+| effect | peerDependency | updated | ^4.0.0 | ~4.1.1 |
+
+[#855][#855]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#855]: https://github.com/savvy-web/systems/pull/855
+
 ## 1.2.19
 
 ### Dependencies
