@@ -92,7 +92,7 @@ export const makeSilkRuntimeLayer = (
 	// root-bound to `cwd`. The composite is `Workspaces.layerWithGit`'s
 	// service set with config-dependency hook replay in catalog assembly
 	// (subprocess variant, bundle-safe), so hook-injected catalogs
-	// (`catalog:effected`, `catalog:effect:peers`) resolve to their declared
+	// (`catalog:effected`) resolve to their declared
 	// ranges in `changeset_deps_detect` / `changeset_deps_regen` diffs instead
 	// of concrete lockfile versions (#539).
 	const kitGraph = Workspaces.layerWithGitAndConfigDependenciesSubprocess({ cwd });

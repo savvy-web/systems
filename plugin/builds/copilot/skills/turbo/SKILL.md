@@ -106,7 +106,7 @@ the tool does not surface.
   `test`, each with a `<name>:peers` companion for peer ranges. Reach for the catalog
   that matches the dependency's role (`tsdown` is `catalog:build`, `vitest` is
   `catalog:test`); `catalog:silk` is only what has no more specific home. `effect` and
-  `@effect/*` come from `catalog:effect`, supplied by `@effected/pnpm-plugin-effect`.
+  `@effect/*` come from `catalog:effected`, supplied by `@effected/pnpm-plugin-effected`.
 - **`prepare` builds are the ordering mechanism, not a smell.** Every package that is a
   `workspace:*` dependency of another carries its own `prepare: turbo run build:dev`, and
   pnpm runs it per package during `pnpm install` — that is what makes a consumer's `link:`

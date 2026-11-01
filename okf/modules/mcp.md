@@ -23,10 +23,10 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-01T17:38:16Z
 integrity:
   generated:
-    body: 82c4b061d621bd7c
+    body: edda1859a3a67773
 ---
 
 # mcp
@@ -50,6 +50,8 @@ The package follows the same `./main` contract as the CLI: `src/bin.ts` is the s
 ## The runtime layer
 
 One long-lived service graph, built from `makeSilkRuntimeLayer(cwd)` and composed directly from silk-effects and `@effected/*` kit exports — both of which mcp may import, so the layering holds without indirection. The composition rests on one reference, one construction: the kit graph (`Workspaces.layerWithGitAndConfigDependenciesSubprocess({ cwd })`) mints a fresh layer per call, so it is bound to a `const` and provided once via `Layer.provideMerge`; layer memoization by reference then builds each kit service exactly once, root-bound to the resolved project dir.[^arch] Because these instances live as long as the process, caches (`Changesets.ConfigInspector`, `ToolDiscovery`'s binary-probe cache) are refreshed per call rather than per layer build.[^arch]
+
+That graph reaches the handlers through MCP middleware, not `Layer.provide`. Since effect 4.1 a service a tool lists in its `dependencies` is a per-request `McpRequest<"Requires", S>` requirement, which only MCP middleware or the transport can meet; providing the runtime layer to the toolkit registration no longer discharges it. `server.ts` therefore builds `RuntimeMiddleware` with `McpServer.middleware<{ provides: McpServices }>()` in effect form. It reads the runtime `Context` once, when the layer is built, and `Effect.provideContext`s that same context to every request, so the process-lifetime instances (the `ConfigInspector` of savvy-web/systems#229 among them) are still built exactly once. `ServerLayer(cwd, options)` is `McpStdio.layer({ …, registrations: SilkToolsLayer(cwd) })` with `makeSilkRuntimeLayer(cwd)` provided underneath. The toolkit registration, which carries the middleware layer, is passed as `registrations`, so it builds before the first request.[^server]
 
 `DepsRegen` is gated by silk's `SilkPublishability.layerAdaptive`, provided closer than the kit graph so it wins over the kit's npm-semantics default.[^arch]
 

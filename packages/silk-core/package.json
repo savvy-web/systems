@@ -33,20 +33,20 @@
 		"@effected/github-references": "catalog:effected"
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:effect",
+		"@effect/vitest": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
-		"effect": "catalog:effect",
+		"effect": "catalog:effected",
 		"fast-check": "^4.10.2",
 		"typescript": "catalog:build",
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/templates": "catalog:effected:peers",
-		"@effected/workspaces": "catalog:effected:peers",
-		"effect": "catalog:effect:peers"
+		"@effected/templates": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
+		"effect": "catalog:effected"
 	},
 	"publishConfig": {
 		"access": "public",

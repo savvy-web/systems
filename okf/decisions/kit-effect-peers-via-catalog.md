@@ -1,7 +1,7 @@
 ---
 type: Decision
 title: Kit Effect peers supplied via the effected catalog
-description: "silk-core and silk-effects declare only the identity-carrying @effected/* packages (commands, git, templates, workspaces) as required peers, spelled catalog:effected:peers, with ranges supplied by @effected/pnpm-plugin-effect's catalogs rather than hand-pinned versions."
+description: "silk-core and silk-effects declare only the identity-carrying @effected/* packages (commands, git, templates, workspaces) as required peers, spelled catalog:effected, with ranges supplied by @effected/pnpm-plugin-effected's single effected catalog rather than hand-pinned versions."
 status: stable
 tags: [architecture, release, deps]
 sources:
@@ -15,7 +15,7 @@ sources:
     resource: ../../pnpm-workspace.yaml
 generated:
   by: okfit/claude-code
-  at: 2026-10-01T23:55:04Z
+  at: 2026-11-01T17:38:16Z
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -23,7 +23,7 @@ verified:
     at: 2026-10-13T17:19:17Z
 integrity:
   generated:
-    body: 247b9267101b119e
+    body: 65edb0b81449b7c2
   verified:
     by: human:spencer
     at: 2026-10-13T17:19:17Z
@@ -51,7 +51,9 @@ Under that criterion four kit packages carry identity and are peers:
 
 The remaining kit packages silk-effects uses (`github-references`, `glob`, `jsonc`, `markdown`, `package-json`, `walker`, `yaml`) stay regular `dependencies`. `@effected/github-references` stays a dependency in silk-core as well: `parseBareLines` returns a plain `interface BareLineReference`, not a class, so nothing nominal crosses.[^kit-peers][^core-peers]
 
-Both manifests list their peers under `peerDependencies` as `catalog:effected:peers` (kit) and `catalog:effect:peers` (`effect`), and under `devDependencies` as `catalog:effected` / `catalog:effect` so each package still builds and tests standalone; `cli`, `mcp`, and `silk` declare the kit packages they import as `catalog:effected` dependencies, and the built `dist/prod/npm` manifests publish the `:peers` ranges. All four catalogs come from the `@effected/pnpm-plugin-effect` config dependency, which the kit publishes itself with one catalog entry per kit library — consumers spell kit dependencies `catalog:effected`, never a literal version, so this repo tracks one number (the plugin pin in `pnpm-workspace.yaml`) and bumping it re-resolves every `catalog:` specifier at once. The `:peers` spelling is not cosmetic: the `effected` catalog can carry patch-floor carets while `effected:peers` carries minor-floor ones (at pnpm-plugin-effect 0.8.15: `@effected/commands ^0.7.1` vs `^0.7.0`, `@effected/git ^0.15.1` vs `^0.15.0`; at 0.9.0 the two coincide), so a peer spelled `catalog:effected` would reject a consumer one patch behind for no identity reason. `effect` and `effect:peers` resolve to the same exact version (`4.0.0-rc.116` at 0.9.0); the split is kept for the day they diverge.[^kit-peers][^core-peers]
+Both manifests list their peers — the kit packages and `effect` alike — under `peerDependencies` as `catalog:effected`, and the same packages under `devDependencies` as `catalog:effected` so each package still builds and tests standalone; `cli`, `mcp`, and `silk` declare the kit packages they import as `catalog:effected` dependencies. The one catalog comes from the `@effected/pnpm-plugin-effected` config dependency (`0.20.0`, which replaced `@effected/pnpm-plugin-effect` `0.19.0` under effected#1146). Its install hook folds `effect`, every `@effect/*` package and every `@effected/*` kit library into the single `effected` catalog. Consumers spell all of them `catalog:effected`, never a literal version. This repo therefore tracks one number, the plugin pin in `pnpm-workspace.yaml`, and bumping it re-resolves every `catalog:` specifier at once. The old `catalog:effect`, `catalog:effect:peers` and `catalog:effected:peers` names no longer exist: a manifest still spelling one fails the install with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. The plugin also holds the Effect family to one minor (`effect: ~4.1.1` at `0.20.0`, a tilde rather than a caret) and pins every family member graph-wide with overrides of its own, so those pins are never hand-written here.[^kit-peers][^core-peers][^workspace]
+
+The built `dist/prod/npm` manifests publish the catalog's install range as the peer range: `effect: ~4.1.1` and each kit peer at a patch caret (`@effected/workspaces: ^0.41.0` at `0.20.0`), not a floored `^4.0.0` or a minor-floor caret. Under the retired split catalogs, `effected:peers` could carry a minor-floor caret where `effected` carried a patch floor. That split is gone, and a peer is now as tight as the install range — see the consequences below.[^kit-peers]
 
 Required peers convert what was silent duplication into a visible mismatch: on `0.x`, caret ranges are disjoint across minors, so a consumer on the wrong minor cannot satisfy the peer with the copy it already has. Where this stops is typecheck, not install — this repo sets `autoInstallPeers: true` and nothing sets `strictPeerDependencies` (pnpm's default is `false`), so a conflicting peer range prints a warning and the install exits 0; what actually fails is `tsc`, since two resolved copies of an identity-carrying package are two distinct type identities and a `Layer` built from one does not satisfy a requirement expressed by the other.[^kit-peers]
 
@@ -64,12 +66,13 @@ Required peers convert what was silent duplication into a visible mismatch: on `
 
 ## Consequences
 
-- A kit-library release without its paired `@effected/pnpm-plugin-effect` catalog release is invisible to catalog consumers, since a caret on `0.x` pins the minor inside the catalog too; coordinating a dogfood round means confirming the cut includes the plugin.[^kit-peers]
+- Published peer ranges are as tight as the catalog's install ranges. A consumer one patch behind a kit peer's caret floor, or on a different Effect minor than the `~4.1.1` tilde, gets a peer warning. This is a real constraint for the Effect family, which the plugin holds to one minor graph-wide, and a cost without an identity reason for a kit patch. It is accepted because the single-catalog plugin no longer offers a looser peer spelling, and a hand-written peer range would reintroduce the per-version bookkeeping the catalog exists to remove.[^kit-peers]
+- A kit-library release without its paired `@effected/pnpm-plugin-effected` catalog release is invisible to catalog consumers, since a caret on `0.x` pins the minor inside the catalog too; coordinating a dogfood round means confirming the cut includes the plugin.[^kit-peers]
 - The plugin pin bump in `pnpm-workspace.yaml`'s `configDependencies` is version **and** integrity hash together — editing the version and leaving the old `+sha512-…` hash will not install.[^kit-peers]
 - **The trap**, tracked as savvy-web/systems#536: a `configDependencies` version bump alone does not make pnpm re-resolve it. pnpm reports "Lockfile is up to date, resolution step is skipped," silently keeps the previously linked version, and the new catalog appears not to exist (`ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC` for a catalog that does exist upstream). Removing `node_modules/.pnpm-config`, removing `node_modules/.pnpm-workspace-state-v1.json`, and `pnpm install --force` do not fix it. `pnpm-lock.yaml` is multi-document YAML whose **first** document pins the config dependency independently of the manifest; the fix is to hand-edit that first document's `specifier`, `version`, `packages:`, `integrity`, and `snapshots:` records, scoped to that document only, then install.[^kit-peers]
 - Bumping a consumer's direct silk-effects pin across a major does not by itself collapse a duplicate if a lockfile-held intermediate still satisfies its own declared range; the operation is bump the direct pin, then explicitly update every intermediate that pins the old copy, verified by counting resolved versions in the lockfile after each step.[^kit-peers]
 - A peer declared by silk-core is also declared by silk-effects: silk-effects re-exports silk-core, so any class identity silk-core exposes is exposed one layer up too. Adding a kit class to a silk-core public schema means adding the peer to both manifests.[^core-peers]
-- `pnpm-workspace.yaml` sets `resolvePeersFromWorkspaceRoot: false` (added with the move to `effect` 4.0.0 and `@effected/pnpm-plugin-effect` 0.13.0). With pnpm's default, a workspace package's unsatisfied peer resolves from the root's dependencies, so a tool installed at the root that still carries a release-candidate copy of `effect` or a kit library could satisfy the new kit's peers with the wrong copy. With it off, a package's peers resolve only within its own dependency graph, so a kit package's required peers must be declared where it is used — the reason `@savvy-web/cli` declares `@effected/env`, `@effected/glob` and `@effected/walker`, required peers of `@effected/cli` 0.11.[^workspace]
+- `pnpm-workspace.yaml` sets `resolvePeersFromWorkspaceRoot: false` (added with the move to `effect` 4.0.0 and the predecessor plugin `@effected/pnpm-plugin-effect` 0.13.0). With pnpm's default, a workspace package's unsatisfied peer resolves from the root's dependencies, so a tool installed at the root that still carries a release-candidate copy of `effect` or a kit library could satisfy the new kit's peers with the wrong copy. With it off, a package's peers resolve only within its own dependency graph, so a kit package's required peers must be declared where it is used — the reason `@savvy-web/cli` declares `@effected/env`, `@effected/glob` and `@effected/walker`, required peers of `@effected/cli` 0.11.[^workspace]
 - A kit package with zero imports under `src/` is not a dependency of any kind — `@effected/toml` was removed from silk-effects on this basis.[^kit-peers]
 
 [^kit-peers]: `../../packages/silk-effects/package.json`

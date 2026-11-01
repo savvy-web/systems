@@ -29,7 +29,7 @@ Load when implementing a new service, changing a result schema, moving code to s
 
 Load before changing any `@effected/*` dependency in this package's manifest, or when a consumer reports a duplicate kit copy:
 → `@../../okf/decisions/kit-effect-peers-via-catalog.md`
-Why `@effected/workspaces`, `@effected/git`, `@effected/commands` and `@effected/templates` are REQUIRED PEERS (`catalog:effected:peers`), the two-copies type-identity failure, and the `configDependencies` bump trap.
+Why `@effected/workspaces`, `@effected/git`, `@effected/commands` and `@effected/templates` are REQUIRED PEERS (`catalog:effected`), the two-copies type-identity failure, and the `configDependencies` bump trap.
 
 Load before touching `src/lint/utils/Command.ts` or turning a `Lint` handler into an Effect program:
 → `@../../okf/decisions/lint-staged-boundary.md`

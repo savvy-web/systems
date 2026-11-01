@@ -20,7 +20,7 @@
  * `2026-07-28` protocol (SEP-2575): no handshake, no session, every request
  * self-contained.
  *
- * ## The six gotchas, verified against effect@4.0.0-rc.117
+ * ## The six gotchas, verified against effect@4.1.1
  *
  * (Source paths are under `.repos/effect/packages/effect/src/`.)
  *
@@ -29,13 +29,17 @@
  *    `Tool.HandlerServices` infers `never` and a handler that yields a
  *    service fails `Toolkit.HandlersFrom`. Every tool here declares the
  *    services its handler yields (`biome_check` included: `Git`,
- *    `ToolDiscovery`, `ChildProcessSpawner`).
+ *    `ToolDiscovery`, `ChildProcessSpawner`). Since effect 4.1 each declared
+ *    service is a per-request `McpServer.McpRequest<"Requires", S>` marker
+ *    that only MCP middleware (or the transport, for `Scope`) discharges —
+ *    providing `S` with `Layer.provide` no longer does — which is what
+ *    `RuntimeMiddleware` below is for.
  * 2. **`protocols` order is load-bearing.** The runtime
  *    (`ai/internal/mcpRuntime.ts`) routes a request that carries
  *    `_meta["io.modelcontextprotocol/protocolVersion"]` to that adapter,
- *    matches an `initialize` against the STATEFUL adapters only, and sends
- *    anything else with no session to `protocols[0]`. At most one stateless
- *    adapter is allowed. This server lists the stateless `2026-07-28`
+ *    matches an `initialize` (and an unversioned `ping`) against the
+ *    STATEFUL adapters only, and sends anything else with no session to
+ *    `protocols[0]`. At most one stateless adapter is allowed. This server lists the stateless `2026-07-28`
  *    adapter first, then the newest two stateful ones, because every
  *    shipping client (Claude Code's default stdio session, Copilot, Cursor,
  *    the Inspector) still opens with `initialize`, which a server offering
@@ -44,7 +48,8 @@
  *    default {@link ServerLayer} serves — is exactly this list.
  * 3. **A declared typed failure reaches the wire as message text only.**
  *    Under `failureMode: "error"` (the only mode these tools use) core's
- *    `registerToolkit` collapses an `Error`-shaped declared failure to
+ *    `registerToolkit` collapses a declared failure that is an `Error` with a
+ *    non-empty message to
  *    `{ isError: true, content: [{ type: "text", text: error.message }] }`
  *    with no `structuredContent` (`McpServer.ts`, `declaredFailureResult`).
  *    So `errors.ts` composes every member's `message` at construction with
@@ -82,13 +87,15 @@
  * exception is the union tool `repos_manage` (below), which the kit always
  * decodes strictly.
  *
- * `outputSchema` is served only for an object-rooted success schema (core
- * since rc.117). Four tools' results are discriminated unions
- * (`turbo_inspect`, `changeset_inspect`, `repos_inspect`, `repos_manage`),
- * whose JSON Schema would be a bare `anyOf`; each is wrapped in
- * `@effected/mcp`'s `ToolOutputSchema.objectRooted`, which adds
- * `type: "object"` beside the `anyOf`, so every tool serves an
- * `outputSchema`.
+ * MCP requires an object-rooted `outputSchema`. Core derives one from every
+ * success schema, but the stateful adapters (`2025-06-18`, `2025-11-25`) drop
+ * one that is not `type: "object"`, while `2026-07-28` serves it verbatim,
+ * where a strict client rejects it. Four tools' results are discriminated
+ * unions (`turbo_inspect`, `changeset_inspect`, `repos_inspect`,
+ * `repos_manage`), whose JSON Schema would be a bare `anyOf`; each is wrapped
+ * in `@effected/mcp`'s `ToolOutputSchema.objectRooted`, which adds
+ * `type: "object"` beside the `anyOf`, so every tool serves a valid
+ * `outputSchema` on every revision.
  *
  * `repos_manage`'s parameters are a union too — one struct per action — so
  * it is a `McpToolkit.unionTool`: served as a strict `oneOf` keyed by
@@ -103,9 +110,11 @@ import type { Distribution } from "@effected/engine";
 import { distributionSuffix } from "@effected/engine";
 import { McpStdio, McpToolkit } from "@effected/mcp";
 import type { FileSystem, Path, Stdio } from "effect";
-import { Layer, Option } from "effect";
+import { Effect, Layer, Option } from "effect";
+import { McpServer } from "effect/ai";
 import type { ChildProcessSpawner } from "effect/process";
 
+import type { McpServices } from "./runtime.js";
 import { makeSilkRuntimeLayer } from "./runtime.js";
 import { SilkToolkit, ToolsLayer } from "./toolkit.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
@@ -145,13 +154,38 @@ export const SERVER_INSTRUCTIONS = [
 ].join("\n");
 
 /**
- * The toolkit registration as a layer: `McpToolkit.layer` over core's
- * module-level `McpServer.McpServer.layer` — the same reference
- * `McpStdio.layer` serves, so layer memoization lands the registration on the
- * served instance — with the handlers bound to `cwd`.
+ * Discharges every tool's declared `dependencies`. Since effect 4.1 a service a
+ * tool lists in `dependencies` is a per-request `McpRequest<"Requires", S>`
+ * requirement that only MCP middleware or the transport can meet;
+ * `Layer.provide` no longer does. The silk runtime is built ONCE (it holds the
+ * process-lifetime `ConfigInspector`, #229), so the middleware captures its
+ * context when the layer is built and provides that same context to every
+ * request.
+ *
+ * `Effect.context` captures the whole layer-build context, not only
+ * `McpServices` (also `Scope`, `Clock`, `Console`, `McpServer`, the memo map),
+ * and `Effect.provideContext` merges it OVER the request's context. Probed on
+ * 4.1.1: a handler finalizer still runs at the end of its own request, and no
+ * request-scoped key (`McpRequestContext`, log level, parent span) is in the
+ * build context today. Core's own registration capture filters those keys
+ * (`omitRequestServices`); this capture does not, so do not build this layer
+ * inside a span or under a request-level reference.
+ */
+const RuntimeMiddleware = McpServer.middleware<{ provides: McpServices }>()(
+	Effect.map(Effect.context<McpServices>(), (context) => (effect) => Effect.provideContext(effect, context)),
+);
+
+/**
+ * The toolkit registration as a layer: `McpToolkit.layer` with the handlers
+ * bound to `cwd` and {@link RuntimeMiddleware} meeting their request-level
+ * dependencies. Passed to `McpStdio.layer` as `registrations`, so it builds
+ * before the first request.
  */
 const SilkToolsLayer = (cwd: string) =>
-	McpToolkit.layer(SilkToolkit, { strict: "annotated" }).pipe(Layer.provide(ToolsLayer(cwd)));
+	McpToolkit.layer(SilkToolkit, { strict: "annotated" }).pipe(
+		Layer.provide(ToolsLayer(cwd)),
+		Layer.provide(RuntimeMiddleware.layer),
+	);
 
 /**
  * Options for {@link ServerLayer}.
@@ -180,14 +214,10 @@ export interface ServerOptions {
  * @public
  */
 export const ServerLayer = (cwd: string, options: ServerOptions = {}): Layer.Layer<never, never, PlatformServices> =>
-	SilkToolsLayer(cwd).pipe(
-		Layer.provide(makeSilkRuntimeLayer(cwd)),
-		Layer.provide(
-			McpStdio.layer({
-				name: "savvy-mcp",
-				version: `${CURRENT_MCP_VERSION}${distributionSuffix(Option.fromNullishOr(options.distribution))}`,
-				description: "Structured Silk Suite workspace tools: workspace, turbo, biome, changesets and vendored repos.",
-				instructions: SERVER_INSTRUCTIONS,
-			}),
-		),
-	);
+	McpStdio.layer({
+		name: "savvy-mcp",
+		version: `${CURRENT_MCP_VERSION}${distributionSuffix(Option.fromNullishOr(options.distribution))}`,
+		description: "Structured Silk Suite workspace tools: workspace, turbo, biome, changesets and vendored repos.",
+		instructions: SERVER_INSTRUCTIONS,
+		registrations: SilkToolsLayer(cwd),
+	}).pipe(Layer.provide(makeSilkRuntimeLayer(cwd)));

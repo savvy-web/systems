@@ -8,7 +8,7 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T21:27:42Z
+  at: 2026-11-01T17:38:16Z
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: ../../packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: e286247468377472
+    body: d6d543a9c3202919
 ---
 
 # @savvy-web/tsdown-plugins
@@ -207,7 +207,11 @@ Renders are cached across builds. `generateMeta` still `rmSync`s the
 `<pkg>/node_modules/.cache/tsdown-plugins/og` (`ImageBackend.layerDirectory`;
 `ImageBackend.layerNone` when not caching).[^tp-generate] The key is
 SHA-256 over a salt plus the canonical encoding of the `OgImageInfo` the
-generator receives, so any change to its input is a miss. Which salt — if
+generator receives, so any change to its input is a miss. Hashing needs
+core's `Digest` service, which `ImageCacheKey` requires and
+`NodeServices.layer` does not carry, so `writeGeneratedOgImage` merges
+`NodeCrypto.layerDigest` (`@effect/platform-node/NodeCrypto`) into the
+platform layer it provides.[^tp-og-image] Which salt — if
 any — comes from the exported pure function
 `resolveOgCacheSalt(generate, cacheSalt)` over `openGraph.cacheSalt?:
 string | false`: a string caches under that salt, `false` always

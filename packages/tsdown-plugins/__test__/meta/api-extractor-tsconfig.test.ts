@@ -53,6 +53,29 @@ describe("writeApiExtractorTsconfig — self-reference paths (#771)", () => {
 		});
 	});
 
+	it("merges the paths of a base tsconfig written as JSONC (comments, trailing commas)", () => {
+		const { dir, base, entry } = scaffold(
+			[
+				"{",
+				"\t// tsconfig allows comments",
+				'\t"compilerOptions": {',
+				'\t\t/* and block comments */ "paths": { "~/*": ["./src/*"], },',
+				"\t},",
+				"}",
+			].join("\n"),
+		);
+		const out = writeApiExtractorTsconfig({
+			cwd: dir,
+			tsconfigPath: base,
+			entryDtsPath: entry,
+			paths: { "@scope/pkg": ["/decl/index.d.ts"] },
+		});
+		expect(read(out).compilerOptions?.paths).toEqual({
+			"~/*": ["./src/*"],
+			"@scope/pkg": ["/decl/index.d.ts"],
+		});
+	});
+
 	it("tolerates an unparseable base file when merging", () => {
 		const { dir, base, entry } = scaffold("{ not json");
 		const out = writeApiExtractorTsconfig({

@@ -53,8 +53,8 @@
 	"devDependencies": {
 		"@changesets/types": "^7.0.0",
 		"@commitlint/types": "^21.2.0",
-		"@effect/platform-node": "catalog:effect",
-		"@effect/vitest": "catalog:effect",
+		"@effect/platform-node": "catalog:effected",
+		"@effect/vitest": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
@@ -63,7 +63,7 @@
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"@types/shell-quote": "^1.7.5",
-		"effect": "catalog:effect",
+		"effect": "catalog:effected",
 		"fast-check": "^4.10.2",
 		"markdownlint": "^0.41.1",
 		"tsx": "catalog:build",
@@ -71,11 +71,11 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/commands": "catalog:effected:peers",
-		"@effected/git": "catalog:effected:peers",
-		"@effected/templates": "catalog:effected:peers",
-		"@effected/workspaces": "catalog:effected:peers",
-		"effect": "catalog:effect:peers"
+		"@effected/commands": "catalog:effected",
+		"@effected/git": "catalog:effected",
+		"@effected/templates": "catalog:effected",
+		"@effected/workspaces": "catalog:effected",
+		"effect": "catalog:effected"
 	},
 	"publishConfig": {
 		"access": "public",

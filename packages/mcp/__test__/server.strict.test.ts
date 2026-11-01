@@ -1,6 +1,9 @@
 /**
  * `Tool.Strict` through the registration the served toolkit takes:
- * `McpToolkit.layer(..., { strict: "annotated" })` over `McpStdio.layer`. A
+ * `McpToolkit.layer(..., { strict: "annotated" })`, served by core's in-memory
+ * `McpTest.makeClient` over the same protocol list `McpStdio.layer` serves
+ * (strict decoding lives in the registration, not the stdio transport, which
+ * `server.harness.test.ts` and the e2e suite cover). A
  * tool annotated strict decodes with `onExcessProperty: "error"` and serves
  * `additionalProperties: false`; an unannotated sibling keeps accepting
  * extras (a conservative default; `_meta` travels at `params._meta`). Every savvy-mcp
@@ -10,12 +13,8 @@
 
 import { assert, describe, it } from "@effect/vitest";
 import { McpStdio, McpToolkit } from "@effected/mcp";
-import type { JsonRpcMessage } from "@effected/mcp/testing";
 import { Effect, Layer, Schema } from "effect";
-import { Tool, Toolkit } from "effect/ai";
-
-import type { CallToolResult } from "./utils/harness.js";
-import { makeHarness } from "./utils/harness.js";
+import { McpTest, Tool, Toolkit } from "effect/ai";
 
 const Echo = Schema.Struct({ ok: Schema.Boolean });
 const EchoParams = Schema.Struct({ value: Schema.String });
@@ -41,20 +40,16 @@ const FixtureLayer = McpToolkit.layer(FixtureToolkit, { strict: "annotated" }).p
 			lenient_echo: () => Effect.succeed({ ok: true }),
 		}),
 	),
-	Layer.provide(McpStdio.layer({ name: "strict-fixture", version: "0.0.0" })),
 );
 
-const asResult = (response: JsonRpcMessage): CallToolResult => {
-	assert.strictEqual(response.error, undefined, `expected a tools/call result, got ${JSON.stringify(response)}`);
-	return response.result as CallToolResult;
-};
+/** A typed client on the newest stateful revision, the one an `initialize`-sending client lands on. */
+const connect = McpTest.makeClient(FixtureLayer, { protocols: McpStdio.protocols, protocolVersion: "2025-11-25" });
 
 describe('Tool.Strict through McpToolkit (strict: "annotated")', () => {
 	it.effect("serves additionalProperties: false for the annotated tool only", () =>
 		Effect.gen(function* () {
-			const harness = yield* makeHarness(process.cwd(), { serverLayer: FixtureLayer });
-			yield* harness.initialize;
-			const tools = yield* harness.listTools;
+			const client = yield* connect;
+			const { tools } = yield* client.listTools();
 			const strict = tools.find((t) => t.name === "strict_echo");
 			const lenient = tools.find((t) => t.name === "lenient_echo");
 			assert.ok(strict, "strict_echo was not registered");
@@ -66,12 +61,12 @@ describe('Tool.Strict through McpToolkit (strict: "annotated")', () => {
 
 	it.effect("rejects an excess property on the annotated tool and accepts it on the unannotated one", () =>
 		Effect.gen(function* () {
-			const harness = yield* makeHarness(process.cwd(), { serverLayer: FixtureLayer });
-			yield* harness.initialize;
-			const rejected = asResult(yield* harness.callTool("strict_echo", { value: "x", extra: 1 }));
+			const client = yield* connect;
+			const rejected = yield* client.callTool({ name: "strict_echo", arguments: { value: "x", extra: 1 } });
 			assert.strictEqual(rejected.isError, true);
-			assert.ok((rejected.content[0]?.text ?? "").includes("extra"), rejected.content[0]?.text);
-			const accepted = asResult(yield* harness.callTool("lenient_echo", { value: "x", extra: 1 }));
+			const text = rejected.content[0]?.type === "text" ? rejected.content[0].text : "";
+			assert.ok(text.includes("extra"), text);
+			const accepted = yield* client.callTool({ name: "lenient_echo", arguments: { value: "x", extra: 1 } });
 			assert.notOk(accepted.isError, JSON.stringify(accepted));
 			assert.deepStrictEqual(accepted.structuredContent, { ok: true });
 		}).pipe(Effect.scoped),

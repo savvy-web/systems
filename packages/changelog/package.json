@@ -35,7 +35,7 @@
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/silk-effects": "workspace:^",
-		"effect": "catalog:effect"
+		"effect": "catalog:effected"
 	},
 	"devDependencies": {
 		"@changesets/types": "^7.0.0",

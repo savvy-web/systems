@@ -10,15 +10,15 @@ sources:
     resource: ../../packages/silk-effects/__test__/repos/services__manager.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-01T17:38:16Z
 integrity:
   generated:
-    body: 6e4348c9a158c422
+    body: a2445e7de1301bf9
 ---
 
 # Use @effect/vitest per file, not per package
 
-Decide test tooling per FILE, not per package: a test file that runs an Effect uses `@effect/vitest` (`catalog:effect`); a test file with no Effect surface stays on plain `vitest`. Do not assume a package is "on" one or the other — re-derive with `grep -rl "@effect/vitest" --include="*.test.ts" packages e2e`.[^effect-vitest]
+Decide test tooling per FILE, not per package: a test file that runs an Effect uses `@effect/vitest` (`catalog:effected`); a test file with no Effect surface stays on plain `vitest`. Do not assume a package is "on" one or the other — re-derive with `grep -rl "@effect/vitest" --include="*.test.ts" packages e2e`.[^effect-vitest]
 
 Never run a live runner (`Effect.runPromise`/`Effect.runSync`/`runPromiseExit`) inside a test body. The only legitimate use is inside a `beforeAll`/`afterAll` lifecycle hook that `@effect/vitest` does not wrap — and there, always use `runPromise`, never `runSync`, because platform filesystem operations are async and `runSync` throws `AsyncFiberError` out of the hook, failing the whole suite.[^effect-vitest]
 

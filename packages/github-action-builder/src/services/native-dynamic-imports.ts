@@ -12,21 +12,23 @@
  * @internal
  */
 
+import { RegExp as EffectRegExp } from "effect";
+
 /**
  * Escape a string for literal use inside a `RegExp`, and turn every `/` into
  * a `[\/]` alternation so the result matches both POSIX and Windows path
  * separators.
  *
  * @remarks
- * Order matters: the regex-metacharacter escape runs first (it never
- * touches `/`, which is not a regex metacharacter), then `/` is expanded to
- * `[\/]` afterward — a scoped package name like `@changesets/apply-release-plan`
- * has a literal `/` that must become a path-separator alternation, not stay
- * a bare `/`.
+ * Effect's `RegExp.escape` escapes every metacharacter AND `/` (as `\/`);
+ * each escaped `\/` is then expanded to `[\/]` — a scoped package name like
+ * `@changesets/apply-release-plan` has a literal `/` that must become a
+ * path-separator alternation, not stay a bare `/`. A `/` in the escaped
+ * output only ever comes from an input `/`, so the expansion cannot match an
+ * escaped backslash.
  */
 function escapePathSegment(value: string): string {
-	const regexEscaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-	return regexEscaped.replace(/\//g, "[\\/]");
+	return EffectRegExp.escape(value).replaceAll("\\/", "[\\/]");
 }
 
 /**

@@ -34,7 +34,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform-node": "catalog:effect",
+		"@effect/platform-node": "catalog:effected",
 		"@effected/cli": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/config-file": "catalog:effected",
@@ -49,12 +49,12 @@
 		"@effected/workspaces": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@savvy-web/silk-effects": "workspace:^",
-		"effect": "catalog:effect",
+		"effect": "catalog:effected",
 		"ink": "catalog:silk",
 		"react": "catalog:silk"
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:effect",
+		"@effect/vitest": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",

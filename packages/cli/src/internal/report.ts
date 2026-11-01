@@ -6,9 +6,8 @@
 
 import type { Block, CliLinks, CliTheme, Document, InlineInput } from "@effected/cli";
 import { Doc, Status } from "@effected/cli";
-import type { Audience } from "@effected/env";
-import { TerminalEnv } from "@effected/env";
-import { Effect } from "effect";
+import type { Audience, TerminalEnv } from "@effected/env";
+import type { Effect } from "effect";
 
 /** What {@link Report.print} reads to pick a renderer: the audience, the terminal, the theme and editor links. */
 export type ReportEnv = CliTheme | TerminalEnv | Audience | CliLinks;
@@ -105,13 +104,11 @@ export class Report {
 	 * Render `doc` for the run's audience and write it to stdout.
 	 *
 	 * @remarks
-	 * A terminal wraps to its width. A pipe has no width to honour — the kit
-	 * would otherwise wrap a person's piped output at 80 columns and split a
-	 * long path or a `file:line:col` finding a caller greps — so off a terminal
-	 * nothing is wrapped.
+	 * A terminal wraps to its width. A pipe has no width to honour, so off a
+	 * terminal nothing is wrapped and a long path or a `file:line:col` finding
+	 * a caller greps stays on one line — the kit's own default for a human
+	 * whose stdout is not a terminal (an agent's and CI's width is unbounded
+	 * too).
 	 */
-	static readonly print = (doc: Document): Effect.Effect<void, never, ReportEnv> =>
-		Effect.flatMap(TerminalEnv, (terminal) =>
-			Doc.print(doc, terminal.stdout.isTerminal ? {} : { width: Number.POSITIVE_INFINITY }),
-		);
+	static readonly print = (doc: Document): Effect.Effect<void, never, ReportEnv> => Doc.print(doc);
 }

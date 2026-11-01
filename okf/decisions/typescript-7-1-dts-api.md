@@ -7,7 +7,7 @@ tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T21:27:42Z
+  at: 2026-11-01T17:38:16Z
 sources:
   - id: tp-manifest
     resource: ../../packages/tsdown-plugins/package.json
@@ -32,7 +32,7 @@ verified:
     at: 2026-10-25T21:24:55Z
 integrity:
   generated:
-    body: 8aa2ec3f6441d3f3
+    body: 82f0a35453e6df4e
   verified:
     by: human:spencer
     at: 2026-10-25T21:24:55Z
@@ -144,6 +144,12 @@ its file set absolutely; see
   `allowedVersions` rule are gone, since TypeScript 7 ships the Go compiler
   inside `typescript` itself and nothing provides TypeScript 6 to the
   bundler any more.
+- The decision depends on the `rolldown-plugin-dts` 0.29 line, and `tsdown`
+  0.23.4 narrowed its own range back to `^0.28.8`, which cannot resolve
+  7.1's tsgo ("TypeScript Go is not installed"). `@savvy-web/pnpm-plugin-silk`
+  therefore carries a managed `tsdown>rolldown-plugin-dts: ^0.29.0`
+  override, to be dropped once tsdown's range admits 0.29 (see
+  [modules/pnpm-plugin-silk.md](../modules/pnpm-plugin-silk.md)).
 
 [^tp-manifest]: `../../packages/tsdown-plugins/package.json`
 [^tp-target-groups]: `../../packages/tsdown-plugins/src/build/target-groups.ts`

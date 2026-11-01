@@ -228,7 +228,7 @@ The exit trigger: package names + versions cut, registry. Downstream acts on it 
 
 **Every package/version pair in the table has been probed on the registry before the mail is sent, and the probe result — not the merge, and not CI success — is what licenses the mail.** A multi-package cut publishes staggered (packages have landed minutes apart while every release workflow already reported success), so a green workflow does not mean every package is installable. Probe `npm view "<pkg>@<expected-version>" version` (with the repo's own package manager — `pnpm view "<pkg>@<expected-version>" version` in a pnpm repo — since a bare `npm view` from the repo root fails EBADDEVENGINES under a pnpm `devEngines` constraint) once per package — the exact pair, since a bare `npm view <pkg> version` reads the `latest` dist-tag rather than proving the cut version is published — and send only after the LAST one resolves — a release mail naming a version the downstream cannot install sends `--exit` into a failing registry install.
 
-**When the cut includes a `configDependencies` catalog plugin** (e.g. `@effected/pnpm-plugin-effect`, the mechanism `okf/decisions/kit-effect-peers-via-catalog.md` documents) rather than only plain `catalog:` packages, state the new catalog-plugin version explicitly and say so — the downstream's `--exit` step 2 has two stale objects to clear instead of one: the `configDependencies` pin (version and `+sha512` integrity together) plus the lockfile, and a plain `pnpm install` without dropping the lockfile silently keeps the old resolved versions even after the pin is bumped.
+**When the cut includes a `configDependencies` catalog plugin** (e.g. `@effected/pnpm-plugin-effected`, the mechanism `okf/decisions/kit-effect-peers-via-catalog.md` documents) rather than only plain `catalog:` packages, state the new catalog-plugin version explicitly and say so — the downstream's `--exit` step 2 has two stale objects to clear instead of one: the `configDependencies` pin (version and `+sha512` integrity together) plus the lockfile, and a plain `pnpm install` without dropping the lockfile silently keeps the old resolved versions even after the pin is bumped.
 
 ```markdown
 ---
@@ -247,7 +247,7 @@ Published to npm registry.
 | `@effected/npm` | `2.1.0` |
 | `@effected/kit` | `1.4.2` |
 
-Also cut: `@effected/pnpm-plugin-effect` 0.9.1 (configDependencies catalog plugin) —
+Also cut: `@effected/pnpm-plugin-effected` 0.20.1 (configDependencies catalog plugin) —
 bump its pin (version + integrity) in `pnpm-workspace.yaml` AND drop the lockfile
 before installing (`pnpm clean --lockfile && pnpm install`), or the old catalog
 versions resolve silently.

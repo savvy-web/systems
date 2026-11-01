@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { Jsonc } from "@effected/jsonc";
 import type { ExtractorMessage } from "@microsoft/api-extractor";
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from "@microsoft/api-extractor";
 import { TSDocConfigFile } from "@microsoft/tsdoc-config";
+import { Result } from "effect";
 import { MetaGenerationError } from "../errors.js";
 import type { DiagnosticInput } from "../report/collector.js";
 import type { WarningSuppressionRule } from "./config.js";
@@ -109,17 +111,25 @@ export function writeApiExtractorTsconfig(options: WriteApiExtractorTsconfigOpti
 	return path;
 }
 
-/** The base tsconfig's own `compilerOptions.paths`, read best-effort from plain JSON (parse failure -> none). */
+/**
+ * The base tsconfig's own `compilerOptions.paths`, read best-effort (unreadable or unparseable -> none).
+ * Parsed as JSONC, as TypeScript reads a tsconfig: a base with comments or trailing commas must keep its
+ * `paths`, or a caller-supplied `paths` would silently replace them in the derived config.
+ */
 function readBasePaths(absBase: string): Record<string, ReadonlyArray<string>> {
+	let text: string;
 	try {
-		const parsed = JSON.parse(readFileSync(absBase, "utf-8")) as { compilerOptions?: { paths?: unknown } };
-		const paths = parsed.compilerOptions?.paths;
-		return typeof paths === "object" && paths !== null && !Array.isArray(paths)
-			? (paths as Record<string, ReadonlyArray<string>>)
-			: {};
+		text = readFileSync(absBase, "utf-8");
 	} catch {
 		return {};
 	}
+	const parsed = Jsonc.parseResult(text);
+	if (Result.isFailure(parsed)) return {};
+	const config = parsed.success as { compilerOptions?: { paths?: unknown } } | null;
+	const paths = config?.compilerOptions?.paths;
+	return typeof paths === "object" && paths !== null && !Array.isArray(paths)
+		? (paths as Record<string, ReadonlyArray<string>>)
+		: {};
 }
 
 /**

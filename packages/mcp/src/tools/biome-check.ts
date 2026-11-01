@@ -72,8 +72,8 @@ const GitlabDiagnostic = Schema.Struct({
 	severity: Schema.Literals(["info", "minor", "major", "critical", "blocker"]),
 	location: Schema.Struct({ path: Schema.String, lines: Schema.Struct({ begin: Schema.Number }) }),
 });
-const GitlabArray = Schema.Array(GitlabDiagnostic);
-const decodeGitlab = Schema.decodeUnknownSync(GitlabArray);
+/** Biome's gitlab stdout, parsed and decoded in one step; `None` for non-JSON or a shape mismatch. */
+const decodeGitlab = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Array(GitlabDiagnostic)));
 
 /**
  * Map a gitlab severity back onto the Biome severity it was produced from.
@@ -95,19 +95,9 @@ const mapSeverity = (s: "info" | "minor" | "major" | "critical" | "blocker"): "e
 export const parseBiomeGitlab = (stdout: string): readonly BiomeDiagnosticType[] => {
 	const trimmed = stdout.trim();
 	if (!trimmed) return [];
-	let raw: unknown;
-	try {
-		raw = JSON.parse(trimmed);
-	} catch {
-		return [];
-	}
-	let decoded: ReadonlyArray<Schema.Schema.Type<typeof GitlabDiagnostic>>;
-	try {
-		decoded = decodeGitlab(raw);
-	} catch {
-		return [];
-	}
-	return decoded.map((d) => ({
+	const decoded = decodeGitlab(trimmed);
+	if (Option.isNone(decoded)) return [];
+	return decoded.value.map((d) => ({
 		file: d.location.path,
 		line: d.location.lines.begin,
 		severity: mapSeverity(d.severity),

@@ -11,7 +11,8 @@
  * audience (overridable through `SAVVY_AUDIENCE`), the terminal, the theme,
  * editor links and the prompt gate — installs `CliLog` (diagnostics opt-in
  * through `SAVVY_LOG_LEVEL`, every log line on stderr) and the coloured help
- * formatter with the carrier-aware `--version` line. `main` reports failures
+ * formatter with a plain `--version` line, to which `distribution` appends
+ * the carrier suffix. `main` reports failures
  * through that logger (a typed failure as one line, a defect as a bug
  * report), applies the `CliExit` code a command set, and exits `64` on a
  * usage error with the help document on stderr, so stdout stays clean for a
@@ -24,8 +25,7 @@
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import { CliAudience, CliRuntime } from "@effected/cli";
 import type { Distribution } from "@effected/engine";
-import { CurrentDistribution } from "@effected/engine";
-import { Effect, Layer, Option } from "effect";
+import { Effect, Layer } from "effect";
 
 import { AppLive, CliConfigLive, CliPlatform, rootCommand } from "./cli/index.js";
 import { FailureLine } from "./internal/failure-line.js";
@@ -52,10 +52,8 @@ export interface MainOptions {
  * @public
  */
 export const main = (options: MainOptions = {}): void => {
-	const distribution = Option.fromNullishOr(options.distribution);
 	const program = CliAudience.run(rootCommand, { version: CLI_VERSION }).pipe(
 		Effect.provide(Layer.merge(AppLive, CliConfigLive)),
-		Effect.provideService(CurrentDistribution, distribution),
 	);
 	NodeRuntime.runMain(
 		CliRuntime.main(program, {
@@ -65,8 +63,11 @@ export const main = (options: MainOptions = {}): void => {
 				// Core's `Stdio` reports only stdout; the stderr theme needs the real answer.
 				stderrIsTerminal: Effect.sync(() => process.stderr.isTTY === true),
 				log: { envVar: "SAVVY_LOG_LEVEL" },
-				formatter: { formatVersion: (name, version) => VersionLine.format(name, version, distribution) },
+				formatter: { formatVersion: VersionLine.format },
 			},
+			// Provides `CurrentDistribution` around the program (`Option.none()` for a
+			// direct install) and appends the carrier's `via` suffix to `--version`.
+			distribution: options.distribution ?? null,
 			render: FailureLine.render,
 			helpOnUsageError: "stderr",
 		}),

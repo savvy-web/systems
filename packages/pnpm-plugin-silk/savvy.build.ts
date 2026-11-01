@@ -312,7 +312,9 @@ await build({
 			confirmModulesPurge: false,
 			minimumReleaseAge: 1440,
 			minimumReleaseAgeExclude: [
+				"@effect/*",
 				"@effected/*",
+				"effect",
 				"@oxc-parser/*",
 				"@oxc-project/*",
 				"@savvy-web/*",
@@ -374,6 +376,10 @@ await build({
 			},
 			overrides: {
 				"@microsoft/api-extractor>typescript": "^6.0.3",
+				// tsdown 0.23.4 narrowed its rolldown-plugin-dts range to ^0.28.8, which cannot
+				// resolve TypeScript 7.1's tsgo ("TypeScript Go is not installed"); 0.29 can.
+				// Drop once tsdown's own range admits ^0.29.0.
+				"tsdown>rolldown-plugin-dts": "^0.29.0",
 			},
 			publicHoistPattern: {
 				excludeByRepo: {

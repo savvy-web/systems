@@ -23,10 +23,10 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T21:06:42Z
+  at: 2026-11-01T17:38:16Z
 integrity:
   generated:
-    body: e465694520ebfd92
+    body: 24942f6fc22cdb0d
 ---
 
 # silk-effects
@@ -109,7 +109,7 @@ The Silk publishability rule, the changeset-config accessors, and the composite 
 
 ## Dependencies and platform requirements
 
-`@savvy-web/silk-core` is a regular `workspace:^` dependency, published as `^<version>`; changelog, cli and mcp depend on this package the same way, while silk pins it exactly (`workspace:*`). `effect` is the sole framework peer (`catalog:effect:peers`). Four kit packages — `@effected/commands`, `@effected/git`, `@effected/templates`, `@effected/workspaces` — are required peers (`catalog:effected:peers`) because their service or class identities cross this package's API boundary (templates and workspaces through the re-exported silk-core schemas); the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
+`@savvy-web/silk-core` is a regular `workspace:^` dependency, published as `^<version>`; changelog, cli and mcp depend on this package the same way, while silk pins it exactly (`workspace:*`). `effect` is the sole framework peer (`catalog:effected`, published as `~4.1.1`). Four kit packages — `@effected/commands`, `@effected/git`, `@effected/templates`, `@effected/workspaces` — are required peers (also `catalog:effected`, published at the catalog's patch caret) because their service or class identities cross this package's API boundary (templates and workspaces through the re-exported silk-core schemas); the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
 
 ## Related concepts
 

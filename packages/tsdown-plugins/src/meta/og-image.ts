@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import * as NodeCrypto from "@effect/platform-node/NodeCrypto";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import type { ImageFormat } from "@effected/images";
 import type { ImageBackendSetParams } from "@effected/images/cache";
@@ -124,7 +125,12 @@ export async function writeGeneratedOgImage(options: WriteGeneratedOgImageOption
 			{ accept: ACCEPT },
 		);
 	}).pipe(
-		Effect.provide(ImageCache.layer.pipe(Layer.provide(backend), Layer.provideMerge(NodeServices.layer))),
+		Effect.provide(
+			ImageCache.layer.pipe(
+				Layer.provide(backend),
+				Layer.provideMerge(Layer.merge(NodeServices.layer, NodeCrypto.layerDigest)),
+			),
+		),
 		Effect.result,
 		Effect.runPromise,
 	);

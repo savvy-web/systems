@@ -49,16 +49,15 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effect/platform-node": "catalog:effect",
+		"@effect/platform-node": "catalog:effected",
 		"@effected/env": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
 		"@rsbuild/core": "catalog:build",
-		"effect": "catalog:effect",
-		"jiti": "^2.7.0",
-		"picocolors": "^1.1.1"
+		"effect": "catalog:effected",
+		"jiti": "^2.7.0"
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:effect",
+		"@effect/vitest": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"tsx": "catalog:build",

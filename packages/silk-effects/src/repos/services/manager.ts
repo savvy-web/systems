@@ -1,7 +1,7 @@
-import { createHash } from "node:crypto";
 import type { GitmodulesEntry } from "@effected/git";
 import { Git, GitConfig, GitFile, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
 import { Clock, Context, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
+import { Digest } from "effect/crypto";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import type { ReposLockdownError } from "../errors.js";
 import { GitSubmoduleError, NoteNotFoundError, RepoNotFoundError, ReposConfigError } from "../errors.js";
@@ -211,6 +211,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 			const path = yield* Path.Path;
 			const git = yield* Git;
 			const lockdown = yield* ReposLockdown;
+			const digest = yield* Digest.Digest;
 
 			/** Map any typed `@effected/git` failure onto this module's `GitSubmoduleError`. */
 			const asSubmoduleError =
@@ -926,7 +927,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						}
 
 						const existingIds = new Set(notes.map((existing) => existing.id));
-						const hash = createHash("sha256").update(op.note).digest("hex");
+						const hash = yield* digest.digestHex(Digest.sha256, new TextEncoder().encode(op.note));
 
 						// Extend the slice length (4, 8, 12, ... up to the full 64-hex
 						// digest) until it lands on an id not already in use. A third
@@ -1737,5 +1738,5 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 				deregister,
 			};
 		}),
-	);
+	).pipe(Layer.provide(Digest.layerWebCrypto));
 }

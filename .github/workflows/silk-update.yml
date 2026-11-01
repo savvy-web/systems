@@ -47,7 +47,7 @@ jobs:
           upgrade-package-manager: ">=12.0.0 <12.7.0 || >12.7.0 <13.0.0" # skip pnpm 12.7.0 (breaks builds)
           upgrade-runtime-node: "^26.0.0"
           config-dependencies: |
-            @effected/pnpm-plugin-effect
+            @effected/pnpm-plugin-effected
           dependencies: |
             @changesets/*
             @effected/*
