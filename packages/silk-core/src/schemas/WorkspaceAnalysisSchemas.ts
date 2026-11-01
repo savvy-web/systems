@@ -1,5 +1,6 @@
 import { PublishConfig, PublishTarget, TagStyle, VersioningStrategy } from "@effected/workspaces";
-import { Effect, Equal, Function as Fn, Hash, Option, Schema } from "effect";
+import type { Option } from "effect";
+import { Array as Arr, Effect, Equal, Function as Fn, Hash, Schema } from "effect";
 import { trimTrailingSlashes } from "../utils/TrailingSlash.js";
 import { ChangesetConfigFile, SilkChangesetConfigFile } from "./VersioningSchemas.js";
 
@@ -118,8 +119,7 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 	}
 
 	targetFor(registry: string): Option.Option<PublishTarget> {
-		const found = this.targets.find((t) => sameRegistry(t.registry, registry));
-		return found ? Option.some(found) : Option.none();
+		return Arr.findFirst(this.targets, (t) => sameRegistry(t.registry, registry));
 	}
 
 	[Equal.symbol](that: Equal.Equal): boolean {
@@ -170,10 +170,8 @@ export class AnalyzedWorkspace extends Schema.TaggedClass<AnalyzedWorkspace>()("
 // Wire dual-API for findByName
 AnalyzedWorkspace.findByName = Fn.dual(
 	2,
-	(workspaces: ReadonlyArray<AnalyzedWorkspace>, name: string): Option.Option<AnalyzedWorkspace> => {
-		const found = workspaces.find((w) => w.name === name);
-		return found ? Option.some(found) : Option.none();
-	},
+	(workspaces: ReadonlyArray<AnalyzedWorkspace>, name: string): Option.Option<AnalyzedWorkspace> =>
+		Arr.findFirst(workspaces, (w) => w.name === name),
 );
 
 // Wire pretty printer
@@ -203,13 +201,11 @@ export class WorkspaceAnalysis extends Schema.TaggedClass<WorkspaceAnalysis>()("
 	tagStrategy: Schema.NullOr(TagStyle),
 }) {
 	findWorkspace(name: string): Option.Option<AnalyzedWorkspace> {
-		const found = this.workspaces.find((w) => w.name === name);
-		return found ? Option.some(found) : Option.none();
+		return Arr.findFirst(this.workspaces, (w) => w.name === name);
 	}
 
 	get rootWorkspace(): Option.Option<AnalyzedWorkspace> {
-		const root = this.workspaces.find((w) => w.root);
-		return root ? Option.some(root) : Option.none();
+		return Arr.findFirst(this.workspaces, (w) => w.root);
 	}
 
 	get publishableWorkspaces(): ReadonlyArray<AnalyzedWorkspace> {

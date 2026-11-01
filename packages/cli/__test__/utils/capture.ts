@@ -24,6 +24,7 @@ import {
 	Layer,
 	MutableRef,
 	Option,
+	Queue,
 	Runtime,
 	Stdio,
 	Terminal,
@@ -210,6 +211,11 @@ export class Capture {
 				Terminal.make({
 					columns: Effect.succeed(80),
 					rows: Effect.succeed(24),
+					size: Effect.gen(function* () {
+						const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1);
+						yield* Queue.offer(queue, { columns: 80, rows: 24 });
+						return queue;
+					}),
 					readInput: Effect.die("Capture.main: the terminal is never read"),
 					readLine: Effect.die("Capture.main: the terminal is never read"),
 					display: () => Effect.void,

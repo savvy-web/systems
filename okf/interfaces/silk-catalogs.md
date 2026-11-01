@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-01T17:38:16Z
 integrity:
   generated:
-    body: 5d31488bbb3fc781
+    body: 11f1dfd2f5cae908
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names
@@ -41,10 +41,13 @@ so a consumer's peer constraint stays satisfiable as the direct range
 advances. The two are never the same value by design — do not assume
 `catalog:<name>:peers` mirrors `catalog:<name>`.[^pnpm-plugin-silk-architecture]
 
-**`catalog:effect` / `catalog:effect:peers` are NOT provided by this
-package.** They come from the separate `@effected/pnpm-plugin-effect`
-config dependency, so the Effect closure versions independently of the
-Silk catalogs — see
+**`catalog:effected` is NOT provided by this package.** It comes from the
+separate `@effected/pnpm-plugin-effected` config dependency as one catalog
+holding `effect`, every `@effect/*` package and the `@effected/*` kit, with
+no `:peers` companion. The Effect closure therefore versions independently
+of the Silk catalogs. The older `catalog:effect` / `catalog:effect:peers` /
+`catalog:effected:peers` names, from the predecessor
+`@effected/pnpm-plugin-effect`, no longer exist — see
 [`decisions/kit-effect-peers-via-catalog.md`](../decisions/kit-effect-peers-via-catalog.md).[^pnpm-plugin-silk-architecture]
 
 ## What the config dependency hoists
@@ -73,8 +76,8 @@ them, or `savvy` disappears from PATH.[^pnpm-plugin-silk-architecture]
   `@savvy-web/changelog` is, and only outside this monorepo (this repo's own
   `excludeByRepo` entry drops it here, since it consumes changelog as a
   `workspace:*` link instead).
-- **Do not assume this plugin supplies the Effect catalogs** — request
-  `@effected/pnpm-plugin-effect` separately for `catalog:effect`/`catalog:effect:peers`.
+- **Do not assume this plugin supplies the Effect catalog** — add
+  `@effected/pnpm-plugin-effected` separately for `catalog:effected`.
 - **`strategy` values on a catalog package entry (`lock`/`lock-minor`) are
   an upgrade-CLI-only directive** and carry no runtime meaning for a
   consumer's install.
@@ -87,7 +90,7 @@ them, or `savvy` disappears from PATH.[^pnpm-plugin-silk-architecture]
   — the naming convention these catalogs follow and how a package should
   reference them.
 - [`decisions/kit-effect-peers-via-catalog.md`](../decisions/kit-effect-peers-via-catalog.md)
-  — why the Effect catalogs are supplied separately rather than by this
+  — why the Effect catalog is supplied separately rather than by this
   package.
 
 [^pnpm-plugin-silk-architecture]: `../../packages/pnpm-plugin-silk/savvy.build.ts`

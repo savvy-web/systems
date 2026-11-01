@@ -23,10 +23,10 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-01T18:04:28Z
 integrity:
   generated:
-    body: 82c4b061d621bd7c
+    body: 6d1ba5e783990339
 ---
 
 # mcp
@@ -51,6 +51,8 @@ The package follows the same `./main` contract as the CLI: `src/bin.ts` is the s
 
 One long-lived service graph, built from `makeSilkRuntimeLayer(cwd)` and composed directly from silk-effects and `@effected/*` kit exports — both of which mcp may import, so the layering holds without indirection. The composition rests on one reference, one construction: the kit graph (`Workspaces.layerWithGitAndConfigDependenciesSubprocess({ cwd })`) mints a fresh layer per call, so it is bound to a `const` and provided once via `Layer.provideMerge`; layer memoization by reference then builds each kit service exactly once, root-bound to the resolved project dir.[^arch] Because these instances live as long as the process, caches (`Changesets.ConfigInspector`, `ToolDiscovery`'s binary-probe cache) are refreshed per call rather than per layer build.[^arch]
 
+That graph reaches the handlers through MCP middleware, not `Layer.provide`. Since effect 4.1 a service a tool lists in its `dependencies` is a per-request `McpRequest<"Requires", S>` requirement, which only MCP middleware or the transport can meet; providing the runtime layer to the toolkit registration no longer discharges it. `server.ts` therefore builds `RuntimeMiddleware` with `McpServer.middleware<{ provides: McpServices }>()` in effect form. It reads the runtime `Context` once, when the layer is built, and `Effect.provideContext`s that same context to every request, so the process-lifetime instances (the `ConfigInspector` of savvy-web/systems#229 among them) are still built exactly once. `ServerLayer(cwd, options)` is `McpStdio.layer({ …, registrations: SilkToolsLayer(cwd) })` with `makeSilkRuntimeLayer(cwd)` provided underneath. The toolkit registration, which carries the middleware layer, is passed as `registrations`, so it builds before the first request.[^server]
+
 `DepsRegen` is gated by silk's `SilkPublishability.layerAdaptive`, provided closer than the kit graph so it wins over the kit's npm-semantics default.[^arch]
 
 ## Root resolution
@@ -68,7 +70,7 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 - **`src/index.ts` never exports `main`.**[^arch]
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
-- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness.[^tests]
+- **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process server suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness. The one exception is `server.strict.test.ts`, which pins `Tool.Strict` on a fixture toolkit over core `effect/ai`'s in-memory `McpTest.makeClient` (protocols `McpStdio.protocols`, `2025-11-25`), since its subject is the registration, not stdio.[^tests]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]
 - **The runtime is root-bound at layer build.** One server instance serves one project dir; per-call `cwd` arguments walk up to a workspace root but do not rebuild the layer.[^arch]
 

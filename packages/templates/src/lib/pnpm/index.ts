@@ -1,5 +1,5 @@
 import { Yaml } from "@effected/yaml";
-import { Effect, Schema } from "effect";
+import { Result, Schema } from "effect";
 import type { TemplateEntry } from "../types.js";
 
 /**
@@ -39,7 +39,8 @@ export function createPnpmWorkspace(options: unknown): TemplateEntry[] {
 	if (opts.catalogMode) config.catalogMode = opts.catalogMode;
 	if (opts.catalog && Object.keys(opts.catalog).length > 0) config.catalog = opts.catalog;
 
-	const content = Effect.runSync(Yaml.stringify(config));
+	// The sync twin: same engine as `Yaml.stringify`, without a runtime per call.
+	const content = Result.getOrThrow(Yaml.stringifyResult(config));
 
 	return [{ name: "pnpm-workspace", filename: "pnpm-workspace.yaml", content }];
 }

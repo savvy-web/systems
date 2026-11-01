@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { TsconfigLoaderSync } from "@effected/tsconfig-json";
 import type { ExtractorMessage } from "@microsoft/api-extractor";
 import { Extractor, ExtractorConfig, ExtractorLogLevel } from "@microsoft/api-extractor";
 import { TSDocConfigFile } from "@microsoft/tsdoc-config";
 import { MetaGenerationError } from "../errors.js";
 import type { DiagnosticInput } from "../report/collector.js";
+import { tsconfigSyncOptions } from "../tsconfig/sync-options.js";
 import type { WarningSuppressionRule } from "./config.js";
 import { createMessageSuppressor } from "./message-suppressor.js";
 
@@ -109,17 +111,34 @@ export function writeApiExtractorTsconfig(options: WriteApiExtractorTsconfigOpti
 	return path;
 }
 
-/** The base tsconfig's own `compilerOptions.paths`, read best-effort from plain JSON (parse failure -> none). */
+/**
+ * The base tsconfig's effective `compilerOptions.paths`, with every relative target made absolute.
+ *
+ * A `compilerOptions.paths` in the derived config replaces the inherited one wholesale, so the base's
+ * mappings must be re-emitted, and they must keep resolving where they did. TypeScript resolves a
+ * relative target against `baseUrl` when one is in effect, and otherwise against the directory of the
+ * config that declared `paths`. Re-emitted verbatim from the derived config in the tmpdir, a target such
+ * as `./src/*` would resolve under the tmpdir instead. The chain is resolved with the same tsc-parity
+ * loader the portable-tsconfig resolver uses (`extends`, JSONC, an absolutized `baseUrl`, `pathsBase`),
+ * so `paths` inherited from further up the chain are kept too. Best-effort: a base that cannot be
+ * resolved contributes no paths.
+ */
 function readBasePaths(absBase: string): Record<string, ReadonlyArray<string>> {
+	let resolved: ReturnType<typeof TsconfigLoaderSync.resolve>;
 	try {
-		const parsed = JSON.parse(readFileSync(absBase, "utf-8")) as { compilerOptions?: { paths?: unknown } };
-		const paths = parsed.compilerOptions?.paths;
-		return typeof paths === "object" && paths !== null && !Array.isArray(paths)
-			? (paths as Record<string, ReadonlyArray<string>>)
-			: {};
+		resolved = TsconfigLoaderSync.resolve(absBase, tsconfigSyncOptions);
 	} catch {
 		return {};
 	}
+	const paths = resolved.compilerOptions.paths;
+	if (paths === undefined) return {};
+	const anchor = resolved.compilerOptions.baseUrl ?? resolved.pathsBase ?? dirname(absBase);
+	return Object.fromEntries(
+		Object.entries(paths).map(([key, targets]) => [
+			key,
+			targets.map((target) => (isAbsolute(target) ? target : resolve(anchor, target))),
+		]),
+	);
 }
 
 /**

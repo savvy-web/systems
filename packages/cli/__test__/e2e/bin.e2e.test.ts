@@ -81,12 +81,14 @@ describe("savvy bin (dist/dev)", () => {
 	);
 
 	// `CliAudience.run` resolves the audience flags before core parses, on any
-	// command, and `--help` lists them beside core's built-in flags.
+	// command, and `--help` lists them beside core's built-in flags — on a
+	// subcommand under core's `INHERITED FLAGS`, since they are the root's
+	// shared flags (effect 4.1's default `inheritedFlags: "full"`).
 	it.effect("accepts an audience flag on any command and lists the flags in help", () =>
 		Effect.gen(function* () {
 			const result = yield* run(["lint", "--agent", "--help"]);
 			expect(result.exitCode).toBe(0);
-			expect(result.stdout).toContain("--audience");
+			expect(result.stdout).toMatch(/^INHERITED FLAGS\n {2}--audience /m);
 			expect(result.stdout).toContain("--agent");
 			expect(result.stderr).toBe("");
 		}),

@@ -55,7 +55,7 @@ Five catalogs ship with the plugin, each paired with a `:peers` variant that car
 | `silk` | `silk:peers` | the shared repo toolchain that has no more specific home: TypeScript, `tsx`, husky, `lint-staged`, `markdownlint-cli2`, React and the `@types/*` packages |
 | `test` | `test:peers` | Vitest and its Istanbul and V8 coverage providers |
 
-Effect is not one of them. `effect` and the whole `@effect/*` family come from [`@effected/pnpm-plugin-effect`](https://www.npmjs.com/package/@effected/pnpm-plugin-effect) as `catalog:effect` and `catalog:effect:peers`, so a repo that builds on Effect installs that config dependency alongside this one.
+Effect is not one of them. `effect`, the whole `@effect/*` family and the `@effected/*` kit come from [`@effected/pnpm-plugin-effected`](https://www.npmjs.com/package/@effected/pnpm-plugin-effected) as the single `catalog:effected`, so a repo that builds on Effect installs that config dependency alongside this one.
 
 ## Features
 

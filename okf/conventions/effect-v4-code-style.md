@@ -10,15 +10,15 @@ sources:
     resource: ../../packages/tsdown-plugins/package.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-01T17:38:16Z
 integrity:
   generated:
-    body: 2d08dbba6e5455fc
+    body: 4fc260167d3e73c1
 ---
 
 # Write Effect v4 code in the house style
 
-Write every Effect service in this repo as a class-based `Context.Service`, and export a companion `*Shape` interface alongside it so a consumer can reference the service's shape without importing the class itself. Model a serialisable value object with `Schema.Class` or `Schema.TaggedClass`; model a typed failure with `Data.TaggedError`. This is the whole repo's Effect house style — it is on Effect v4 (`catalog:effect`), not v3, and no package deviates from these three shapes.
+Write every Effect service in this repo as a class-based `Context.Service`, and export a companion `*Shape` interface alongside it so a consumer can reference the service's shape without importing the class itself. Model a serialisable value object with `Schema.Class` or `Schema.TaggedClass`; model a typed failure with `Data.TaggedError`. This is the whole repo's Effect house style — it is on Effect v4 (`catalog:effected`), not v3, and no package deviates from these three shapes.
 
 Verify any Effect API against the vendored `.repos/effect` source or the installed release before writing code against it — never against v3 memory or a v3-shaped recollection of a v4-renamed API. Effect v4 moved modules, renamed exports and changed signatures relative to v3 broadly enough that a v3-trained recollection is unreliable by construction, not merely imprecise.
 
@@ -28,4 +28,4 @@ Keep Effect behind a package's interface boundary when that package's public con
 
 See [silk-effects](../modules/silk-effects.md) for the service-pattern conventions this style backs (the `layer` static's explicit `Layer.Layer<Service, Error, Requirements>` annotation, constructing with `this` rather than the class's own name) and [tsdown-plugins](../modules/tsdown-plugins.md) for a package that deliberately keeps Effect behind its boundary.
 
-[^tsdown-plugins-arch]: `../../packages/tsdown-plugins/package.json` — `effect` declared as a regular `dependency` (`catalog:effect`), not a peer
+[^tsdown-plugins-arch]: `../../packages/tsdown-plugins/package.json` — `effect` declared as a regular `dependency` (`catalog:effected`), not a peer

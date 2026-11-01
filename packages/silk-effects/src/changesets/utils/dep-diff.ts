@@ -63,7 +63,7 @@ export interface WorkspaceDependencyDiff {
  * @remarks
  * Uses `resolveIn` rather than the workspace-wide `resolve`. Both consult the
  * ref's own lockfile importer entries when a `catalog:` specifier is not in the
- * catalog set — which is what makes hook-injected catalogs (`catalog:effect:peers`,
+ * catalog set — which is what makes hook-injected catalogs (`catalog:effected`,
  * injected by a config-dependency pnpmfile and recorded in neither
  * `pnpm-workspace.yaml` nor the lockfile's `catalogs:` block) resolvable at all.
  * The workspace-wide form abstains whenever two importers disagree on a

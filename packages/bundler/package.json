@@ -37,13 +37,13 @@
 		"@effected/env": "catalog:effected",
 		"@savvy-web/tsdown-plugins": "workspace:^",
 		"@tsdown/exe": "catalog:build",
-		"effect": "catalog:effect",
+		"effect": "catalog:effected",
 		"rolldown": "catalog:build",
 		"tsdown": "catalog:build"
 	},
 	"devDependencies": {
-		"@effect/platform-node": "catalog:effect",
-		"@effect/vitest": "catalog:effect",
+		"@effect/platform-node": "catalog:effected",
+		"@effect/vitest": "catalog:effected",
 		"@effected/images": "catalog:effected",
 		"@resvg/resvg-js": "^2.6.2",
 		"@tsdown/css": "catalog:build",

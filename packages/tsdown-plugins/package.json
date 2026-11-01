@@ -31,7 +31,7 @@
 	},
 	"dependencies": {
 		"@changesets/get-release-plan": "^5.0.2",
-		"@effect/platform-node": "catalog:effect",
+		"@effect/platform-node": "catalog:effected",
 		"@effected/env": "catalog:effected",
 		"@effected/glob": "catalog:effected",
 		"@effected/images": "catalog:effected",
@@ -46,14 +46,14 @@
 		"@microsoft/api-extractor": "catalog:build",
 		"@microsoft/tsdoc": "catalog:build",
 		"@microsoft/tsdoc-config": "catalog:build",
-		"@tsdoctor/manifest": "^0.2.11",
-		"effect": "catalog:effect",
+		"@tsdoctor/manifest": "^0.3.0",
+		"effect": "catalog:effected",
 		"picocolors": "^1.1.1",
 		"tsdown": "catalog:build",
 		"typescript": "7.1.0-beta"
 	},
 	"devDependencies": {
-		"@effect/vitest": "catalog:effect",
+		"@effect/vitest": "catalog:effected",
 		"@types/node": "catalog:build",
 		"rolldown": "catalog:build",
 		"tsx": "catalog:build",
