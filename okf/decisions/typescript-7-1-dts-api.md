@@ -7,7 +7,7 @@ tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T17:38:16Z
+  at: 2026-11-01T18:12:30Z
 sources:
   - id: tp-manifest
     resource: ../../packages/tsdown-plugins/package.json
@@ -32,7 +32,7 @@ verified:
     at: 2026-10-25T21:24:55Z
 integrity:
   generated:
-    body: 82f0a35453e6df4e
+    body: b8d3bfb6e5912f8a
   verified:
     by: human:spencer
     at: 2026-10-25T21:24:55Z
@@ -59,13 +59,14 @@ temp-dir tsconfig this package writes. Both premises have moved:
   as a project (`createSnapshot({ openProjects: [tsconfig] })`) and calls
   `program.getDeclarationEmit`. The `--rootDir` failure that forced the
   tsc generator no longer exists.
-- `@microsoft/api-extractor` has not moved: 7.59.4 still depends on
-  `typescript@5.9.3` and is written against the TypeScript 5/6 JavaScript
-  API. The TypeScript 7 port is tracked upstream with no maintainer
-  response as of 2026-10-25; the open PR bundling TypeScript 6.0.3 is
-  approved but unmerged, and the AST helpers TypeScript merged on
-  2026-09-25 "required by API Extractor" are a signal, not a
-  release.[^rushstack-ts7]
+- `@microsoft/api-extractor` is still written against the TypeScript 5/6
+  JavaScript API. When this decision was taken, 7.59.4 depended on
+  `typescript@5.9.3`; 7.60.0's only change was "Upgrade the bundled
+  compiler engine to TypeScript 6.0.3", so from 7.60.x it depends on
+  `typescript@6.0.3` itself. The TypeScript 7 port is tracked upstream
+  (microsoft/rushstack#6033) with no maintainer response as of 2026-10-25,
+  and the AST helpers TypeScript merged on 2026-09-25 "required by API
+  Extractor" are a signal, not a release.[^rushstack-ts7]
 
 ## Decision
 
@@ -95,10 +96,12 @@ temp-dir tsconfig this package writes. Both premises have moved:
   warning.[^tp-logger]
 - **API Extractor keeps its own TypeScript 6.** `src/meta/api-extractor.ts`
   no longer passes `typescriptCompilerFolder` to `Extractor.invoke`; the
-  extractor resolves the TypeScript 6 the existing
-  `@microsoft/api-extractor>typescript: ^6.0.3` override installs, and that
-  override stays. Handing it this package's 7.1 folder would give it the
-  version stub.[^tp-api-extractor]
+  extractor resolves its own TypeScript 6. That was first forced by a
+  `@microsoft/api-extractor>typescript: ^6.0.3` override in
+  `@savvy-web/pnpm-plugin-silk`; since `catalog:build` moved to
+  api-extractor `^7.60.1`, which depends on `typescript@6.0.3` directly, the
+  override is dropped and no override is needed. Handing it this package's
+  7.1 folder would give it the version stub.[^tp-api-extractor]
 - `tsdown` remains a declared dependency (never a peer), so its dts passes
   resolve this package's pinned TypeScript in every install topology — the
   part of the superseded decision that still stands.
@@ -137,9 +140,11 @@ its file set absolutely; see
   fixtures spread `dtsPassDtsOptions(tsconfig)`'s `generator` and `tsgo`
   into `dts` instead of pinning a compiler of their own — the pattern an
   escape-hatch consumer follows (see [modules/e2e.md](../modules/e2e.md)).
-- The `@microsoft/api-extractor>typescript: ^6.0.3` override in
-  `@savvy-web/pnpm-plugin-silk` remains load-bearing until API Extractor
-  ships TypeScript 7 support; the `@typescript/native-preview` catalog
+- `@savvy-web/pnpm-plugin-silk` no longer distributes a
+  `@microsoft/api-extractor>typescript` override: api-extractor 7.60.x
+  brings TypeScript 6.0.3 itself, and re-adding the override would force
+  TypeScript 6 back onto api-extractor once it moves to TypeScript 7
+  (microsoft/rushstack#6033). The `@typescript/native-preview` catalog
   entries, hoist pattern, and the `@savvy-web/bundler>typescript`
   `allowedVersions` rule are gone, since TypeScript 7 ships the Go compiler
   inside `typescript` itself and nothing provides TypeScript 6 to the

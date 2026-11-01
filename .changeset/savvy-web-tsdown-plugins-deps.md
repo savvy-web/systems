@@ -17,6 +17,7 @@
 | @effected/tsconfig-json | dependency | updated | ^0.18.0 | ^0.19.0 |
 | @effected/walker | dependency | updated | ^0.22.0 | ^0.24.0 |
 | @effected/workspaces | dependency | updated | ^0.40.0 | ^0.41.0 |
+| @microsoft/api-extractor | dependency | updated | ^7.59.4 | ^7.60.1 |
 | @tsdoctor/manifest | dependency | updated | ^0.2.11 | ^0.3.0 |
 | effect | dependency | updated | ^4.0.7 | ~4.1.1 |
 | tsdown | dependency | updated | ^0.23.2 | ^0.23.4 |

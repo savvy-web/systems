@@ -8,7 +8,7 @@ resource: ../../packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T17:38:16Z
+  at: 2026-11-01T18:12:30Z
 sources:
   - id: tp-index
     resource: ../../packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: ../../packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: d6d543a9c3202919
+    body: da3476f1248c9a73
 ---
 
 # @savvy-web/tsdown-plugins
@@ -172,8 +172,8 @@ because the bundled input is stable); Run B reads the per-module
 `declarations/<entry>.d.ts` to harvest `ae-*`/`tsdoc-*` diagnostics at
 accurate source locations, and is wrapped so its failure degrades to a
 warning rather than breaking a build whose model already succeeded.[^tp-meta]
-The extractor compiles with its own bundled TypeScript 6 (the
-`@microsoft/api-extractor>typescript` override), never this package's 7.1
+The extractor compiles with its own TypeScript 6.0.3 (api-extractor's own
+dependency since 7.60.0; no override), never this package's 7.1
 `typescript`, so `typescriptCompilerFolder` is deliberately not passed.
 Under CI, `ae-forgotten-export` escalates to a hard failure
 (`MetaGenerationError`); locally it stays a warning tagged `ciFatal`, and a

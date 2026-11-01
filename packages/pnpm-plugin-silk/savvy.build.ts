@@ -9,13 +9,13 @@ await build({
 				build: {
 					packages: {
 						"@microsoft/api-extractor": {
-							range: "^7.59.4",
-							peer: "^7.59.4",
+							range: "^7.60.1",
+							peer: "^7.60.1",
 							strategy: "lock",
 						},
 						"@microsoft/api-extractor-model": {
-							range: "^7.33.15",
-							peer: "^7.33.15",
+							range: "^7.33.16",
+							peer: "^7.33.16",
 							strategy: "lock",
 						},
 						// 0.17.0 dropped the line break before an inline node (microsoft/tsdoc#493); 0.17.1
@@ -375,7 +375,6 @@ await build({
 				},
 			},
 			overrides: {
-				"@microsoft/api-extractor>typescript": "^6.0.3",
 				// tsdown 0.23.4 narrowed its rolldown-plugin-dts range to ^0.28.8, which cannot
 				// resolve TypeScript 7.1's tsgo ("TypeScript Go is not installed"); 0.29 can.
 				// Drop once tsdown's own range admits ^0.29.0.

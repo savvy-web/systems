@@ -15,8 +15,8 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@microsoft/api-extractor": ^7.59.4
-    "@microsoft/api-extractor-model": ^7.33.15
+    "@microsoft/api-extractor": ^7.60.1
+    "@microsoft/api-extractor-model": ^7.33.16
     "@microsoft/tsdoc": ~0.17.1
     "@microsoft/tsdoc-config": ~0.18.3
     "@rsbuild/core": ^2.3.0
@@ -33,8 +33,8 @@ catalogs:
     tsx: ^4.23.15
     typescript: 7.1.0-beta
   build:peers:
-    "@microsoft/api-extractor": ^7.59.4
-    "@microsoft/api-extractor-model": ^7.33.15
+    "@microsoft/api-extractor": ^7.60.1
+    "@microsoft/api-extractor-model": ^7.33.16
     "@microsoft/tsdoc": ~0.17.1
     "@microsoft/tsdoc-config": ~0.18.3
     "@rsbuild/core": ^2.3.0
@@ -172,7 +172,6 @@ minimumReleaseAgeExclude:
   - vitest-bats
   - yarn
 overrides:
-  "@microsoft/api-extractor>typescript": ^6.0.3
   tsdown>rolldown-plugin-dts: ^0.29.0
 packages:
   - e2e/*

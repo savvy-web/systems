@@ -173,7 +173,7 @@ settings:
 catalogs:
   build:
     '@microsoft/api-extractor':
-      specifier: ^7.59.4
+      specifier: ^7.60.1
       version: 7.60.1
     '@microsoft/tsdoc':
       specifier: ~0.17.1
@@ -401,7 +401,6 @@ overrides:
   '@effect/tsgo@^0.63.0': 0.63.0
   '@effect/vitest@^4.0.0': 4.1.1
   effect@^4.0.0: 4.1.1
-  '@microsoft/api-extractor>typescript': ^6.0.3
   tsdown>rolldown-plugin-dts: ^0.29.0
 
 pnpmfileChecksum: sha256-rouMcKdD22vLCqIK1h1oUnQL+QhCRm8SyjE+apS4BFg=
