@@ -118,7 +118,7 @@ describe("writeApiExtractorTsconfig — self-reference paths (#771)", () => {
 		const anchor = derived.compilerOptions.baseUrl ?? derived.pathsBase ?? dirname(out);
 		const target = derived.compilerOptions.paths?.["~/*"]?.[0];
 		expect(target).toBeDefined();
-		const mapped = resolve(anchor, (target ?? "").replace("*", "util.ts"));
+		const mapped = resolve(anchor, (target ?? "").replaceAll("*", "util.ts"));
 		expect(existsSync(mapped)).toBe(true);
 		expect(realpathSync(mapped)).toBe(realpathSync(join(dir, "src", "util.ts")));
 	});

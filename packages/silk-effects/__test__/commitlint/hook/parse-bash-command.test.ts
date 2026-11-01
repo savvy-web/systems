@@ -133,3 +133,51 @@ describe("parseBashCommand — compound commands (#856)", () => {
 		expect(r.kind).toBe("unknown");
 	});
 });
+
+describe("parseBashCommand — newline-separated commands (#856)", () => {
+	it("finds a git commit on the line after another command", () => {
+		const r = parseBashCommand(`git add -A\ngit commit -m "feat: x"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("does not attribute the next line's flags to the commit", () => {
+		const r = parseBashCommand(`git commit -m "feat: x"\ngit push --no-verify`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.flags.noVerify).toBe(false);
+	});
+
+	it("keeps a newline inside a quoted message as text", () => {
+		const r = parseBashCommand(`git commit -m "feat: x\n\nbody line"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.message).toBe("feat: x\n\nbody line");
+	});
+
+	it("joins a backslash-continued line instead of splitting it", () => {
+		const r = parseBashCommand(`git commit \\\n  --no-verify \\\n  -m "feat: x"`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.flags.noVerify).toBe(true);
+		expect(r.message).toBe("feat: x");
+	});
+
+	it("does not read a heredoc body as commands", () => {
+		const r = parseBashCommand(`git commit -F - <<'EOF'\nfix: x\n\ngit push --no-verify\nEOF`);
+		expect(r.kind).toBe("git-commit");
+		expect(r.flags.noVerify).toBe(false);
+	});
+
+	it("does not classify a commit command quoted inside a heredoc body", () => {
+		const r = parseBashCommand(`cat <<'EOF' > msg.txt\ngit commit -m "not a command"\nEOF`);
+		expect(r.kind).toBe("unknown");
+	});
+
+	it("resumes after a heredoc ends", () => {
+		const r = parseBashCommand(`cat <<EOF > msg.txt\nfeat: x\nEOF\ngit commit -F msg.txt`);
+		expect(r.kind).toBe("git-commit");
+	});
+
+	it("handles the agent heredoc commit form inside double quotes", () => {
+		const r = parseBashCommand(`git add -A\ngit commit -m "$(cat <<'EOF'\nfeat: x\n\nbody\nEOF\n)"`);
+		expect(r.kind).toBe("git-commit");
+	});
+});
