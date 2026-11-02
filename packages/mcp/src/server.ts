@@ -20,7 +20,7 @@
  * `2026-07-28` protocol (SEP-2575): no handshake, no session, every request
  * self-contained.
  *
- * ## The six gotchas, verified against effect@4.1.1
+ * ## The six gotchas, verified against effect@4.1.2
  *
  * (Source paths are under `.repos/effect/packages/effect/src/`.)
  *
