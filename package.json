@@ -46,10 +46,10 @@
 	},
 	"devDependencies": {
 		"@effected/plugin": "catalog:effected",
-		"@okfit/plugin": "^0.5.28",
+		"@okfit/plugin": "^0.5.29",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^6.0.4"
+		"@vitest-agent/plugin": "^6.0.5"
 	},
 	"engines": {
 		"node": ">=24.11.0"
@@ -63,7 +63,7 @@
 		"runtime": [
 			{
 				"name": "node",
-				"version": "26.12.1",
+				"version": "26.13.0",
 				"onFail": "ignore"
 			}
 		]
