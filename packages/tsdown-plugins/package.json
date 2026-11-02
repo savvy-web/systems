@@ -50,7 +50,7 @@
 		"effect": "catalog:effected",
 		"picocolors": "^1.1.1",
 		"tsdown": "catalog:build",
-		"typescript": "7.1.0-beta"
+		"typescript": "7.1.0-dev.20261030.1"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effected",
