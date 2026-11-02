@@ -11,6 +11,7 @@
 * Updated mcp
 * Updated savvy command tree
 * Updated savvy-mcp tool surface
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
 
 ## 2026-11-01
 

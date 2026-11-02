@@ -31,13 +31,15 @@ verified:
     at: 2026-10-07T16:50:25Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-02T21:03:43Z
 integrity:
   generated:
     body: f40c05e82ef8592c
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: 8d6cbb859f8af79e
+    at: 2026-11-02T21:03:43Z
+    content: fb33b2bfa422b6d7
 ---
 
 # An Effect-native MCP server

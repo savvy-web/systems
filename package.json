@@ -45,6 +45,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"devDependencies": {
+		"@effected/plugin": "catalog:effected",
 		"@okfit/plugin": "^0.5.28",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
