@@ -416,7 +416,7 @@ importers:
         specifier: catalog:effected
         version: 0.1.0(@effected/config-file@0.24.0(@effected/glob@0.18.0(effect@4.1.2))(@effected/jsonc@0.23.0(effect@4.1.2))(@effected/toml@0.19.0(effect@4.1.2))(@effected/walker@0.25.0(@effected/glob@0.18.0(effect@4.1.2))(effect@4.1.2))(@effected/yaml@0.28.0(effect@4.1.2))(effect@4.1.2))(@types/react@19.3.0)(ink@8.0.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(redis@6.3.1)
       '@okfit/plugin':
-        specifier: ^0.5.28
+        specifier: ^0.5.29
         version: 0.5.29(@effected/memfs@0.23.0(effect@4.1.2))(@types/react@19.3.0)(redis@6.3.1)
       '@savvy-web/changelog':
         specifier: workspace:*
@@ -425,7 +425,7 @@ importers:
         specifier: workspace:*
         version: link:packages/silk/dist/dev/pkg
       '@vitest-agent/plugin':
-        specifier: ^6.0.4
+        specifier: ^6.0.5
         version: 6.0.5(@effected/jsonc@0.23.0(effect@4.1.2))(@effected/toml@0.19.0(effect@4.1.2))(@effected/yaml@0.28.0(effect@4.1.2))(@types/react@19.3.0)(@vitest/coverage-istanbul@5.1.0)(@vitest/coverage-v8@5.1.0)(ink@8.0.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(redis@6.3.1)(vitest@5.1.0)
 
   e2e/silk:
@@ -777,7 +777,7 @@ importers:
         specifier: catalog:build
         version: 26.6.6
       rolldown-pnpm-config:
-        specifier: ^2.3.0
+        specifier: ^2.4.1
         version: 2.4.1(@effected/config-file@0.24.0(@effected/glob@0.18.0(effect@4.1.2))(@effected/jsonc@0.23.0(effect@4.1.2))(@effected/toml@0.19.0(effect@4.1.2))(@effected/walker@0.25.0(@effected/glob@0.18.0(effect@4.1.2))(effect@4.1.2))(@effected/yaml@0.28.0(effect@4.1.2))(effect@4.1.2))(@types/react@19.3.0)(redis@6.3.1)(rolldown@1.2.16)
       typescript:
         specifier: catalog:build
@@ -1207,7 +1207,7 @@ importers:
         specifier: catalog:effected
         version: 4.1.2
       pluginfinity:
-        specifier: ^0.3.12
+        specifier: ^0.3.13
         version: 0.3.13(@effected/jsonc@0.23.0(effect@4.1.2))(@effected/toml@0.19.0(effect@4.1.2))(@effected/yaml@0.28.0(effect@4.1.2))(@types/react@19.3.0)(ink@8.0.0(@types/react@19.3.0)(react@19.3.1))(react@19.3.1)(redis@6.3.1)
       vitest:
         specifier: catalog:test
