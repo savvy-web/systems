@@ -25,10 +25,10 @@ sources:
     resource: ../../packages/cli/src/internal/command-error.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-02T02:45:02Z
+  at: 2026-11-02T21:02:43Z
 integrity:
   generated:
-    body: 922195b8a620a2f9
+    body: 4310e93cb6b46bda
 ---
 
 # savvy command tree
@@ -230,7 +230,7 @@ deregister [section]           clear a stale submodule.<section> local-config
 - Do not assume a new tool group gets its own `init`/`check` subcommands —
   only `savvy init`/`savvy check` exist at the top level.
 - Do not read results from stderr or logs from stdout; since the
-  `@effected/cli` adoption (see
+  `@effected/cli-kit` (then `@effected/cli`) adoption (see
   [`decisions/front-ends-adopt-effected-kit.md`](../decisions/front-ends-adopt-effected-kit.md))
   the split is strict.
 - Do not parse `savvy repos status`'s human-rendered text; pass `--json`

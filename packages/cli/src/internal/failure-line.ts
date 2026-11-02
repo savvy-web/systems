@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import type { FailureDetails } from "@effected/cli";
-import { CliDoc } from "@effected/cli";
+import type { FailureDetails } from "@effected/cli-kit";
+import { CliDoc } from "@effected/cli-kit";
 
 /** Where a defect report asks to be filed; mirrors `package.json#bugs.url`. */
 const ISSUES_URL = "https://github.com/savvy-web/systems/issues";

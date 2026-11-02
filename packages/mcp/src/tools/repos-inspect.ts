@@ -7,7 +7,7 @@
  */
 
 import { Gitmodules } from "@effected/git";
-import { ToolOutputSchema } from "@effected/mcp";
+import { ToolOutputSchema } from "@effected/mcp-kit";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";

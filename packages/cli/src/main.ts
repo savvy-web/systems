@@ -6,7 +6,7 @@
  * Runs `rootCommand` through `CliAudience.run`, which resolves `--audience`,
  * `--human`, `--agent` and `--ci` before core parses, provides the merged
  * `AppLive` stack and `CliConfigLive` (core's built-in flags minus
- * `--wizard`), and hands the program to `@effected/cli`'s
+ * `--wizard`), and hands the program to `@effected/cli-kit`'s
  * `CliRuntime.main`. Its `env` builds the presentation environment once — the
  * audience (overridable through `SAVVY_AUDIENCE`), the terminal, the theme,
  * editor links and the prompt gate — installs `CliLog` (diagnostics opt-in
@@ -23,8 +23,8 @@
  */
 /* v8 ignore start -- bootstrap; commands tested individually, the bin by __test__/e2e/bin.e2e.test.ts */
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
-import { CliAudience, CliRuntime } from "@effected/cli";
-import type { Distribution } from "@effected/engine";
+import { CliAudience, CliRuntime } from "@effected/cli-kit";
+import type { Distribution } from "@effected/kit";
 import { Effect, Layer } from "effect";
 
 import { AppLive, CliConfigLive, CliPlatform, rootCommand } from "./cli/index.js";

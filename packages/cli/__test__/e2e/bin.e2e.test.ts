@@ -1,6 +1,6 @@
 /**
  * The built `savvy` bin over a real process boundary, spawned hermetically by
- * `@effected/cli/testing`'s `CliTest`: the `--version` line, the usage-error
+ * `@effected/cli-kit/testing`'s `CliTest`: the `--version` line, the usage-error
  * exit code and where help goes are what `CliRuntime.main` owns, and none is
  * visible from a handler test.
  */
@@ -8,7 +8,7 @@
 import { resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
-import { CliTest } from "@effected/cli/testing";
+import { CliTest } from "@effected/cli-kit/testing";
 import { Effect } from "effect";
 
 const BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy.js");

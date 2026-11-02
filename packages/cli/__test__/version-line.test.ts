@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { CliAudience, CliRuntime } from "@effected/cli";
+import { CliAudience, CliRuntime } from "@effected/cli-kit";
 import { ConfigProvider, Console, Effect, Exit, Layer } from "effect";
 
 import { AppLive, CliConfigLive, CliPlatform, rootCommand } from "../src/cli/index.js";

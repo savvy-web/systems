@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import type { Cancelled, CliTheme } from "@effected/cli";
-import { CliUi, Confirm } from "@effected/cli/ui";
+import type { Cancelled, CliTheme } from "@effected/cli-kit";
+import { CliUi, Confirm } from "@effected/cli-kit/ui";
 import { Effect } from "effect";
 import { Flag } from "effect/cli";
 

@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { CliExit } from "@effected/cli";
+import { CliExit } from "@effected/cli-kit";
 import { ManagedSection } from "@effected/templates";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { ChangesetConfigReader, SilkPublishability } from "@savvy-web/silk-effects";

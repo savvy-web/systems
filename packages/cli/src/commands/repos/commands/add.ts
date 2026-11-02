@@ -28,7 +28,7 @@
  * @internal
  */
 
-import { CliPrompt } from "@effected/cli";
+import { CliPrompt } from "@effected/cli-kit";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
 import { Argument, Command, Flag, Prompt } from "effect/cli";

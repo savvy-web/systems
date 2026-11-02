@@ -1,5 +1,5 @@
 /**
- * The built bin over a real process boundary, driven by `@effected/mcp/testing`'s
+ * The built bin over a real process boundary, driven by `@effected/mcp-kit/testing`'s
  * `McpProbe` and `McpProcess`. The one assertion nothing else can make:
  * **stderr is empty** across a full handshake — the only thing that catches a
  * logger writing to stdout or a startup warning — and a clean stdin close
@@ -9,8 +9,8 @@
 import { resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
-import type { McpProcess } from "@effected/mcp/testing";
-import { McpProcess as Mcp, McpProbe } from "@effected/mcp/testing";
+import type { McpProcess } from "@effected/mcp-kit/testing";
+import { McpProcess as Mcp, McpProbe } from "@effected/mcp-kit/testing";
 import { Effect } from "effect";
 import { ChildProcess } from "effect/process";
 

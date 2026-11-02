@@ -3,8 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "@effect/vitest";
 import { ResolvedTool, ScriptedSpawner, ToolDiscovery, ToolNotFoundError } from "@effected/commands";
-import { Exclusive } from "@effected/engine";
 import { Git, GitCommandError, TreeIdentity } from "@effected/git";
+import { Exclusive } from "@effected/kit";
 import { Deferred, Effect, Fiber, Layer, Option, Result, Schema } from "effect";
 
 import {

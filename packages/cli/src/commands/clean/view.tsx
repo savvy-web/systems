@@ -6,8 +6,8 @@
  * @internal
  */
 
-import type { LiveOptions } from "@effected/cli/ui";
-import { DocView, useGlyphs } from "@effected/cli/ui";
+import type { LiveOptions } from "@effected/cli-kit/ui";
+import { DocView, useGlyphs } from "@effected/cli-kit/ui";
 import type { ReactElement } from "react";
 import type { CleanEvent, CleanState } from "./progress.js";
 import { initialCleanState, progressDoc, reduceClean, summaryDoc } from "./progress.js";

@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import type { Block, CliDocSource, Document } from "@effected/cli";
-import { CliDoc, Doc, Status } from "@effected/cli";
+import type { Block, CliDocSource, Document } from "@effected/cli-kit";
+import { CliDoc, Doc, Status } from "@effected/cli-kit";
 import { Data } from "effect";
 
 import { FailureLine } from "./failure-line.js";

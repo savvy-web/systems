@@ -44,7 +44,7 @@
  *    shipping client (Claude Code's default stdio session, Copilot, Cursor,
  *    the Inspector) still opens with `initialize`, which a server offering
  *    ONLY `2026-07-28` answers with `METHOD_NOT_FOUND`. Never drop the
- *    stateful adapters. `@effected/mcp`'s `McpStdio.protocols` — the
+ *    stateful adapters. `@effected/mcp-kit`'s `McpStdio.protocols` — the
  *    default {@link ServerLayer} serves — is exactly this list.
  * 3. **A declared typed failure reaches the wire as message text only.**
  *    Under `failureMode: "error"` (the only mode these tools use) core's
@@ -71,7 +71,7 @@
  *
  * ## Registration, and the text channel
  *
- * The toolkit is registered by `@effected/mcp`'s `McpToolkit.layer`, which is
+ * The toolkit is registered by `@effected/mcp-kit`'s `McpToolkit.layer`, which is
  * core's `registerToolkit` plus a better unknown-argument report for strict
  * tools. A success is rendered by core: `structuredContent` is the encoded
  * result and `content[0].text` is the same object as JSON. That is the whole
@@ -93,7 +93,7 @@
  * where a strict client rejects it. Four tools' results are discriminated
  * unions (`turbo_inspect`, `changeset_inspect`, `repos_inspect`,
  * `repos_manage`), whose JSON Schema would be a bare `anyOf`; each is wrapped
- * in `@effected/mcp`'s `ToolOutputSchema.objectRooted`, which adds
+ * in `@effected/mcp-kit`'s `ToolOutputSchema.objectRooted`, which adds
  * `type: "object"` beside the `anyOf`, so every tool serves a valid
  * `outputSchema` on every revision.
  *
@@ -106,9 +106,9 @@
  * @packageDocumentation
  */
 
-import type { Distribution } from "@effected/engine";
-import { distributionSuffix } from "@effected/engine";
-import { McpStdio, McpToolkit } from "@effected/mcp";
+import type { Distribution } from "@effected/kit";
+import { distributionSuffix } from "@effected/kit";
+import { McpStdio, McpToolkit } from "@effected/mcp-kit";
 import type { FileSystem, Path, Stdio } from "effect";
 import { Effect, Layer, Option } from "effect";
 import { McpServer } from "effect/ai";
@@ -203,7 +203,7 @@ export interface ServerOptions {
 
 /**
  * The whole server as one layer: the ten-tool toolkit, the silk-effects
- * runtime discharging its dependencies, over `@effected/mcp`'s
+ * runtime discharging its dependencies, over `@effected/mcp-kit`'s
  * `McpStdio.layer`.
  *
  * `McpStdio.layer` is `McpServer.layerStdio` with the kit's default

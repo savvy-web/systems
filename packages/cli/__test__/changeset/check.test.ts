@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, layer } from "@effect/vitest";
-import { Doc } from "@effected/cli";
+import { Doc } from "@effected/cli-kit";
 import { Effect, Layer, Logger } from "effect";
 
 import { changesetCheckSection, runChangesetCheck } from "../../src/commands/changeset/commands/check.js";

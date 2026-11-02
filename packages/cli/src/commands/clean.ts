@@ -10,9 +10,9 @@
 
 import { glob as nodeGlob, realpath, rm } from "node:fs/promises";
 import { join, sep } from "node:path";
-import type { Block } from "@effected/cli";
-import { CliInteractive, Fmt } from "@effected/cli";
-import { CliUi } from "@effected/cli/ui";
+import type { Block } from "@effected/cli-kit";
+import { CliInteractive, Fmt } from "@effected/cli-kit";
+import { CliUi } from "@effected/cli-kit/ui";
 import { WorkspaceDiscovery } from "@effected/workspaces";
 import { Console, Effect, PubSub } from "effect";
 import { Command, Flag } from "effect/cli";

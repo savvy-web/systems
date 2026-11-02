@@ -12,7 +12,7 @@
  */
 
 import { assert, describe, it } from "@effect/vitest";
-import { McpStdio, McpToolkit } from "@effected/mcp";
+import { McpStdio, McpToolkit } from "@effected/mcp-kit";
 import { Effect, Layer, Schema } from "effect";
 import { McpTest, Tool, Toolkit } from "effect/ai";
 

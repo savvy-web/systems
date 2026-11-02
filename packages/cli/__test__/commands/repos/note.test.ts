@@ -1,7 +1,7 @@
 import { NodeServices } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
-import { CliAudience } from "@effected/cli";
-import { TestTerminal } from "@effected/cli/testing";
+import { CliAudience } from "@effected/cli-kit";
+import { TestTerminal } from "@effected/cli-kit/testing";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Fiber, Layer } from "effect";
 import { Command } from "effect/cli";

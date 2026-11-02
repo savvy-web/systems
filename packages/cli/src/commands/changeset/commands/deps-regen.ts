@@ -55,8 +55,8 @@
  */
 
 import { resolve } from "node:path";
-import type { Block } from "@effected/cli";
-import { CliExit, Doc } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
+import { CliExit, Doc } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect, Option } from "effect";
 import { Command, Flag } from "effect/cli";

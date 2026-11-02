@@ -4,8 +4,8 @@
  * @internal
  */
 import { isDeepStrictEqual } from "node:util";
-import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
+import { CliExit } from "@effected/cli-kit";
 import { Tool, ToolDiscovery } from "@effected/commands";
 import type { JsoncParseError } from "@effected/jsonc";
 import { Jsonc } from "@effected/jsonc";

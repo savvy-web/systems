@@ -11,7 +11,7 @@
 		"@effect/vitest": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
-		"@effected/mcp": "catalog:effected",
+		"@effected/mcp-kit": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",

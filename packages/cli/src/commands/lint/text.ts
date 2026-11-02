@@ -22,7 +22,7 @@
  * @internal
  */
 
-import { CliExit, Doc } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli-kit";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";

@@ -6,7 +6,7 @@
 import { chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import type { Block } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
 import type {
 	JsoncFormattingOptions,
 	JsoncModificationError,

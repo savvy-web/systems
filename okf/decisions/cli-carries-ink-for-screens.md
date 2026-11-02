@@ -1,12 +1,12 @@
 ---
 type: Decision
 title: The savvy CLI carries ink and react as regular dependencies, loaded only to draw
-description: "@savvy-web/cli declares ink and react — optional peers of @effected/cli — as regular dependencies, so every install of the cli (and of @savvy-web/silk, which pins it) carries ink, react and yoga-layout, while each screen module is imported lazily and only a person at a terminal ever loads them."
+description: "@savvy-web/cli declares ink and react — optional peers of @effected/cli-kit — as regular dependencies, so every install of the cli (and of @savvy-web/silk, which pins it) carries ink, react and yoga-layout, while each screen module is imported lazily and only a person at a terminal ever loads them."
 status: stable
 tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
-  at: 2026-10-02T02:45:02Z
+  at: 2026-11-02T21:02:43Z
 sources:
   - id: cli-manifest
     resource: ../../packages/cli/package.json
@@ -23,7 +23,7 @@ verified:
     at: 2026-10-13T17:19:17Z
 integrity:
   generated:
-    body: d1dabf9bf4bffbc2
+    body: 77e7e2d33ec03312
   verified:
     by: human:spencer
     at: 2026-10-13T17:19:17Z
@@ -34,7 +34,7 @@ integrity:
 
 ## Context
 
-The `feat/interactive-cli` work moved `savvy`'s prompts, confirmations and live progress views onto `@effected/cli/ui`, the kit's Ink-based screen layer. `@effected/cli` 0.11 declares `ink`, `react` and `@types/react` as *optional* peer dependencies: a consumer that never draws a screen need not install them, and one that does must supply them itself.[^cli-manifest]
+The `feat/interactive-cli` work moved `savvy`'s prompts, confirmations and live progress views onto `@effected/cli-kit/ui`, the kit's Ink-based screen layer. `@effected/cli-kit` (then `@effected/cli`) 0.11 declares `ink`, `react` and `@types/react` as *optional* peer dependencies: a consumer that never draws a screen need not install them, and one that does must supply them itself.[^cli-manifest]
 
 `@savvy-web/cli` already seals its Effect closure as regular `dependencies` with no `peerDependencies` block, the posture shared with mcp and tsdown-plugins, and `@savvy-web/silk` pins cli as an exact regular dependency — see [silk-pins-siblings-as-dependencies](silk-pins-siblings-as-dependencies.md). Whatever cli depends on, every silk install carries.
 

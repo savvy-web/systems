@@ -7,7 +7,7 @@
  */
 
 import { resolve } from "node:path";
-import { ToolFailure, ToolRefusal } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";

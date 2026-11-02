@@ -44,7 +44,7 @@
  */
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { CliAudience } from "@effected/cli";
+import { CliAudience } from "@effected/cli-kit";
 import { ToolDiscovery } from "@effected/commands";
 import { Git } from "@effected/git";
 import { ManagedSection } from "@effected/templates";
@@ -169,7 +169,7 @@ export const AppLive = Layer.mergeAll(ToolDiscoveryGroupLive, InspectorAndAnalyz
 /**
  * Core's built-in global flags for the whole program: `--help`, `--version`,
  * `--completions` and `--log-level`. Core's generic `--wizard` is trimmed —
- * savvy asks its own questions through `@effected/cli/ui` screens. Provided
+ * savvy asks its own questions through `@effected/cli-kit/ui` screens. Provided
  * around the program by `main()`, inside `CliRuntime.main`'s environment, so
  * help, parsing and `CliAudience`'s interactive `--wizard` restore all read
  * it (the kit only restores a wizard its own gate removed, never one a

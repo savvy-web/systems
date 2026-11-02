@@ -1,11 +1,11 @@
 /**
- * Human-readable command output, built as an `@effected/cli` document.
+ * Human-readable command output, built as an `@effected/cli-kit` document.
  *
  * @packageDocumentation
  */
 
-import type { Block, CliLinks, CliTheme, Document, InlineInput } from "@effected/cli";
-import { Doc, Status } from "@effected/cli";
+import type { Block, CliLinks, CliTheme, Document, InlineInput } from "@effected/cli-kit";
+import { Doc, Status } from "@effected/cli-kit";
 import type { Audience, TerminalEnv } from "@effected/env";
 import type { Effect } from "effect";
 
@@ -45,7 +45,7 @@ const item = (status: CoreStatus, text: InlineInput, detail: ReadonlyArray<strin
  * `Report` covers what every command repeats: status items, headings, detail
  * lines, the summary and the audience-aware print. Anything richer — a
  * table, a titled section, a callout, a tree, a file link, a GitHub Actions
- * annotation — is built with `Doc.*` from `@effected/cli` directly and mixed
+ * annotation — is built with `Doc.*` from `@effected/cli-kit` directly and mixed
  * into the same document (both build `Block`s); `Report` deliberately does not
  * re-wrap those constructors.
  *

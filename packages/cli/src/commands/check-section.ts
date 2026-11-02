@@ -4,8 +4,8 @@
  * @packageDocumentation
  */
 
-import type { Block, InlineInput } from "@effected/cli";
-import { Doc, Status } from "@effected/cli";
+import type { Block, InlineInput } from "@effected/cli-kit";
+import { Doc, Status } from "@effected/cli-kit";
 
 /**
  * A tool's verdict: `failure` when it found a misconfiguration (exit 1),

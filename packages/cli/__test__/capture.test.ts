@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { CliExit, Doc } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli-kit";
 import { Audience } from "@effected/env";
 import { Console, Effect } from "effect";
 

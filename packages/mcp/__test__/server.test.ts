@@ -1,6 +1,6 @@
 /**
  * In-process round trips through the real `ServerLayer` under
- * `@effected/mcp/testing`'s `McpHarness` (no child process): the initialize handshake, the served tool list, and
+ * `@effected/mcp-kit/testing`'s `McpHarness` (no child process): the initialize handshake, the served tool list, and
  * the dual channel a successful call produces — the JSON of the result in
  * `content[0].text`, the typed object in `structuredContent` — plus the two
  * failure renderings (a declared failure as `isError` text carrying its
@@ -10,7 +10,7 @@
 import { cpSync, mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { assert, describe, it } from "@effect/vitest";
-import type { JsonRpcMessage, McpHarness } from "@effected/mcp/testing";
+import type { JsonRpcMessage, McpHarness } from "@effected/mcp-kit/testing";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { McpProtocol } from "effect/ai";

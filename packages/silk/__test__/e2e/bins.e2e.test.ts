@@ -19,7 +19,7 @@ import { resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Run } from "@effected/commands";
-import { McpProbe } from "@effected/mcp/testing";
+import { McpProbe } from "@effected/mcp-kit/testing";
 import { Effect } from "effect";
 import { ChildProcess } from "effect/process";
 
@@ -32,7 +32,7 @@ const BIN_TIMEOUT_MS = 30_000;
  * An explicit environment, not `process.env`: `env` is passed whole and
  * `extendEnv` is never set, so `PATH` and `HOME` are listed. This is the
  * kit's own guidance for a bin run straight out of `dist` (see `McpProcess`
- * in `@effected/mcp/testing`); `PackedInstall`'s `consumer.command` builds it
+ * in `@effected/mcp-kit/testing`); `PackedInstall`'s `consumer.command` builds it
  * only for a packed-install consumer, which `@e2e/silk` covers.
  */
 const ENV = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NO_COLOR: "1" } as const;
