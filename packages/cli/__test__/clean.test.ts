@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, wri
 import { tmpdir } from "node:os";
 import { join, sep } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
-import { CliUiTest } from "@effected/cli/ui/testing";
+import { CliUiTest } from "@effected/cli-kit/ui/testing";
 import { WorkspaceDiscovery, WorkspacePackage } from "@effected/workspaces";
 import { Effect, Fiber, Layer } from "effect";
 import { initialCleanState, reduceClean } from "../src/commands/clean/progress.js";

@@ -2,14 +2,14 @@
  * The `repos_manage` MCP tool: one action-discriminated mutating tool
  * covering `sync`, `pin`, `add`, `note`, `remove`, `rename`, `restore`, and
  * `deregister` against the vendored `.repos/` submodules. Its parameters are
- * a `Schema.Union` of one struct per action, served by `@effected/mcp`'s
+ * a `Schema.Union` of one struct per action, served by `@effected/mcp-kit`'s
  * `McpToolkit.unionTool` as a strict `oneOf` keyed by `action`; the handler
  * receives the decoded member. Mutating — no `readOnlyHint`.
  *
  * @packageDocumentation
  */
 
-import { McpToolkit, ToolOutputSchema, ToolRefusal } from "@effected/mcp";
+import { McpToolkit, ToolOutputSchema, ToolRefusal } from "@effected/mcp-kit";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Repos } from "@savvy-web/silk-effects";

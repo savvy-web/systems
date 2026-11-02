@@ -1,5 +1,5 @@
 /**
- * The real `ServerLayer` under `@effected/mcp/testing`'s `McpHarness`: an
+ * The real `ServerLayer` under `@effected/mcp-kit/testing`'s `McpHarness`: an
  * in-process client over queue-backed stdio. Covers what the kit's
  * `McpStdio.layer` promises on the wire (a non-JSON line is answered, not
  * fatal; nothing reaches stdout outside JSON-RPC), the distribution suffix in
@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from "@effect/vitest";
-import type { Distribution } from "@effected/engine";
+import type { Distribution } from "@effected/kit";
 import { Effect } from "effect";
 
 import { ServerLayer } from "../src/server.js";

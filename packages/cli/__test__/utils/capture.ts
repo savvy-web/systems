@@ -11,8 +11,8 @@
  * `Interactive` in `./interactive.ts`.
  */
 
-import type { CliEnvServices } from "@effected/cli";
-import { CliEnv, CliExit, CliLinks, CliLogger, CliRuntime } from "@effected/cli";
+import type { CliEnvServices } from "@effected/cli-kit";
+import { CliEnv, CliExit, CliLinks, CliLogger, CliRuntime } from "@effected/cli-kit";
 import type { AudienceKind } from "@effected/env";
 import { CurrentRuntimeEnv } from "@effected/env";
 import {

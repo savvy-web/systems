@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Doc } from "@effected/cli";
+import { Doc } from "@effected/cli-kit";
 import { Effect } from "effect";
 import { runCheck } from "../src/commands/check.js";
 import type { CheckSection } from "../src/commands/check-section.js";

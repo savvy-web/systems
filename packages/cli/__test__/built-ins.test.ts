@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from "@effect/vitest";
-import { CliAudience, CliExit } from "@effected/cli";
+import { CliAudience, CliExit } from "@effected/cli-kit";
 import { Effect, Layer } from "effect";
 
 import { AppLive, CliConfigLive, CliPlatform, rootCommand } from "../src/cli/index.js";

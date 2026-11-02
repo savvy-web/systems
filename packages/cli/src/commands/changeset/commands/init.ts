@@ -36,7 +36,7 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli";
+import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli-kit";
 import { TerminalEnv } from "@effected/env";
 import { Git, GitRemote } from "@effected/git";
 import type { JsoncFormattingOptions } from "@effected/jsonc";

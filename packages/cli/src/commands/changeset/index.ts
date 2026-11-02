@@ -1,4 +1,4 @@
-import type { CliExit } from "@effected/cli";
+import type { CliExit } from "@effected/cli-kit";
 import type { Changesets } from "@savvy-web/silk-effects";
 import type { Cause, FileSystem, Path } from "effect";
 import { Command } from "effect/cli";

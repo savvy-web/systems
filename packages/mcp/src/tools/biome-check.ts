@@ -10,10 +10,10 @@
 import { realpathSync } from "node:fs";
 import { relative, resolve, sep } from "node:path";
 import { Tool as CommandTool, Run, ToolDiscovery } from "@effected/commands";
-import type { Exclusive, Remediation } from "@effected/engine";
 import type { GitShape } from "@effected/git";
 import { Git, TreeIdentity } from "@effected/git";
-import { ToolFailure, ToolRefusal } from "@effected/mcp";
+import type { Exclusive, Remediation } from "@effected/kit";
+import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
 import { Effect, Option, Schema } from "effect";
 import { Tool } from "effect/ai";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";

@@ -30,13 +30,15 @@ verified:
     at: 2026-10-25T14:56:24Z
   - by: human:spencer
     at: 2026-10-25T21:24:55Z
+  - by: human:spencer
+    at: 2026-11-02T21:03:43Z
 integrity:
   generated:
     body: b8d3bfb6e5912f8a
   verified:
     by: human:spencer
-    at: 2026-10-25T21:24:55Z
-    content: 5a98db2eaaca766b
+    at: 2026-11-02T21:03:43Z
+    content: 052daf031f5acf24
 ---
 
 # Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins

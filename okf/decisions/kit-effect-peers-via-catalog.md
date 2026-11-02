@@ -15,19 +15,21 @@ sources:
     resource: ../../pnpm-workspace.yaml
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T17:38:16Z
+  at: 2026-11-02T21:02:43Z
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-02T21:03:43Z
 integrity:
   generated:
-    body: 65edb0b81449b7c2
+    body: ee620d0cced3a498
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: c32630924e3ab336
+    at: 2026-11-02T21:03:43Z
+    content: 67d799459a311de4
 ---
 
 # Kit Effect peers supplied via the effected catalog
@@ -72,7 +74,7 @@ Required peers convert what was silent duplication into a visible mismatch: on `
 - **The trap**, tracked as savvy-web/systems#536: a `configDependencies` version bump alone does not make pnpm re-resolve it. pnpm reports "Lockfile is up to date, resolution step is skipped," silently keeps the previously linked version, and the new catalog appears not to exist (`ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC` for a catalog that does exist upstream). Removing `node_modules/.pnpm-config`, removing `node_modules/.pnpm-workspace-state-v1.json`, and `pnpm install --force` do not fix it. `pnpm-lock.yaml` is multi-document YAML whose **first** document pins the config dependency independently of the manifest; the fix is to hand-edit that first document's `specifier`, `version`, `packages:`, `integrity`, and `snapshots:` records, scoped to that document only, then install.[^kit-peers]
 - Bumping a consumer's direct silk-effects pin across a major does not by itself collapse a duplicate if a lockfile-held intermediate still satisfies its own declared range; the operation is bump the direct pin, then explicitly update every intermediate that pins the old copy, verified by counting resolved versions in the lockfile after each step.[^kit-peers]
 - A peer declared by silk-core is also declared by silk-effects: silk-effects re-exports silk-core, so any class identity silk-core exposes is exposed one layer up too. Adding a kit class to a silk-core public schema means adding the peer to both manifests.[^core-peers]
-- `pnpm-workspace.yaml` sets `resolvePeersFromWorkspaceRoot: false` (added with the move to `effect` 4.0.0 and the predecessor plugin `@effected/pnpm-plugin-effect` 0.13.0). With pnpm's default, a workspace package's unsatisfied peer resolves from the root's dependencies, so a tool installed at the root that still carries a release-candidate copy of `effect` or a kit library could satisfy the new kit's peers with the wrong copy. With it off, a package's peers resolve only within its own dependency graph, so a kit package's required peers must be declared where it is used — the reason `@savvy-web/cli` declares `@effected/env`, `@effected/glob` and `@effected/walker`, required peers of `@effected/cli` 0.11.[^workspace]
+- `pnpm-workspace.yaml` sets `resolvePeersFromWorkspaceRoot: false` (added with the move to `effect` 4.0.0 and the predecessor plugin `@effected/pnpm-plugin-effect` 0.13.0). With pnpm's default, a workspace package's unsatisfied peer resolves from the root's dependencies, so a tool installed at the root that still carries a release-candidate copy of `effect` or a kit library could satisfy the new kit's peers with the wrong copy. With it off, a package's peers resolve only within its own dependency graph, so a kit package's required peers must be declared where it is used — the reason `@savvy-web/cli` declares `@effected/env`, `@effected/glob` and `@effected/walker`, required peers of `@effected/cli-kit` (then `@effected/cli`) 0.11.[^workspace]
 - A kit package with zero imports under `src/` is not a dependency of any kind — `@effected/toml` was removed from silk-effects on this basis.[^kit-peers]
 
 [^kit-peers]: `../../packages/silk-effects/package.json`

@@ -35,7 +35,7 @@
  * @internal
  */
 
-import { CliUi, Select } from "@effected/cli/ui";
+import { CliUi, Select } from "@effected/cli-kit/ui";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";

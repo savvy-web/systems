@@ -14,8 +14,8 @@
  * @internal
  */
 
-import type { Cancelled, CliTheme } from "@effected/cli";
-import { CliUi, Select } from "@effected/cli/ui";
+import type { Cancelled, CliTheme } from "@effected/cli-kit";
+import { CliUi, Select } from "@effected/cli-kit/ui";
 import { Lint } from "@savvy-web/silk-effects";
 import { Effect, FileSystem } from "effect";
 import { Command, Flag } from "effect/cli";

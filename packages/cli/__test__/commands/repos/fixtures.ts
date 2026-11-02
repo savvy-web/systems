@@ -7,7 +7,7 @@
  */
 
 import { NodeServices } from "@effect/platform-node";
-import { CliAudience } from "@effected/cli";
+import { CliAudience } from "@effected/cli-kit";
 import { Repos } from "@savvy-web/silk-effects";
 import type { Effect as EffectType } from "effect";
 import { Cause, Effect, Exit, Layer } from "effect";

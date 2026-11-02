@@ -54,7 +54,7 @@
 	"devDependencies": {
 		"@effect/platform-node": "catalog:effected",
 		"@effect/vitest": "catalog:effected",
-		"@effected/mcp": "catalog:effected",
+		"@effected/mcp-kit": "catalog:effected",
 		"@savvy-web/bundler": "workspace:*",
 		"@types/node": "catalog:build",
 		"tsx": "catalog:build",

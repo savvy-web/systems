@@ -9,8 +9,8 @@
  * @internal
  */
 
-import type { Block } from "@effected/cli";
-import { Doc } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
+import { Doc } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Command, Flag } from "effect/cli";

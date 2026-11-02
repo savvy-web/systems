@@ -6,10 +6,10 @@
  * @internal
  */
 
-import type { Cancelled } from "@effected/cli";
-import { CliInteractive } from "@effected/cli";
-import type { MultiSelectItem } from "@effected/cli/ui";
-import { CliUi, MultiSelect, Select, TextInput } from "@effected/cli/ui";
+import type { Cancelled } from "@effected/cli-kit";
+import { CliInteractive } from "@effected/cli-kit";
+import type { MultiSelectItem } from "@effected/cli-kit/ui";
+import { CliUi, MultiSelect, Select, TextInput } from "@effected/cli-kit/ui";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { CliError } from "effect/cli";

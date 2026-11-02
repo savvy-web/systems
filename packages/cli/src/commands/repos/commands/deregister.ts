@@ -38,8 +38,8 @@
  * @internal
  */
 
-import { CliInteractive } from "@effected/cli";
-import { CliUi, Select } from "@effected/cli/ui";
+import { CliInteractive } from "@effected/cli-kit";
+import { CliUi, Select } from "@effected/cli-kit/ui";
 import { Repos } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";

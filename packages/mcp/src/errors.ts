@@ -10,7 +10,7 @@
  * (`declaredFailureResult` in
  * `.repos/effect/packages/effect/src/unstable/ai/McpServer.ts` — see the
  * header of `server.ts`). So a structured `remediation` field is invisible to
- * a real client: every member spreads `@effected/mcp`'s `ToolFailure.fields`,
+ * a real client: every member spreads `@effected/mcp-kit`'s `ToolFailure.fields`,
  * folds its hint into `message` at construction through
  * `ToolFailure.message`, and passes any caller-supplied value it echoes
  * through `ToolFailure.truncate`.
@@ -24,8 +24,8 @@
  * @packageDocumentation
  */
 
-import type { Remediation } from "@effected/engine";
-import { ToolFailure, ToolRefusal } from "@effected/mcp";
+import type { Remediation } from "@effected/kit";
+import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
 import { Schema } from "effect";
 
 /**

@@ -3,7 +3,7 @@
  * server layer launched over stdio.
  *
  * @remarks
- * The crash guards are `@effected/mcp/guard`'s `McpGuard.run`, whose entry
+ * The crash guards are `@effected/mcp-kit/guard`'s `McpGuard.run`, whose entry
  * point has no static runtime import: it registers the `uncaughtException`
  * and `unhandledRejection` listeners, then awaits `load`, which imports the
  * whole server graph (`effect` included) dynamically. An error while any of it
@@ -11,7 +11,7 @@
  * `load` is reported as `startup failed` with exit 1. The two static imports
  * here are the guard and an erased type.
  *
- * The process boundary itself is `@effected/mcp`'s: `McpGuard.run` launches
+ * The process boundary itself is `@effected/mcp-kit`'s: `McpGuard.run` launches
  * the loaded layer with `McpStdio.launch`, which reports a launch failure on
  * stderr (never onto the JSON-RPC wire), and `McpStdio.teardown`, which maps
  * stdin EOF — a clean disconnect — to exit 0.
@@ -19,8 +19,8 @@
  * @packageDocumentation
  */
 /* v8 ignore start -- process bootstrap; covered by the server-lifecycle e2e and the silk bins e2e */
-import type { Distribution } from "@effected/engine";
-import { McpGuard } from "@effected/mcp/guard";
+import type { Distribution } from "@effected/kit";
+import { McpGuard } from "@effected/mcp-kit/guard";
 
 /**
  * Options for {@link main}.
@@ -59,7 +59,7 @@ export const main = (options: MainOptions = {}): Promise<void> =>
 			const NodeRuntime = await import("@effect/platform-node/NodeRuntime");
 			const NodeServices = await import("@effect/platform-node/NodeServices");
 			const { Layer } = await import("effect");
-			const { LaunchContext } = await import("@effected/engine");
+			const { LaunchContext } = await import("@effected/kit");
 			const { ServerLayer } = await import("./server.js");
 			const cwd = LaunchContext.projectDir({
 				// The single positional only: every non-empty candidate counts, so a

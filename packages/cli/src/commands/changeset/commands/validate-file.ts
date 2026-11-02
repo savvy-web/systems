@@ -13,7 +13,7 @@
  * @internal
  */
 
-import { CliExit } from "@effected/cli";
+import { CliExit } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";

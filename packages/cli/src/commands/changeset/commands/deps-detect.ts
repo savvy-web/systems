@@ -23,7 +23,7 @@
  */
 
 import { resolve } from "node:path";
-import { CliExit, CliFormat } from "@effected/cli";
+import { CliExit, CliFormat } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect, Option } from "effect";
 import { Command, Flag } from "effect/cli";

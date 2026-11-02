@@ -1,5 +1,18 @@
 # Log
 
+## 2026-11-02
+
+* Updated An Effect-native MCP server
+* Updated Kit Effect peers supplied via the effected catalog
+* Updated Shape and test a savvy-mcp tool
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated cli
+* Updated mcp
+* Updated savvy command tree
+* Updated savvy-mcp tool surface
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+
 ## 2026-11-01
 
 * Updated @savvy-web/pnpm-plugin-silk catalog names

@@ -14,8 +14,8 @@
  * @internal
  */
 
-import type { Block } from "@effected/cli";
-import { CliExit, Doc } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
+import { CliExit, Doc } from "@effected/cli-kit";
 import { Effect, Result } from "effect";
 import { Command, Flag } from "effect/cli";
 import type { ReportEnv } from "../internal/report.js";

@@ -1,4 +1,4 @@
-import { ToolFailure, ToolRefusal } from "@effected/mcp";
+import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
 import { Schema } from "effect";
 import { describe, expect, it } from "vitest";
 

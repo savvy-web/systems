@@ -6,7 +6,7 @@
  * @packageDocumentation
  */
 
-import { Exclusive } from "@effected/engine";
+import { Exclusive } from "@effected/kit";
 import type { Layer } from "effect";
 import { Effect } from "effect";
 import type { Tool } from "effect/ai";

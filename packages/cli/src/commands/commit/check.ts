@@ -4,8 +4,8 @@
  * @internal
  */
 
-import type { Block } from "@effected/cli";
-import { CliExit } from "@effected/cli";
+import type { Block } from "@effected/cli-kit";
+import { CliExit } from "@effected/cli-kit";
 import type { SectionFileError, SectionParseError } from "@effected/templates";
 import { CheckOutcome, ManagedSection } from "@effected/templates";
 import type { PublishabilityDetector, WorkspaceDiscovery } from "@effected/workspaces";

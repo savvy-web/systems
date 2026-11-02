@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-10-27T18:01:51Z
+  at: 2026-11-02T21:02:43Z
 integrity:
   generated:
-    body: 2e131b16b7af3b8d
+    body: f99dfcb348a846a8
 ---
 
 # savvy-mcp tool surface
@@ -131,7 +131,7 @@ depends on `Git` (worktree containment, via `Git.treeIdentity` and
 `TreeIdentity.relation`), `ToolDiscovery` (Biome resolution, global copy
 first) and `ChildProcessSpawner` (Biome runs through `@effected/commands`'
 `Run.collect`, not a blocking `spawnSync`). `--write` passes are serialized
-per server through one `@effected/engine` `Exclusive` lane; read-only checks
+per server through one `@effected/kit` `Exclusive` lane; read-only checks
 stay concurrent. `write`/`unsafe` apply fixes; both default
 off, so a bare call only reads and reports. Fix-then-validate: when either
 flag is set it runs a fix pass, then always runs a read pass reporting what

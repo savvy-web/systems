@@ -1,4 +1,4 @@
-import type { Cancelled, CliExit } from "@effected/cli";
+import type { Cancelled, CliExit } from "@effected/cli-kit";
 import type { Repos } from "@savvy-web/silk-effects";
 import type { CliError } from "effect/cli";
 import { Command } from "effect/cli";

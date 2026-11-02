@@ -4,7 +4,7 @@
  * in production; a test asserts on this one instead of on `process.exitCode`.
  */
 
-import { CliExit } from "@effected/cli";
+import { CliExit } from "@effected/cli-kit";
 import { Layer, MutableRef } from "effect";
 
 export class TestExit {

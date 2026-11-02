@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { CliEnv, CliLinks } from "@effected/cli";
+import { CliEnv, CliLinks } from "@effected/cli-kit";
 import type { Layer } from "effect";
 import { Effect, Layer as L } from "effect";
 

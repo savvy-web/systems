@@ -1,7 +1,7 @@
 import { NodeServices } from "@effect/platform-node";
 import { beforeEach, describe, expect, it, vi } from "@effect/vitest";
-import type { CliUiTestSession } from "@effected/cli/ui/testing";
-import { CliUiTest } from "@effected/cli/ui/testing";
+import type { CliUiTestSession } from "@effected/cli-kit/ui/testing";
+import { CliUiTest } from "@effected/cli-kit/ui/testing";
 import { MemoryFileSystem } from "@effected/memfs";
 import { Lint } from "@savvy-web/silk-effects";
 import { Console, Effect, Fiber, FileSystem } from "effect";

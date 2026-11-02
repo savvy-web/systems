@@ -32,7 +32,7 @@
 
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { CliExit, Doc } from "@effected/cli";
+import { CliExit, Doc } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";

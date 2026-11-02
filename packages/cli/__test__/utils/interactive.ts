@@ -1,7 +1,7 @@
 /**
  * Runs a command handler in an interactive session — a person at a terminal —
- * whose `@effected/cli/ui` screens a test drives with keys, through
- * `@effected/cli/ui/testing`'s `CliUiTest.session`.
+ * whose `@effected/cli-kit/ui` screens a test drives with keys, through
+ * `@effected/cli-kit/ui/testing`'s `CliUiTest.session`.
  *
  * @remarks
  * The handler runs forked, exactly as {@link Capture.run} runs it otherwise
@@ -27,10 +27,10 @@
  * agent/CI/pipe path: assert `mounts === 0` once the fiber has joined.
  */
 
-import type { CliTheme } from "@effected/cli";
-import { CliExit, CliLinks } from "@effected/cli";
-import type { CliUiTestOptions, CliUiTestSession } from "@effected/cli/ui/testing";
-import { CliUiTest } from "@effected/cli/ui/testing";
+import type { CliTheme } from "@effected/cli-kit";
+import { CliExit, CliLinks } from "@effected/cli-kit";
+import type { CliUiTestOptions, CliUiTestSession } from "@effected/cli-kit/ui/testing";
+import { CliUiTest } from "@effected/cli-kit/ui/testing";
 import { Audience, CurrentRuntimeEnv, TerminalEnv } from "@effected/env";
 import type { Fiber, Scope } from "effect";
 import { Console, Effect, Layer, MutableRef, Option } from "effect";

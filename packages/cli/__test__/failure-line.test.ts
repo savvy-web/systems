@@ -1,5 +1,5 @@
-import type { Document, FailureDetails } from "@effected/cli";
-import { CliDoc, Doc } from "@effected/cli";
+import type { Document, FailureDetails } from "@effected/cli-kit";
+import { CliDoc, Doc } from "@effected/cli-kit";
 import { Cause, Data } from "effect";
 import { describe, expect, it } from "vitest";
 

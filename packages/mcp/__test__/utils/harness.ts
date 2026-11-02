@@ -1,12 +1,12 @@
 /**
- * Shared wiring for `@effected/mcp/testing`'s `McpHarness` over the real
+ * Shared wiring for `@effected/mcp-kit/testing`'s `McpHarness` over the real
  * `ServerLayer(cwd)`: the platform services the server needs, minus `Stdio`,
  * which the harness supplies as queue-backed stdio.
  */
 
 import { NodeChildProcessSpawner, NodeFileSystem, NodePath } from "@effect/platform-node";
-import type { McpHarnessOptions } from "@effected/mcp/testing";
-import { McpHarness } from "@effected/mcp/testing";
+import type { McpHarnessOptions } from "@effected/mcp-kit/testing";
+import { McpHarness } from "@effected/mcp-kit/testing";
 import { Layer } from "effect";
 
 import type { PlatformServices } from "../../src/server.js";
