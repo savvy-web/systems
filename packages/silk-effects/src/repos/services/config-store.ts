@@ -112,7 +112,8 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 						),
 					);
 					// Readers never observe a partially-written manifest, and a failed
-					// write leaves the old one and no temp file.
+					// write leaves the old one and no temp file. A symlinked manifest
+					// keeps its link: the write lands on the file it points to.
 					yield* AtomicFile.write(manifestPath(root), `${JSON.stringify(encoded, null, "\t")}\n`).pipe(
 						Effect.provideService(FileSystem.FileSystem, fs),
 						Effect.provideService(Path.Path, path),

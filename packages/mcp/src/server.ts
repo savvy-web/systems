@@ -29,7 +29,7 @@
  *    `Tool.HandlerServices` infers `never` and a handler that yields a
  *    service fails `Toolkit.HandlersFrom`. Every tool here declares the
  *    services its handler yields (`biome_check` included: `Git`,
- *    `ToolDiscovery`, `ChildProcessSpawner`). Since effect 4.1 each declared
+ *    `FileSystem`, `Path`, `ToolDiscovery`, `ChildProcessSpawner`). Since effect 4.1 each declared
  *    service is a per-request `McpServer.McpRequest<"Requires", S>` marker
  *    that only MCP middleware (or the transport, for `Scope`) discharges —
  *    providing `S` with `Layer.provide` no longer does — which is what
