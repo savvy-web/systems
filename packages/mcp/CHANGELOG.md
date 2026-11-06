@@ -1,5 +1,33 @@
 # @savvy-web/mcp
 
+## 3.4.22
+
+### Bug Fixes
+
+- `biome_check` now refuses a path that doesn't exist yet when its parent is a symlink pointing outside the workspace. The containment check moved to `PathContainment.isWithin` from `@effected/kit`, which resolves links through the nearest existing ancestor; a new file under such a link used to pass because only its spelling was compared.
+
+### Refactoring
+
+- The tool handlers now receive their services through `McpToolkit.provideLifetime`, so each request gets what the runtime layer outputs and no build-time context. The runtime is still built once per server. [#865][#865]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/kit | dependency | updated | ^0.12.0 | ^0.13.0 |
+| @effected/mcp-kit | dependency | updated | ^0.13.0 | ^0.14.0 |
+| @effected/templates | dependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/workspaces | dependency | updated | ^0.42.0 | ^0.43.0 |
+| @savvy-web/silk-effects | dependency | updated | 11.0.1 | 11.0.2 |
+
+[#865][#865]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#865]: https://github.com/savvy-web/systems/pull/865
+
 ## 3.4.21
 
 ### Dependencies

@@ -1,5 +1,39 @@
 # @savvy-web/silk-effects
 
+## 11.0.2
+
+### Bug Fixes
+
+- `ReposDrift.check` now reads submodule registrations from the repository's local git config rather than the merged view, so a `submodule.*` section that only global or system config carries is no longer reported as a stale local registration. `deregister` could never clear those sections, because it removes local ones only.
+
+### Refactoring
+
+- `ReposManager.deregister` reads the local config with `configList`'s `scope` option, replacing its own lookup of a linked worktree's config file. `ReposConfigStore.write` replaces the manifest with `AtomicFile.write` from the new `@effected/files` dependency, so a failed write leaves no temp file behind and the write now reaches disk before the rename. If the manifest is a symlink, the write now lands on the link's target and the link stays, where it used to replace the link. [#865][#865]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/glob | dependency | updated | ^0.18.0 | ^0.19.0 |
+| @effected/jsonc | dependency | updated | ^0.23.0 | ^0.24.0 |
+| @effected/markdown | dependency | updated | ^0.26.0 | ^0.27.0 |
+| @effected/package-json | dependency | updated | ^0.29.0 | ^0.30.0 |
+| @effected/toml | dependency | updated | ^0.19.0 | ^0.19.1 |
+| @effected/walker | dependency | updated | ^0.25.0 | ^0.25.1 |
+| @effected/yaml | dependency | updated | ^0.28.0 | ^0.29.0 |
+| @savvy-web/silk-core | dependency | updated | 0.6.1 | 0.6.2 |
+| @effected/templates | peerDependency | updated | ^0.17.0 | ^0.18.0 |
+| @effected/workspaces | peerDependency | updated | ^0.42.0 | ^0.43.0 |
+| @effected/files | dependency | added | — | ^0.1.0 |
+
+[#865][#865]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#865]: https://github.com/savvy-web/systems/pull/865
+
 ## 11.0.1
 
 ### Dependencies

@@ -1,5 +1,22 @@
 # @savvy-web/bundler
 
+## 2.7.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/env | dependency | updated | ^0.10.0 | ^0.11.0 |
+| @savvy-web/tsdown-plugins | dependency | updated | 2.11.6 | 2.11.7 |
+
+[#865][#865]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#865]: https://github.com/savvy-web/systems/pull/865
+
 ## 2.7.3
 
 ### Dependencies
