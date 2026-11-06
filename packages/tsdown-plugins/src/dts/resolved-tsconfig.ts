@@ -2,7 +2,9 @@
 import { existsSync, realpathSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
+import { GlobPattern, GlobPatternOptions } from "@effected/glob";
 import { TsconfigLoaderSync } from "@effected/tsconfig-json";
+import { Result } from "effect";
 import { tsconfigSyncOptions } from "../tsconfig/sync-options.js";
 
 /** @public */
@@ -148,26 +150,30 @@ function absoluteFileSet(
 	};
 }
 
-const GLOB_CHARS = /[*?{[]/;
+/**
+ * tsconfig globs have only `*`, `?` and `**`: an extglob's parentheses, or a leading `#` or `!`, are literal
+ * text in a directory name, so none of them may end the literal prefix.
+ */
+const TSCONFIG_GLOB = GlobPatternOptions.make({ noext: true, nocomment: true, nonegate: true });
 
 /**
  * Resolve symlinks in the literal directory prefix of an absolute path or glob (everything before the
- * first segment carrying a glob character), leaving the pattern tail untouched. A prefix that does not
- * exist is returned unchanged.
+ * first segment carrying a glob character), leaving the pattern tail untouched. A pattern the kit rejects,
+ * a prefix that does not exist, or one whose spelling the kit changed (an undone escape) is returned unchanged.
  */
 function canonicalGlob(absPath: string): string {
-	const segments = absPath.split("/");
-	let firstGlob = segments.findIndex((seg) => GLOB_CHARS.test(seg));
-	if (firstGlob === -1) firstGlob = segments.length;
-	const prefix = segments.slice(0, firstGlob).join("/") || "/";
-	const tail = segments.slice(firstGlob);
+	const compiled = GlobPattern.compileResult(absPath, TSCONFIG_GLOB);
+	if (Result.isFailure(compiled)) return absPath;
+	const prefix = compiled.success.literalPrefix;
+	if (!absPath.startsWith(prefix)) return absPath;
+	const tail = absPath.slice(prefix.length);
 	let canonicalPrefix: string;
 	try {
 		canonicalPrefix = realpathSync.native(prefix);
 	} catch {
 		return absPath;
 	}
-	return tail.length === 0 ? canonicalPrefix : join(canonicalPrefix, ...tail);
+	return /^\/*$/.test(tail) ? canonicalPrefix : join(canonicalPrefix, tail);
 }
 
 /**

@@ -1,38 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { extractSpecifiers, forbiddenSpecifiers, isForbiddenSpecifier, readsProcess } from "./utils/boundaries.js";
+import { forbiddenSpecifiers, isForbiddenSpecifier, readsProcess } from "./utils/boundaries.js";
 
-describe("extractSpecifiers", () => {
+describe("forbiddenSpecifiers forms", () => {
 	it("finds every import/export/require form", () => {
 		const src = [
-			'import { a } from "one";',
-			'import type { B } from "two";',
-			'import "three";',
-			'export { c } from "four";',
-			'export * as ns from "five";',
-			'export type { D } from "six";',
-			'const seven = await import("seven");',
-			'const eight = require("eight");',
-			"import {\n\tmulti,\n} from 'nine';",
+			'import { a } from "node:one";',
+			'import type { B } from "node:two";',
+			'import "node:three";',
+			'export { c } from "node:four";',
+			'export * as ns from "node:five";',
+			'export type { D } from "node:six";',
+			'const seven = await import("node:seven");',
+			'const eight = require("node:eight");',
+			"import {\n\tmulti,\n} from 'node:nine';",
 		].join("\n");
-		expect([...extractSpecifiers(src)].sort()).toEqual([
-			"eight",
-			"five",
-			"four",
-			"nine",
-			"one",
-			"seven",
-			"six",
-			"three",
-			"two",
+		expect([...forbiddenSpecifiers(src)].sort()).toEqual([
+			"node:eight",
+			"node:five",
+			"node:four",
+			"node:nine",
+			"node:one",
+			"node:seven",
+			"node:six",
+			"node:three",
+			"node:two",
 		]);
 	});
 	it("ignores a specifier inside a comment, template or regex", () => {
-		expect(extractSpecifiers('// import x from "node:fs"\n/* require("fs") */')).toEqual([]);
-		expect(extractSpecifiers('const hint = `import x from "node:fs"`;')).toEqual([]);
-		expect(extractSpecifiers('const r = /import x from "node:fs"/;')).toEqual([]);
+		expect(forbiddenSpecifiers('// import x from "node:fs"\n/* require("fs") */')).toEqual([]);
+		expect(forbiddenSpecifiers('const hint = `import x from "node:fs"`;')).toEqual([]);
+		expect(forbiddenSpecifiers('const r = /import x from "node:fs"/;')).toEqual([]);
 	});
-	it("reports a specifier named twice once", () => {
-		expect(extractSpecifiers('import "a";\nimport "a";')).toEqual(["a"]);
+	it("reports a specifier named twice at each occurrence", () => {
+		expect(forbiddenSpecifiers('import "node:a";\nimport "node:a";')).toEqual(["node:a", "node:a"]);
 	});
 });
 

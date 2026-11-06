@@ -25,7 +25,7 @@ sources:
     resource: https://github.com/savvy-web/systems/issues/700
 generated:
   by: okfit/claude-code
-  at: 2026-11-02T21:02:43Z
+  at: 2026-11-06T00:18:30Z
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -35,7 +35,7 @@ verified:
     at: 2026-11-02T21:03:43Z
 integrity:
   generated:
-    body: f40c05e82ef8592c
+    body: ebd9f009ced90783
   verified:
     by: human:spencer
     at: 2026-11-02T21:03:43Z
@@ -50,7 +50,7 @@ The previous `@savvy-web/mcp` server built an SDK `McpServer` (`@modelcontextpro
 
 ## Decision
 
-`@savvy-web/mcp` is one `Layer`: a `Toolkit` of ten `Tool.make` values registered against `@effected/mcp-kit`'s `McpStdio.layer` (core's `McpServer.layerStdio` plus the kit's protocol defaults, stderr logging and stdin guard — see [front-ends-adopt-effected-kit](front-ends-adopt-effected-kit.md)), with the silk-effects runtime discharging every handler's declared dependencies. Since effect 4.1 those dependencies are per-request `McpRequest<"Requires", S>` requirements that `Layer.provide` no longer meets. A `McpServer.middleware<{ provides: McpServices }>()` built in effect form captures the runtime `Context` once and provides it to each request, and the toolkit registration reaches the server as `McpStdio.layer({ registrations })`. Registration is `@effected/mcp-kit`'s `McpToolkit.layer(SilkToolkit, { strict: "annotated" })` — core's `registerToolkit` plus a clearer unknown-argument report for strict tools — so each tool's success schema stays exactly the shared [silk-effects](../modules/silk-effects.md) result type (or its documented flat projection), untouched by an MCP-only field. A success is rendered by core and nothing else: `structuredContent` is the encoded typed result and `content[0].text` is that same object as JSON. There is no separate text projection; the result schema is the whole contract.[^decision]
+`@savvy-web/mcp` is one `Layer`: a `Toolkit` of ten `Tool.make` values registered against `@effected/mcp-kit`'s `McpStdio.layer` (core's `McpServer.layerStdio` plus the kit's protocol defaults, stderr logging and stdin guard — see [front-ends-adopt-effected-kit](front-ends-adopt-effected-kit.md)), with the silk-effects runtime discharging every handler's declared dependencies. Since effect 4.1 those dependencies are per-request `McpRequest<"Requires", S>` requirements that `Layer.provide` no longer meets. `@effected/mcp-kit`'s `McpToolkit.provideLifetime` is the middleware that meets them: it builds the runtime layer once and gives each request what that layer outputs and nothing else, and the toolkit registration reaches the server as `McpStdio.layer({ registrations })`. Registration is `@effected/mcp-kit`'s `McpToolkit.layer(SilkToolkit, { strict: "annotated" })` — core's `registerToolkit` plus a clearer unknown-argument report for strict tools — so each tool's success schema stays exactly the shared [silk-effects](../modules/silk-effects.md) result type (or its documented flat projection), untouched by an MCP-only field. A success is rendered by core and nothing else: `structuredContent` is the encoded typed result and `content[0].text` is that same object as JSON. There is no separate text projection; the result schema is the whole contract.[^decision]
 
 The cost is borne by clients that show `content` rather than `structuredContent` (Cursor, Copilot, MCP Apps hosts): they now see JSON where they used to see a readable transcript. That trade is accepted because the model, not a human, is the audience that matters, and Claude Code hands the model `structuredContent` alone; revisit it if MCP adopts per-audience result variants (SEP-3279).[^issue-688]
 

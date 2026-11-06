@@ -1,3 +1,4 @@
+import { AtomicFile } from "@effected/files";
 import { Clock, Context, Effect, FileSystem, Layer, Option, Path, Schedule, Schema } from "effect";
 import { MANIFEST_PATH, REPOS_DIR } from "../constants.js";
 import { ReposConfigError } from "../errors.js";
@@ -110,26 +111,13 @@ export class ReposConfigStore extends Context.Service<ReposConfigStore, ReposCon
 							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
 						),
 					);
-					// Write atomically: encode to a sibling `.tmp` file, then rename
-					// it onto the real manifest path. `rename` is atomic on the same
-					// filesystem, so readers never observe a partially-written
-					// manifest.
-					const tmpPath = `${manifestPath(root)}.tmp`;
-					yield* fs
-						.writeFileString(tmpPath, `${JSON.stringify(encoded, null, "\t")}\n`)
-						.pipe(
-							Effect.mapError(
-								(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
-							),
-						);
-					yield* fs.rename(tmpPath, manifestPath(root)).pipe(
+					// Readers never observe a partially-written manifest, and a failed
+					// write leaves the old one and no temp file.
+					yield* AtomicFile.write(manifestPath(root), `${JSON.stringify(encoded, null, "\t")}\n`).pipe(
+						Effect.provideService(FileSystem.FileSystem, fs),
+						Effect.provideService(Path.Path, path),
 						Effect.mapError(
-							(cause) =>
-								new ReposConfigError({
-									path: manifestPath(root),
-									reason: `rename failed: ${String(cause)}`,
-									kind: "invalid",
-								}),
+							(cause) => new ReposConfigError({ path: manifestPath(root), reason: String(cause), kind: "invalid" }),
 						),
 					);
 				});

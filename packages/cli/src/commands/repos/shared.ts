@@ -193,6 +193,6 @@ export class ReposCli {
 				sections: [{ title: "dirty", items }],
 			}),
 			{ otherwise: names },
-		).pipe(Effect.catchTag("NotInteractive", () => Effect.succeed(names)));
+		);
 	};
 }

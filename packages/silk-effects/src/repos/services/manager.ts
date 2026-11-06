@@ -1,5 +1,5 @@
 import type { GitmodulesEntry } from "@effected/git";
-import { Git, GitConfig, GitFile, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
+import { Git, GitConfig, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
 import { Clock, Context, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
 import { Digest } from "effect/crypto";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
@@ -1553,42 +1553,6 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					return { restored, skippedClean, stillDirty };
 				});
 
-			/**
-			 * Resolve the file git's `--local` scope actually targets for `root`.
-			 * A plain checkout is `<root>/.git/config`; a LINKED WORKTREE's
-			 * `<root>/.git` is a pointer FILE whose `gitdir:` names
-			 * `.git/worktrees/<name>`, and the local config git uses there is the
-			 * SHARED one at the main gitdir named by that dir's `commondir` file.
-			 * Every unreadable/malformed step degrades to the plain
-			 * `<root>/.git/config` path rather than failing — the same
-			 * never-fails posture as `resolveModuleDir`.
-			 */
-			const resolveLocalConfigPath = (root: string): Effect.Effect<string> =>
-				Effect.gen(function* () {
-					const dotGit = path.join(root, ".git");
-					const fallback = path.join(dotGit, "config");
-					const info = yield* fs.stat(dotGit).pipe(Effect.option);
-					if (Option.isNone(info) || info.value.type === "Directory") {
-						return fallback;
-					}
-					const content = yield* fs.readFileString(dotGit).pipe(Effect.option);
-					if (Option.isNone(content)) {
-						return fallback;
-					}
-					const gitFile = GitFile.parseResult(content.value);
-					if (Result.isFailure(gitFile)) {
-						return fallback;
-					}
-					const pointer = gitFile.success.gitdir;
-					const gitdir = path.isAbsolute(pointer) ? pointer : path.resolve(root, pointer);
-					const commondir = yield* fs.readFileString(path.join(gitdir, "commondir")).pipe(Effect.option);
-					if (Option.isSome(commondir)) {
-						const common = commondir.value.trim();
-						return path.join(path.isAbsolute(common) ? common : path.resolve(gitdir, common), "config");
-					}
-					return path.join(gitdir, "config");
-				});
-
 			const deregister = (root: string, section: string) =>
 				Effect.gen(function* () {
 					// Scope check FIRST, before any read: this op exists for the
@@ -1643,25 +1607,21 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					// which would surface a typo as an opaque git failure instead of
 					// the typed refusal below — and the section's keys, read now, are
 					// the achieved-state report (`removedKeys`) the result carries.
-					// The probe is pinned to the REPOSITORY-LOCAL config file
-					// (resolved through a linked worktree's `gitdir:`/`commondir`
-					// indirection when `<root>/.git` is a pointer file, since git's
-					// `--local` targets the shared config there): a bare
-					// `configList` reads the MERGED system/global/local view, so a
-					// section living only in global config would pass the probe and
-					// then die loudly on the local-scoped removal — the exact
-					// failure the probe exists to prevent. (`@effected/git` exposes
-					// no scope option — effected#372 — so the file override is the
-					// interim pin.) The key→name attribution is
+					// The probe is pinned to the REPOSITORY-LOCAL scope, the one the
+					// removal writes at (git resolves a linked worktree to the shared
+					// config itself): a bare `configList` reads the MERGED
+					// system/global/local view, so a section living only in global
+					// config would pass the probe and then die loudly on the
+					// local-scoped removal — the exact failure the probe exists to
+					// prevent. The key→name attribution is
 					// `submoduleNameFromKey`, the SAME parser `ReposDrift` uses to
 					// report the stale section, so the report and the remedy can
 					// never disagree about a section's name (a submodule name is
 					// routinely a path and contains dots — a naive split would
 					// mis-attribute every key).
-					const localConfigPath = yield* resolveLocalConfigPath(root);
 					const configEntries = yield* git
-						.configList(root, { file: localConfigPath })
-						.pipe(Effect.mapError(asSubmoduleError(`git config -f ${localConfigPath} --list`, root)));
+						.configList(root, { scope: "local" })
+						.pipe(Effect.mapError(asSubmoduleError("git config --local --list", root)));
 					const registeredNames = new Set(
 						configEntries
 							.map((configEntry) => submoduleNameFromKey(configEntry.key))
@@ -1673,7 +1633,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					if (removedKeys.length === 0) {
 						return yield* Effect.fail(
 							new ReposConfigError({
-								path: localConfigPath,
+								path: path.join(root, ".git", "config"),
 								reason: `no submodule.${section} section registered in the local git config — nothing to deregister`,
 								kind: "invalid",
 							}),

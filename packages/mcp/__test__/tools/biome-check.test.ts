@@ -1,11 +1,12 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { NodeFileSystem } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
 import { ResolvedTool, ScriptedSpawner, ToolDiscovery, ToolNotFoundError } from "@effected/commands";
 import { Git, GitCommandError, TreeIdentity } from "@effected/git";
 import { Exclusive } from "@effected/kit";
-import { Deferred, Effect, Fiber, Layer, Option, Result, Schema } from "effect";
+import { Deferred, Effect, Fiber, Layer, Option, Path, Result, Schema } from "effect";
 
 import {
 	BiomeCheckResult,
@@ -158,6 +159,9 @@ const GitNone = gitWith({});
 /** A spawner that answers every Biome spawn with an empty gitlab report. */
 const cleanSpawner = () => ScriptedSpawner.make(() => ({ stdout: "[]", exit: 0 }));
 
+/** `PathContainment` resolves links against the real disk. */
+const PlatformLive = Layer.merge(NodeFileSystem.layer, Path.layer);
+
 /** Run the handler under test doubles, with a fresh write lane. */
 const run = (
 	args: Parameters<typeof runBiomeCheck>[0],
@@ -171,6 +175,7 @@ const run = (
 	Effect.flatMap(Exclusive.make, (lane) => runBiomeCheck(args, fallbackCwd, lane)).pipe(
 		Effect.provide(
 			Layer.mergeAll(
+				PlatformLive,
 				layers.git ?? GitNone,
 				layers.discovery ?? DiscoveryFound,
 				(layers.spawner ?? cleanSpawner()).layer,
@@ -220,6 +225,23 @@ describe("runBiomeCheck containment", () => {
 		}),
 	);
 
+	it.effect("rejects a path that does not exist yet under a symlinked directory that escapes the root", () =>
+		Effect.gen(function* () {
+			const base = realpathSync(mkdtempSync(join(tmpdir(), "biome-cont-")));
+			const root = join(base, "workspace");
+			const outside = join(base, "outside");
+			mkdirSync(root);
+			mkdirSync(outside);
+			symlinkSync(outside, join(root, "linkdir"));
+			const spawner = cleanSpawner();
+			const error = yield* Effect.flip(run({ paths: ["linkdir/new.ts"], write: true }, root, { spawner })).pipe(
+				Effect.ensuring(Effect.sync(() => rmSync(base, { recursive: true, force: true }))),
+			);
+			expect(error.message).toMatch(/escapes the workspace root/);
+			expect(spawner.spawns).toHaveLength(0);
+		}),
+	);
+
 	it.effect("rejects a symlinked cwd whose target escapes the workspace root", () =>
 		Effect.gen(function* () {
 			const base = realpathSync(mkdtempSync(join(tmpdir(), "biome-cont-")));
@@ -241,7 +263,10 @@ describe("resolveContainmentRoot (systems#482)", () => {
 	// MAIN checkout — in a parallel multi-agent session, another agent's tree.
 	// Containment must follow the worktree, not the server's start directory.
 	const resolveWith = (root: string, cwd: string, git: Layer.Layer<Git>) =>
-		resolveContainmentRoot(root, cwd).pipe(Effect.map(Option.getOrNull), Effect.provide(git));
+		resolveContainmentRoot(root, cwd).pipe(
+			Effect.map(Option.getOrNull),
+			Effect.provide(Layer.merge(git, PlatformLive)),
+		);
 
 	it.effect("keeps the root for a cwd inside it, without asking git", () =>
 		Effect.gen(function* () {
@@ -405,7 +430,7 @@ describe("runBiomeCheck running Biome", () => {
 			const lane = yield* Exclusive.make;
 			const held = yield* Deferred.make<void>();
 			const release = yield* Deferred.make<void>();
-			const env = Layer.mergeAll(GitNone, DiscoveryFound, spawner.layer);
+			const env = Layer.mergeAll(PlatformLive, GitNone, DiscoveryFound, spawner.layer);
 
 			// Another write holds the lane until `release` completes.
 			const holder = yield* lane

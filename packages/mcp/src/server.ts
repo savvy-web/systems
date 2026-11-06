@@ -33,7 +33,7 @@
  *    service is a per-request `McpServer.McpRequest<"Requires", S>` marker
  *    that only MCP middleware (or the transport, for `Scope`) discharges —
  *    providing `S` with `Layer.provide` no longer does — which is what
- *    `RuntimeMiddleware` below is for.
+ *    `McpToolkit.provideLifetime` in {@link SilkToolsLayer} is for.
  * 2. **`protocols` order is load-bearing.** The runtime
  *    (`ai/internal/mcpRuntime.ts`) routes a request that carries
  *    `_meta["io.modelcontextprotocol/protocolVersion"]` to that adapter,
@@ -110,11 +110,9 @@ import type { Distribution } from "@effected/kit";
 import { distributionSuffix } from "@effected/kit";
 import { McpStdio, McpToolkit } from "@effected/mcp-kit";
 import type { FileSystem, Path, Stdio } from "effect";
-import { Effect, Layer, Option } from "effect";
-import { McpServer } from "effect/ai";
+import { Layer, Option } from "effect";
 import type { ChildProcessSpawner } from "effect/process";
 
-import type { McpServices } from "./runtime.js";
 import { makeSilkRuntimeLayer } from "./runtime.js";
 import { SilkToolkit, ToolsLayer } from "./toolkit.js";
 import { CURRENT_MCP_VERSION } from "./version.js";
@@ -154,37 +152,21 @@ export const SERVER_INSTRUCTIONS = [
 ].join("\n");
 
 /**
- * Discharges every tool's declared `dependencies`. Since effect 4.1 a service a
- * tool lists in `dependencies` is a per-request `McpRequest<"Requires", S>`
- * requirement that only MCP middleware or the transport can meet;
- * `Layer.provide` no longer does. The silk runtime is built ONCE (it holds the
- * process-lifetime `ConfigInspector`, #229), so the middleware captures its
- * context when the layer is built and provides that same context to every
- * request.
- *
- * `Effect.context` captures the whole layer-build context, not only
- * `McpServices` (also `Scope`, `Clock`, `Console`, `McpServer`, the memo map),
- * and `Effect.provideContext` merges it OVER the request's context. Probed on
- * 4.1.1: a handler finalizer still runs at the end of its own request, and no
- * request-scoped key (`McpRequestContext`, log level, parent span) is in the
- * build context today. Core's own registration capture filters those keys
- * (`omitRequestServices`); this capture does not, so do not build this layer
- * inside a span or under a request-level reference.
- */
-const RuntimeMiddleware = McpServer.middleware<{ provides: McpServices }>()(
-	Effect.map(Effect.context<McpServices>(), (context) => (effect) => Effect.provideContext(effect, context)),
-);
-
-/**
  * The toolkit registration as a layer: `McpToolkit.layer` with the handlers
- * bound to `cwd` and {@link RuntimeMiddleware} meeting their request-level
- * dependencies. Passed to `McpStdio.layer` as `registrations`, so it builds
+ * bound to `cwd`. Passed to `McpStdio.layer` as `registrations`, so it builds
  * before the first request.
+ *
+ * Since effect 4.1 a service a tool lists in `dependencies` is a per-request
+ * `McpRequest<"Requires", S>` requirement that only MCP middleware or the
+ * transport can meet; `Layer.provide` no longer does.
+ * `McpToolkit.provideLifetime` is that middleware: the silk runtime is built
+ * ONCE (it holds the process-lifetime `ConfigInspector`, #229), and every
+ * request gets what the runtime layer outputs and nothing else.
  */
 const SilkToolsLayer = (cwd: string) =>
 	McpToolkit.layer(SilkToolkit, { strict: "annotated" }).pipe(
 		Layer.provide(ToolsLayer(cwd)),
-		Layer.provide(RuntimeMiddleware.layer),
+		Layer.provide(McpToolkit.provideLifetime(makeSilkRuntimeLayer(cwd))),
 	);
 
 /**
@@ -220,4 +202,4 @@ export const ServerLayer = (cwd: string, options: ServerOptions = {}): Layer.Lay
 		description: "Structured Silk Suite workspace tools: workspace, turbo, biome, changesets and vendored repos.",
 		instructions: SERVER_INSTRUCTIONS,
 		registrations: SilkToolsLayer(cwd),
-	}).pipe(Layer.provide(makeSilkRuntimeLayer(cwd)));
+	});

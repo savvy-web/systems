@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-11-02T21:02:43Z
+  at: 2026-11-06T00:18:30Z
 integrity:
   generated:
-    body: f99dfcb348a846a8
+    body: 30a600bab4dcc9ac
 ---
 
 # savvy-mcp tool surface
@@ -128,8 +128,10 @@ git-reversible.[^mcp-changeset-tools]
 
 A thin proxy over the Biome CLI, not a silk-effects service. Its handler
 depends on `Git` (worktree containment, via `Git.treeIdentity` and
-`TreeIdentity.relation`), `ToolDiscovery` (Biome resolution, global copy
-first) and `ChildProcessSpawner` (Biome runs through `@effected/commands`'
+`TreeIdentity.relation`), `FileSystem` and `Path` (`@effected/kit`'s
+`PathContainment.isWithin`, which resolves links before it compares, so a
+symlink whose target escapes is refused), `ToolDiscovery` (Biome resolution,
+global copy first) and `ChildProcessSpawner` (Biome runs through `@effected/commands`'
 `Run.collect`, not a blocking `spawnSync`). `--write` passes are serialized
 per server through one `@effected/kit` `Exclusive` lane; read-only checks
 stay concurrent. `write`/`unsafe` apply fixes; both default

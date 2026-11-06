@@ -24,9 +24,8 @@ import {
 	SilkWorkspaceAnalyzer,
 	Turbo,
 } from "@savvy-web/silk-effects";
-import type { FileSystem, Path } from "effect";
-import { Effect, Layer } from "effect";
-import type { ChildProcessSpawner } from "effect/process";
+import { Context, Effect, FileSystem, Layer, Path } from "effect";
+import { ChildProcessSpawner } from "effect/process";
 
 /**
  * Every service the MCP runtime provides to the tool handlers.
@@ -36,7 +35,7 @@ import type { ChildProcessSpawner } from "effect/process";
  * `gitmodules` mode can read `.gitmodules` through the ambient service
  * (mirroring `Repos.ReposDrift.check`) rather than a bare `node:fs` import —
  * {@link makeSilkRuntimeLayer} passes both through onto its own output via an
- * `Effect.context` identity layer, so they survive `main.ts`'s
+ * `Effect.context` layer narrowed with `Context.pick`, so they survive `main.ts`'s
  * `Layer.provide(NodeServices.layer)` instead of being fully discharged by
  * it. `ChildProcessSpawner` is passed through the same way, and `Git` (from the
  * kit graph) plus the shared `ToolDiscovery` are exposed, because
@@ -161,8 +160,14 @@ export const makeSilkRuntimeLayer = (
 	// this adds no new requirement.
 	// `ChildProcessSpawner` rides the same passthrough for `biome_check`'s
 	// `Run.collect`; it is already required by `kitGraph` and `toolDiscovery`.
+	// `Context.pick` keeps the output to those three: this layer's output is what
+	// `McpToolkit.provideLifetime` hands every request, and the whole build
+	// context would carry its keys (`Scope`, `Clock`, `Console`) along.
 	const platformPassthrough = Layer.effectContext(
-		Effect.context<FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner>(),
+		Effect.map(
+			Effect.context<FileSystem.FileSystem | Path.Path | ChildProcessSpawner.ChildProcessSpawner>(),
+			Context.pick(FileSystem.FileSystem, Path.Path, ChildProcessSpawner.ChildProcessSpawner),
+		),
 	);
 
 	return Layer.mergeAll(

@@ -1,3 +1,4 @@
+import { Sgr } from "@effected/env";
 // packages/tsdown-plugins/__test__/report/formatters.test.ts
 import { describe, expect, it } from "vitest";
 import {
@@ -92,6 +93,14 @@ describe("formatters", () => {
 		const out = TerminalFormatter.render([fatalReport], { noColor: true, verbose: true });
 		expect(out[0].content).toContain("Y undocumented");
 		expect(out[0].content).not.toContain("suppressed 3:");
+	});
+
+	it("terminal paints with SGR codes unless noColor is set", () => {
+		const painted = TerminalFormatter.render([report], { noColor: false, verbose: false });
+		const plain = TerminalFormatter.render([report], { noColor: true, verbose: false });
+		expect(painted[0].content).toContain("\u001b[");
+		expect(plain[0].content).not.toContain("\u001b[");
+		expect(Sgr.strip(painted[0].content)).toBe(plain[0].content);
 	});
 
 	it("terminal verbose lists per-pass files", () => {
