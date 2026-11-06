@@ -1,5 +1,12 @@
 # Log
 
+## 2026-11-06
+
+* Updated An Effect-native MCP server
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated mcp
+* Updated savvy-mcp tool surface
+
 ## 2026-11-02
 
 * Updated An Effect-native MCP server

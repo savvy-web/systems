@@ -48,7 +48,6 @@
 		"@microsoft/tsdoc-config": "catalog:build",
 		"@tsdoctor/manifest": "^0.4.0",
 		"effect": "catalog:effected",
-		"picocolors": "^1.1.1",
 		"tsdown": "catalog:build",
 		"typescript": "7.1.0-beta"
 	},

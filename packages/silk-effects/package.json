@@ -38,6 +38,7 @@
 		"@changesets/get-release-plan": "^5.0.2",
 		"@changesets/pre": "^3.0.0",
 		"@changesets/read": "^1.0.1",
+		"@effected/files": "catalog:effected",
 		"@effected/github-references": "catalog:effected",
 		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",

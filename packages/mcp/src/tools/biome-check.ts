@@ -8,13 +8,14 @@
  */
 
 import { realpathSync } from "node:fs";
-import { relative, resolve, sep } from "node:path";
+import { relative, resolve } from "node:path";
 import { Tool as CommandTool, Run, ToolDiscovery } from "@effected/commands";
 import type { GitShape } from "@effected/git";
 import { Git, TreeIdentity } from "@effected/git";
 import type { Exclusive, Remediation } from "@effected/kit";
+import { PathContainment } from "@effected/kit";
 import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
-import { Effect, Option, Schema } from "effect";
+import { Effect, FileSystem, Option, Path, Schema } from "effect";
 import { Tool } from "effect/ai";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { BiomeFailed, McpToolError } from "../errors.js";
@@ -141,9 +142,8 @@ export const buildBiomeResult = (params: {
 };
 
 /**
- * Canonicalize a caller-supplied path, falling back to lexical resolution when
- * it does not exist (a non-existent target cannot be a symlink pointing out of
- * tree). Also applied to a sibling worktree's `TreeIdentity.toplevel`, so the
+ * Canonicalize a working directory, falling back to lexical resolution when it
+ * does not exist. Also applied to a sibling worktree's `TreeIdentity.toplevel`, so the
  * containment root is spelled the same way as the realpath'd caller paths.
  */
 const canonicalize = (p: string): string => {
@@ -188,7 +188,7 @@ export const resolveContainmentRoot = Effect.fn("biome_check.resolveContainmentR
 	root: string,
 	cwd: string,
 ) {
-	if (cwd === root || cwd.startsWith(`${root}${sep}`)) return Option.some(root);
+	if (yield* PathContainment.isWithin(root, cwd)) return Option.some(root);
 	const git = yield* Git;
 	const from = yield* treeIdentity(git, cwd);
 	if (Option.isNone(from)) return Option.none<string>();
@@ -294,8 +294,9 @@ export const runBiomeCheck = Effect.fn("biome_check.run")(function* (
 	const mode = args.mode ?? "check";
 
 	// Containment: this is a mutating tool, so keep cwd and every target path inside
-	// one tree. Canonicalize caller paths with realpathSync so a symlink whose target
-	// escapes can't pass a purely lexical prefix check. The tree is the server's
+	// one tree. `PathContainment.isWithin` resolves links, the nearest existing ancestor
+	// of a path that does not exist yet included, so a symlink whose target escapes
+	// can't pass a purely lexical check. The tree is the server's
 	// root, or — when cwd names a worktree of the same repository — that worktree
 	// (systems#482).
 	const root = canonicalize(fallbackCwd);
@@ -308,12 +309,11 @@ export const runBiomeCheck = Effect.fn("biome_check.run")(function* (
 		);
 	}
 	const containmentRoot = contained.value;
-	const within = (abs: string): boolean => abs === containmentRoot || abs.startsWith(`${containmentRoot}${sep}`);
 	const rawPaths = args.paths && args.paths.length > 0 ? args.paths : ["."];
 	const paths: string[] = [];
 	for (const p of rawPaths) {
 		const lexical = resolve(cwd, p);
-		if (!within(canonicalize(lexical))) {
+		if (!(yield* PathContainment.isWithin(containmentRoot, lexical))) {
 			return yield* ToolRefusal.refuse(
 				`path escapes the workspace root: ${ToolFailure.truncate(p)}.`,
 				CONTAINMENT_REMEDIATION,
@@ -407,8 +407,9 @@ export type BiomeCheckParams = typeof BiomeCheckParams.Type;
 /**
  * The `biome_check` tool value. Mutating when `write`/`unsafe` is set, so it is
  * annotated non-read-only and non-idempotent. `dependencies` lists what the
- * handler yields: `Git` (worktree containment), `ToolDiscovery` (the Biome
- * binary) and core's `ChildProcessSpawner` (`Run.collect`).
+ * handler yields: `Git` (worktree containment), `FileSystem` and `Path`
+ * (`PathContainment`), `ToolDiscovery` (the Biome binary) and core's
+ * `ChildProcessSpawner` (`Run.collect`).
  */
 export const biomeCheckTool = Tool.make("biome_check", {
 	description:
@@ -416,7 +417,7 @@ export const biomeCheckTool = Tool.make("biome_check", {
 	parameters: BiomeCheckParams,
 	success: BiomeCheckResult,
 	failure: McpToolError,
-	dependencies: [Git, ToolDiscovery, ChildProcessSpawner.ChildProcessSpawner],
+	dependencies: [Git, FileSystem.FileSystem, Path.Path, ToolDiscovery, ChildProcessSpawner.ChildProcessSpawner],
 })
 	.annotate(Tool.Title, "Biome check")
 	.annotate(Tool.Readonly, false)

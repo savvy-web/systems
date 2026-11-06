@@ -67,8 +67,4 @@ export const confirmDestructive = (options: ConfirmDestructiveOptions): Effect.E
 		? Effect.succeed(true)
 		: CliUi.prompt(Confirm.screen({ message: options.message }), {
 				otherwise: { confirmed: true, toggles: {} },
-			}).pipe(
-				Effect.map((result) => result.confirmed),
-				// `prompt` answers `otherwise` when the run cannot prompt, so it never fails this way.
-				Effect.catchTag("NotInteractive", () => Effect.succeed(true)),
-			);
+			}).pipe(Effect.map((result) => result.confirmed));

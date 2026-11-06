@@ -1,5 +1,6 @@
 // packages/tsdown-plugins/src/report/formatters/terminal.ts
-import pc from "picocolors";
+import type { SgrStyle } from "@effected/env";
+import { Sgr } from "@effected/env";
 import type { DiagnosticEntry, TargetGroupReport } from "../schema.js";
 import { formatTime } from "../timer.js";
 import { ciFatalCallout, ciFatalCountForPackage, suppressedSummary } from "./diagnostics.js";
@@ -18,40 +19,41 @@ const diagLine = (d: DiagnosticEntry): string => {
 export const TerminalFormatter: Formatter = {
 	format: "terminal",
 	render: (reports, ctx) => {
-		const color = (fn: (s: string) => string, s: string) => (ctx.noColor ? s : fn(s));
+		const level = ctx.noColor ? "none" : "basic";
+		const color = (style: SgrStyle, s: string) => Sgr.paint(level, style, s);
 		const lines: string[] = [];
 		let totalMs = 0;
 		for (const r of reports) {
-			lines.push(color(pc.bold, r.package));
+			lines.push(color("bold", r.package));
 			for (const g of r.targetGroups) {
-				const status = g.errors.length ? color(pc.red, "✗") : color(pc.green, "✓");
+				const status = g.errors.length ? color("red", "✗") : color("green", "✓");
 				lines.push(`  ${status} ${g.id}  ${fileCount(g)} files · ${formatTime(g.timings.totalMs)}`);
 				totalMs += g.timings.totalMs;
 				if (ctx.verbose) {
 					for (const p of g.passes) {
-						lines.push(`    ${color(pc.dim, `${p.id} (${formatTime(p.ms)})`)}`);
+						lines.push(`    ${color("dim", `${p.id} (${formatTime(p.ms)})`)}`);
 						for (const f of p.files) {
 							const gz = f.gzip !== undefined ? ` │ gzip ${fmtBytes(f.gzip)}` : "";
 							lines.push(`      ${f.path}  ${fmtBytes(f.bytes)}${gz}`);
 						}
 					}
 				}
-				for (const e of g.errors) lines.push(`    ${color(pc.red, "error")} ${diagLine(e)}`);
+				for (const e of g.errors) lines.push(`    ${color("red", "error")} ${diagLine(e)}`);
 				for (const w of g.warnings) {
-					const tag = w.ciFatal === true ? color(pc.red, " [fails CI]") : "";
-					lines.push(`    ${color(pc.yellow, "warn")} ${diagLine(w)}${tag}`);
+					const tag = w.ciFatal === true ? color("red", " [fails CI]") : "";
+					lines.push(`    ${color("yellow", "warn")} ${diagLine(w)}${tag}`);
 				}
 				if (g.suppressed.length > 0) {
 					if (ctx.verbose) {
 						for (const s of g.suppressed)
-							lines.push(`    ${color(pc.dim, `suppressed ${s.code ?? "?"}`)} ${diagLine(s)}`);
+							lines.push(`    ${color("dim", `suppressed ${s.code ?? "?"}`)} ${diagLine(s)}`);
 					} else {
-						lines.push(`    ${color(pc.dim, `suppressed ${g.suppressed.length}: ${suppressedSummary(g.suppressed)}`)}`);
+						lines.push(`    ${color("dim", `suppressed ${g.suppressed.length}: ${suppressedSummary(g.suppressed)}`)}`);
 					}
 				}
 			}
 			const fatal = ciFatalCountForPackage(r);
-			if (fatal > 0) lines.push(`  ${color(pc.red, ciFatalCallout(fatal))}`);
+			if (fatal > 0) lines.push(`  ${color("red", ciFatalCallout(fatal))}`);
 		}
 		const pkgs = reports.length;
 		if (pkgs > 0) {
@@ -59,8 +61,8 @@ export const TerminalFormatter: Formatter = {
 			const hasErrors = reports.some((r) => r.targetGroups.some((g) => g.errors.length > 0));
 			lines.push(
 				hasErrors
-					? `${color(pc.red, "✗")} build failed · ${pkgLabel} · ${formatTime(totalMs)}`
-					: `${color(pc.green, "✔")} build complete · ${pkgLabel} · ${formatTime(totalMs)}`,
+					? `${color("red", "✗")} build failed · ${pkgLabel} · ${formatTime(totalMs)}`
+					: `${color("green", "✔")} build complete · ${pkgLabel} · ${formatTime(totalMs)}`,
 			);
 		}
 		const content = lines.join("\n");

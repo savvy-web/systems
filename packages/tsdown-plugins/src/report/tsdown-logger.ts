@@ -1,3 +1,4 @@
+import { Sgr } from "@effected/env";
 import type { BuildCollector } from "./collector.js";
 
 /**
@@ -15,16 +16,7 @@ export interface TsdownLogger {
 	clearScreen: () => void;
 }
 
-// Strip ANSI SGR codes: ESC (U+001B) + "[" + params + "m". Built from char code so no literal
-// control character appears in source (avoids Biome's noControlCharactersInRegex lint error).
-const ANSI = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
-
-const join = (args: unknown[]): string =>
-	args
-		.map((a) => String(a))
-		.join(" ")
-		.replace(ANSI, "")
-		.trim();
+const join = (args: unknown[]): string => Sgr.strip(args.map((a) => String(a)).join(" ")).trim();
 
 /**
  * Warnings that are advisory noise for THIS builder and go to the `suppressed` bucket (recorded

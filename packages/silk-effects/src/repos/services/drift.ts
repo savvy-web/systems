@@ -121,8 +121,8 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						// different things: this one on the gitdir PATH, the orphan one
 						// below on a config SECTION.
 						const configEntries = yield* git
-							.configList(root)
-							.pipe(Effect.mapError(asSubmoduleError("git config --list", root)));
+							.configList(root, { scope: "local" })
+							.pipe(Effect.mapError(asSubmoduleError("git config --local --list", root)));
 						const registeredNames = new Set(
 							configEntries
 								.map((configEntry) => submoduleNameFromKey(configEntry.key))

@@ -6,40 +6,26 @@
  * separates code from comments and string/template/regex literals, so a
  * `process` mention inside a string or comment is not a false positive and
  * `process["env"]` or a destructuring read is not a false negative. This
- * module keeps only what is silk-core's own decision: which module specifiers
- * count as reaching the platform.
+ * module keeps only what is silk-core's own decision: core's `effect/process`
+ * reaches the platform too, on top of the kit's `SourceBoundary.platformFree`.
  */
 
 import { builtinModules } from "node:module";
 import { SourceBoundary } from "@effected/workspaces/testing";
 
-/**
- * Every module specifier the source names, in any import/export/require form,
- * deduplicated. Comments, template text and regex bodies are ignored.
- */
-export const extractSpecifiers = (source: string): ReadonlyArray<string> => [
-	...new Set(SourceBoundary.importSpecifiers(source)),
-];
-
-const BUILTINS: ReadonlySet<string> = new Set(builtinModules);
+/** A `node:` module, a bare Node builtin (`fs`, `fs/promises`, `process`), `@effect/platform*`, or `effect/process`. */
+const PLATFORM_RULES = [SourceBoundary.platformFree(builtinModules), { forbidImports: ["effect/process"] }];
 
 /**
- * Whether a specifier reaches the platform: a `node:` module, a bare Node
- * builtin (`fs`, `fs/promises`, `process`), `@effect/platform*`, or
- * `effect/process`.
+ * Forbidden specifiers the source names in any import/export/require form, one entry per occurrence.
+ * Comments, template text and regex bodies are ignored.
  */
-export const isForbiddenSpecifier = (specifier: string): boolean =>
-	specifier.startsWith("node:") ||
-	BUILTINS.has(specifier) ||
-	BUILTINS.has(specifier.split("/")[0] as string) ||
-	specifier === "process" ||
-	specifier.startsWith("@effect/platform") ||
-	specifier === "effect/process" ||
-	specifier.startsWith("effect/process/");
-
-/** Forbidden specifiers the source names. */
 export const forbiddenSpecifiers = (source: string): ReadonlyArray<string> =>
-	extractSpecifiers(source).filter(isForbiddenSpecifier);
+	SourceBoundary.check("source", source, PLATFORM_RULES).map((offence) => offence.detail);
+
+/** Whether a specifier reaches the platform. */
+export const isForbiddenSpecifier = (specifier: string): boolean =>
+	forbiddenSpecifiers(`import ${JSON.stringify(specifier)};`).length > 0;
 
 /**
  * Whether the source touches the global `process` in code — a member read

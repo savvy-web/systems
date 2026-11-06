@@ -4,14 +4,15 @@ import { NodeFileSystem } from "@effect/platform-node";
 import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { ManagedSection } from "@effected/templates";
 import { savvyBasePreamble } from "@savvy-web/silk-effects";
-import { Effect, Layer, Logger } from "effect";
+import { Effect, Layer, Logger, Path } from "effect";
 import { generateManagedContent, runCommitInit } from "../../src/commands/commit/init.js";
 import { Capture } from "../utils/capture.js";
 
 /** Test layer combining NodeFileSystem and the report environment, with logs silenced. */
-const TestLayer = Layer.provideMerge(ManagedSection.layer, Layer.merge(NodeFileSystem.layer, Capture.env)).pipe(
-	Layer.provide(Logger.layer([])),
-);
+const TestLayer = Layer.provideMerge(
+	ManagedSection.layer,
+	Layer.mergeAll(NodeFileSystem.layer, Path.layer, Capture.env),
+).pipe(Layer.provide(Logger.layer([])));
 
 /** Marker format used by silk-effects ManagedSection for "savvy-commit" tool. */
 const BEGIN_MARKER = "# --- BEGIN SAVVY-COMMIT MANAGED SECTION ---";

@@ -13,22 +13,11 @@
 
 import type { CliEnvServices } from "@effected/cli-kit";
 import { CliEnv, CliExit, CliLinks, CliLogger, CliRuntime } from "@effected/cli-kit";
+import { TestTerminal } from "@effected/cli-kit/testing";
 import type { AudienceKind } from "@effected/env";
 import { CurrentRuntimeEnv } from "@effected/env";
-import {
-	Cause,
-	ConfigProvider,
-	Console,
-	Effect,
-	Exit,
-	Layer,
-	MutableRef,
-	Option,
-	Queue,
-	Runtime,
-	Stdio,
-	Terminal,
-} from "effect";
+import type { Terminal } from "effect";
+import { Cause, ConfigProvider, Console, Effect, Exit, Layer, MutableRef, Option, Runtime, Stdio } from "effect";
 
 import { FailureLine } from "../../src/internal/failure-line.js";
 import type { ReportEnv } from "../../src/internal/report.js";
@@ -206,20 +195,6 @@ export class Capture {
 	static readonly mainPlatform = (tty: boolean): Layer.Layer<Stdio.Stdio | Terminal.Terminal> =>
 		Layer.merge(
 			Stdio.layerTest({ stdinIsTerminal: Effect.succeed(tty), stdoutIsTerminal: Effect.succeed(tty) }),
-			Layer.succeed(
-				Terminal.Terminal,
-				Terminal.make({
-					columns: Effect.succeed(80),
-					rows: Effect.succeed(24),
-					size: Effect.gen(function* () {
-						const queue = yield* Queue.sliding<Terminal.Size, Cause.Done>(1);
-						yield* Queue.offer(queue, { columns: 80, rows: 24 });
-						return queue;
-					}),
-					readInput: Effect.die("Capture.main: the terminal is never read"),
-					readLine: Effect.die("Capture.main: the terminal is never read"),
-					display: () => Effect.void,
-				}),
-			),
+			Layer.unwrap(Effect.map(TestTerminal.make({ forbidInput: true }), (terminal) => terminal.layer)),
 		);
 }

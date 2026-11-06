@@ -65,6 +65,8 @@ function driftLayer(
 	options: {
 		/** `git config --list` rows, for the local-registration authority. */
 		readonly configEntries?: ReadonlyArray<{ readonly key: string; readonly value: string }>;
+		/** Sections only a merged read sees: the stub drops them for a `scope: "local"` read. */
+		readonly globalConfigEntries?: ReadonlyArray<{ readonly key: string; readonly value: string }>;
 		/** `git submodule status` rows returned for a call from INSIDE a vendored tree. */
 		readonly nestedStatuses?: ReadonlyArray<ReturnType<typeof statusEntry>>;
 	} = {},
@@ -89,7 +91,11 @@ function driftLayer(
 			Effect.succeed(cwd.includes(`/${REPOS_DIR}/`) ? (options.nestedStatuses ?? []) : statuses),
 		// The local-registration authority. Empty is the healthy case: no
 		// stale `submodule.*` sections registered in this checkout's config.
-		configList: () => Effect.succeed(options.configEntries ?? []),
+		configList: (_cwd: string, listOptions?: { readonly scope?: string }) =>
+			Effect.succeed([
+				...(options.configEntries ?? []),
+				...(listOptions?.scope === "local" ? [] : (options.globalConfigEntries ?? [])),
+			]),
 	} as never);
 
 	return ReposDrift.layer.pipe(
@@ -669,6 +675,31 @@ describe("ReposDrift.check", () => {
 			);
 
 			expect(report.clean).toBe(true);
+		}),
+	);
+
+	it.effect("ignores a submodule section that only global config carries", () =>
+		Effect.gen(function* () {
+			// The report says "local git config" and prescribes `deregister`, which
+			// only removes local sections: a merged read would flag a section no
+			// remedy here can clear.
+			const root = makeRoot();
+			writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						globalConfigEntries: [{ key: `submodule.${REPOS_DIR}/elsewhere.url`, value: URL }],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(true);
+			expect(report.drifts).toEqual([]);
 		}),
 	);
 
