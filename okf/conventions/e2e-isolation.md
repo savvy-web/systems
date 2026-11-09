@@ -10,10 +10,10 @@ sources:
     resource: ../../e2e/CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 0fc30a3fdd3acd17
+    body: b6c6f526696eeccc
 ---
 
 # Catalog and workspace resolution coverage lives only in e2e/
@@ -27,7 +27,7 @@ test that exercises `workspaces-effect`'s `CatalogResolver` (which reads
 `__test__/e2e/` (see [`modules/e2e.md`](../modules/e2e.md)) — and it
 must isolate resolution by one of two means:
 
-- **Subprocess**: spawn the built tool (`node savvy.build.ts`) with `cwd`
+- **Subprocess**: spawn the built tool (for example the built `savvy` bin) with `cwd`
   set to a fixture directory that owns its own `pnpm-workspace.yaml`, so the
   resolver's root-walk stops at the fixture instead of climbing to the
   monorepo root.[^e2e-claude-md]

@@ -8,12 +8,12 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T22:54:36Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
   - id: silk-build
-    resource: ../../packages/silk/savvy.build.ts
+    resource: ../../packages/silk/effected.toml
   - id: silk-shims
     resource: ../../packages/silk/src
   - id: silk-externals-test
@@ -26,7 +26,7 @@ sources:
     resource: ../../packages/silk/__test__/boundaries.test.ts
 integrity:
   generated:
-    body: 33b574972fc56d5a
+    body: 0d308693708a93a4
 ---
 
 # @savvy-web/silk
@@ -79,6 +79,12 @@ tool subpath (markdownlint, commitlint, lint-staged).
   entry. `__test__/externals.test.ts` pins all of this against the built
   output: no `.cjs` emitted, and the entries import silk-effects
   externally.[^silk-build][^silk-externals-test]
+- **The bins run from source in the workspace.** `bin` points at
+  `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts`; each registers tsx when
+  `import.meta.url` ends in `.ts` and then imports the front end's `main`
+  dynamically, so a git hook or the plugin's MCP launcher runs it with plain
+  `node`. The built `dist/prod/npm/pkg/bin/*.js` never takes that branch.
+  See [`conventions/workspace-source-links.md`](../conventions/workspace-source-links.md).[^silk-bins]
 - **The changelog generator is not a silk subpath.** It lives in
   [`modules/changelog.md`](changelog.md); silk carries that package as an
   exact-pinned dependency so the changesets engine can resolve it by id
@@ -90,8 +96,8 @@ tool subpath (markdownlint, commitlint, lint-staged).
   `./tsconfig/node/root.json` (a self-contained Node-24 monorepo ROOT
   preset) and `./tsconfig/rspress/website.json` (an es2023/browser-targeted
   RSPress SITE preset) ship under `public/tsconfig/**` for a repo that
-  follows Silk conventions but has no Silk build tool at that package — the
-  bundler owns the lib/build base instead.
+  follows Silk conventions but has no Silk build tool at that package. A
+  library package's base is `@effected/plugin/tsconfig/ecma.json` instead.
 
 - **The layering policy lives here.** `layers.json` — the whole
   repository's package layering, on `@effected/workspaces`' `LayerPolicy`
@@ -118,11 +124,11 @@ tool subpath (markdownlint, commitlint, lint-staged).
 - [`interfaces/layers-json.md`](../interfaces/layers-json.md)
 - [`interfaces/silk-shim-exports.md`](../interfaces/silk-shim-exports.md)
 - [`modules/changelog.md`](changelog.md)
-- [`modules/bundler.md`](bundler.md)
+- [`decisions/kit-package-build.md`](../decisions/kit-package-build.md)
 
 [^silk-shims]: `src/silk-shims`
 [^silk-bins]: `src/bin/savvy.ts`, `src/bin/savvy-mcp.ts`
-[^silk-build]: `savvy.build.ts`
+[^silk-build]: `effected.toml`
 [^silk-externals-test]: `__test__/externals.test.ts`
 [^silk-layers]: `layers.json`
 [^silk-layering-test]: `__test__/package-layering.test.ts`

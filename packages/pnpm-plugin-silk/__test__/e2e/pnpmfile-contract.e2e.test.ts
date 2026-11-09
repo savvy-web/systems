@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
  * The BUILT artifact, by path. A bare `@savvy-web/pnpm-plugin-silk` import from inside the package
  * would self-reference the SOURCE manifest's exports (`./src/index.ts`), not what ships.
  */
-const pkgRoot = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg");
+const pkgRoot = resolve(import.meta.dirname, "..", "..", "dist", "prod", "npm", "pkg");
 const { catalogs } = (await import(pathToFileURL(join(pkgRoot, "index.js")).href)) as {
 	catalogs: Map<string, Map<string, string>>;
 };

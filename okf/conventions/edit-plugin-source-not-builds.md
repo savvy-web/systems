@@ -18,17 +18,17 @@ sources:
     resource: ../../.gitignore
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:43:24Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: bcb738f92e5cdc1b
+    body: 3f1e7347c7de50c5
 ---
 
 # Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it
 
 Make every change to the silk plugin under `plugin/`: `pluginfinity.config.ts` for manifest fields, hook registrations, servers, monitors and session variables; `skills/`, `agents/`, `hooks/`, `bin/`, `monitors/` and `scripts/` for content. Never edit a file under `plugin/builds/claude/` or `plugin/builds/copilot/`. Both are generated, and the next build overwrites a hand edit.[^manifest]
 
-Rebuild after every source change and commit the builds in the same commit as the source. `pnpm build` (or `pnpm --filter @savvy-web/ai-plugins build:dev`) runs `pluginfinity build`. `pnpm test:hooks` runs it too, as its first step, then finishes with `pluginfinity build --check`. That check compares the committed builds byte for byte with a fresh build and fails on any difference, including file modes.[^manifest][^run-tests]
+Rebuild after every source change and commit the builds in the same commit as the source. `pnpm build` (or `pnpm --filter @savvy-web/ai-plugins build`) runs `pluginfinity build`. `pnpm test:hooks` runs it too, as its first step, then finishes with `pluginfinity build --check`. That check compares the committed builds byte for byte with a fresh build and fails on any difference, including file modes.[^manifest][^run-tests]
 
 Do not format, lint-fix or hand-tidy `plugin/builds/**`. Biome and markdownlint are switched off there (the root `biome.json` override, the markdownlint ignore list and the lint-staged excludes), because a rewritten build fails `--check`. lint-staged's `chmod -x` still runs over the builds on purpose: it strips the exec bit from a built script and its source in the same commit, so their modes stay equal.[^lint-staged][^biome]
 

@@ -7,7 +7,7 @@ tags: [deps, compat]
 stale_after: 2027-03-25T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-09-26T23:06:57Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: fix-commit
     resource: https://github.com/savvy-web/systems/commit/9720310f9169161e18ec4532d843c5e2951fa8dd
@@ -25,7 +25,7 @@ sources:
     title: "fix(github-action-builder,tsdown-plugins): import platform-node by subpath"
 integrity:
   generated:
-    body: d8a875bf194b61de
+    body: 4a5db84e866827c7
 ---
 
 # The @effect/platform-node root import needs redis, and only Yarn 1 shows it
@@ -46,7 +46,7 @@ The root entry is a barrel that re-exports every module, including `NodeRedis`, 
 
 Shipped code imports platform-node by subpath: `import * as NodeRuntime from "@effect/platform-node/NodeRuntime"`, `import * as NodeServices from "@effect/platform-node/NodeServices"`, and so on. That includes dynamic imports (`await import("@effect/platform-node/NodeRuntime")`, as in savvy-mcp's `load`).[^mcp-main][^cli-main] Test files may keep the root import, since they never reach a consumer. The packed-install e2e runs the silk closure under Yarn as well as npm, pnpm and bun, so it catches a regression in the `savvy`/`savvy-mcp` bins.[^packed-install]
 
-No shipped source uses the root import any more: the last four, `packages/github-action-builder/src/cli/index.ts` and three tsdown-plugins files (`src/catalog/resolve-catalogs.ts`, `src/meta/tsdoctor-source.ts`, `src/changesets/next-versions.ts`), moved to subpaths as well.[^fix-commit-rest] The root import in `packages/silk-effects/src/changesets/services/deps-regen.ts` is a TSDoc example, not code.
+No shipped source uses the root import any more: the last four, `packages/github-action-builder/src/cli/index.ts` and three tsdown-plugins files (`src/catalog/resolve-catalogs.ts`, `src/meta/tsdoctor-source.ts`, `src/changesets/next-versions.ts`), moved to subpaths as well, before both packages were deleted.[^fix-commit-rest] The root import in `packages/silk-effects/src/changesets/services/deps-regen.ts` is a TSDoc example, not code.
 
 [^fix-commit]: <https://github.com/savvy-web/systems/commit/9720310f9169161e18ec4532d843c5e2951fa8dd>
 [^platform-node]: `npm:@effect/platform-node`

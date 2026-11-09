@@ -1,6 +1,6 @@
 # @savvy-web/templates
 
-`@savvy-web/templates` provides pure-function TypeScript project scaffolding for the Silk Suite. Built via `@savvy-web/bundler`.
+`@savvy-web/templates` provides pure-function TypeScript project scaffolding for the Silk Suite. Built by `effected package build`.
 
 ## Key surface
 

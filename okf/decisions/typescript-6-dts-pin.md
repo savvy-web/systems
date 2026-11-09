@@ -9,9 +9,9 @@ generated:
   at: 2026-10-25T14:59:20Z
 sources:
   - id: dts-emission
-    resource: ../../packages/tsdown-plugins/package.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
   - id: tsconfig-preset
-    resource: ../../packages/bundler/public/tsconfig/ecma.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/public/tsconfig/ecma.json
 integrity:
   generated:
     body: 09d566976e5cf40d

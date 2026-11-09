@@ -1,6 +1,6 @@
 # @savvy-web/silk-effects
 
-Shared Effect library for the Silk Suite — the L2 engine both front ends (`cli`, `mcp`) and `silk` run. Single root export (`.`), dual-format ESM+CJS, exporting six namespaces — `Changesets`, `Commitlint`, `Lint`, `PrBody`, `Turbo`, `Repos` — plus standalone services (`SilkWorkspaceAnalyzer`, `SilkPublishability`, `SavvySections`), schemas, and tagged errors. Depends on `@savvy-web/silk-core` (L1: platform-free schemas, errors, the `PrBody` contract) and re-exports all of it under the same names, so consumers see one surface; a new schema goes in silk-core unless it needs a platform service. Every namespace has its own design doc below; load it before changing that namespace.
+Shared Effect library for the Silk Suite — the L2 engine both front ends (`cli`, `mcp`) and `silk` run. Single root export (`.`), ESM-only, built by `effected package build`, exporting six namespaces — `Changesets`, `Commitlint`, `Lint`, `PrBody`, `Turbo`, `Repos` — plus standalone services (`SilkWorkspaceAnalyzer`, `SilkPublishability`, `SavvySections`), schemas, and tagged errors. Depends on `@savvy-web/silk-core` (L1: platform-free schemas, errors, the `PrBody` contract) and re-exports all of it under the same names, so consumers see one surface; a new schema goes in silk-core unless it needs a platform service. Every namespace has its own design doc below; load it before changing that namespace.
 
 ## Rules
 
@@ -18,7 +18,7 @@ Each one has been broken by an agent before.
 - **`Lint` handlers have TWO entry points** — lint-staged `create()` and `savvy lint fmt <name>` — so any formatting step is a public static both call, and options must be serialized onto the `fmt` command line (`encodeFormatOptions`/`parseFormatOptions`). Prettier and `yaml-lint` are gone; YAML runs on `@effected/yaml`.
 - **`Commitlint`:** check `config/factory.ts` before claiming a rule is enforced (`silk/body-prose-only` exists but is not enabled, so dash bullets are legal). `silk/body-no-markdown` detects bold via `**text**` only. `VERBOSITY_LINE_THRESHOLD`/`VERBOSITY_WORD_THRESHOLD` (12/150) encode the squash-merge brevity the `commit-create` skill teaches — move the two together. `closes-trailer` is strictly whole-line, deliberately.
 - **Changelog rendering:** release lines carry NO commit-link prefixes (do not re-add), emit decisions key on mdast node TYPE never string prefixes, and attribution never lands in a table cell or heading.
-- **`Turbo` is read-only:** every call is `--dry`; never executes a task.
+- **`Turbo` is read-only:** every call is `--dry`; never executes a task. `TurboInspector`'s default task is `build`.
 - **Tests:** the `ReposLockdown` blocks and `services__config-store.test.ts`'s `it.live` lock tests stay on real tmpdirs (memfs records mode bits without enforcing them) — do not "finish the migration". Test-only helpers are exported from their own module, deliberately NOT from the index — do not "tidy" them in. Unit tests of moved code live in silk-core beside their subjects.
 
 ## Design

@@ -1,31 +1,33 @@
 ---
 type: Gotcha
-status: draft
+status: deprecated
 title: A green bundle followed by EISDIR from inside API Extractor's SourceMapper is a declaration-map segment with no source, not a filesystem problem
 description: "rolldown 1.2.15+ writes source-less (1-field) mapping segments into .d.ts.map for declarations TypeScript synthesizes with no source position — the hoisted `declare const X_base` behind a class whose heritage clause is a call expression; API Extractor's SourceMapper resolves such a segment to the .d.ts's own directory and readFiles it, so the meta pass dies with EISDIR. generateMeta scrubs those segments before every run."
-resource: ../../packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
 tags: [build, compat]
 stale_after: 2027-04-25T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: scrub-declaration-maps
-    resource: ../../packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/scrub-declaration-maps.ts
   - id: generate
-    resource: ../../packages/tsdown-plugins/src/meta/generate.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/generate.ts
   - id: issue817-probe
-    resource: ../../packages/bundler/__test__/e2e/fixtures/issue817-probe
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/bundler/__test__/e2e/fixtures/issue817-probe
   - id: scrub-unit-test
-    resource: ../../packages/tsdown-plugins/__test__/meta/scrub-declaration-maps.test.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/__test__/meta/scrub-declaration-maps.test.ts
   - id: rushstack-6156
     resource: https://github.com/microsoft/rushstack/issues/6156
 integrity:
   generated:
-    body: c5bc3ab0490ddf1a
+    body: 464adc6c35ce793c
 ---
 
 # A green bundle followed by EISDIR from inside API Extractor's SourceMapper is a declaration-map segment with no source, not a filesystem problem
+
+> **Deprecated.** The scrub that handled this lived in the deleted `@savvy-web/tsdown-plugins`; declaration bundling and API Extractor are now `effected package build`'s concern — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## What you see
 

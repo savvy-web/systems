@@ -6,7 +6,9 @@
  * exits **0**, not 130 (`McpStdio.teardown`).
  */
 
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import type { McpProcess } from "@effected/mcp-kit/testing";
@@ -16,11 +18,15 @@ import { ChildProcess } from "effect/process";
 
 import { fixtureWorkspace } from "../utils/fixture.js";
 
-const MCP_BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy-mcp.js");
+const MCP_BIN = resolve(import.meta.dirname, "..", "..", "dist", "prod", "npm", "pkg", "bin", "savvy-mcp.js");
+// The built bin's workspace siblings resolve to their source, so the spawn registers tsx by absolute URL; a bare
+// `--import=tsx` inherited from pnpm's nodeOptions would resolve against the child's cwd and fail.
+const TSX_IMPORT = `--import=${pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href}`;
 
 const ENV = {
 	PATH: process.env.PATH ?? "",
 	HOME: process.env.HOME ?? "",
+	NODE_OPTIONS: TSX_IMPORT,
 	NO_COLOR: "1",
 } as const;
 
@@ -51,7 +57,7 @@ const callTool = (server: McpProcess, id: number, name: string, args: unknown) =
 		return yield* server.readUntilResponse(id);
 	});
 
-describe("savvy-mcp server lifecycle (dist/dev bin)", () => {
+describe("savvy-mcp server lifecycle (dist/prod bin)", () => {
 	it.live("completes the initialize handshake on stdout with EMPTY stderr and exits 0 on stdin close", () =>
 		Effect.gen(function* () {
 			const dir = yield* fixtureWorkspace("mcp-e2e-");

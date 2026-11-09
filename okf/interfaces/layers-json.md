@@ -16,10 +16,10 @@ sources:
     title: LayerPolicy and WorkspaceLayering
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:45:20Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 001187efa4500f66
+    body: c3ff85e723a48334
 ---
 
 # layers.json
@@ -38,8 +38,7 @@ Every entry is an npm package name, never a path:[^layers-json]
   "@savvy-web/mcp", "@savvy-web/changelog"], ["@savvy-web/silk-effects"],
   ["@savvy-web/silk-core"]]`. Every app package sits in exactly one of
   these.
-- **`tooling`**: the packages the build/release toolchain owns (bundler,
-  tsdown-plugins, rspress-builder, templates, github-action-builder,
+- **`tooling`**: the packages the build/release toolchain owns (templates,
   pnpm-plugin-silk). They may depend on each other and may be depended on
   from any layer, but never reach back into a layer.
 - **`unconstrained`**: name globs, today `["@e2e/*",

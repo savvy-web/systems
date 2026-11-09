@@ -1,23 +1,25 @@
 ---
 type: Gotcha
-status: draft
+status: deprecated
 title: The tsgo generator fails with "No TypeScript Go project found" when the dts-emit tsconfig does not describe the package's files canonically
 description: "rolldown-plugin-dts's tsgo generator opens the temp-dir dts tsconfig as a TypeScript project and looks each entry up by realpath'd module id, so a symlinked package dir or a base tsconfig with no include makes every entry look like it is outside the project; writeDtsEmitTsconfig restates the base canonically to prevent it."
-resource: ../../packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
 tags: [build, compat]
 stale_after: 2027-04-25T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: resolved-tsconfig
-    resource: ../../packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/dts/resolved-tsconfig.ts
 integrity:
   generated:
-    body: 444b1b05451847a2
+    body: e5ef0543d56726b5
 ---
 
 # The tsgo generator fails with "No TypeScript Go project found" when the dts-emit tsconfig does not describe the package's files canonically
+
+> **Deprecated.** The dts-emit tsconfig writer lived in the deleted `@savvy-web/tsdown-plugins`; declaration emission is now `effected package build`'s concern — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## What you see
 

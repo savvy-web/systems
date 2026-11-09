@@ -12,10 +12,10 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: f46630a633a267a1
+    body: c7380202c3240799
 ---
 
 # Run Biome only through biome_check or the three sanctioned root scripts
@@ -34,7 +34,7 @@ Never work around this hook or "fix" a config-resolution error it surfaces by ed
 
 ## The resolve-configuration race is transient, not a config bug
 
-`pnpm lint` (and the other sanctioned scripts) can fail transiently with `Failed to resolve the configuration from @savvy-web/silk/biome` while silk's `dist/dev` is mid-rebuild (see [workspace-prepare-scripts](workspace-prepare-scripts.md)). This is the known rebuild race — retry rather than editing the Biome config.[^claude-md]
+`pnpm lint` resolves the shared Biome config through silk's `./biome` export, which points at the source file `public/biome/silk.json`, so no build has to finish before the config resolves (see [workspace-source-links](workspace-source-links.md)).[^claude-md]
 
 ## The nudge is separate from the deny
 

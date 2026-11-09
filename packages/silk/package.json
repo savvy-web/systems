@@ -34,9 +34,7 @@
 		"savvy-mcp": "./src/bin/savvy-mcp.ts"
 	},
 	"scripts": {
-		"build:dev": "node savvy.build.ts --target dev",
-		"build:prod": "node savvy.build.ts --target prod",
-		"prepare": "turbo run build:dev",
+		"build": "effected package build",
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -55,10 +53,9 @@
 		"@effect/platform-node": "catalog:effected",
 		"@effect/vitest": "catalog:effected",
 		"@effected/mcp-kit": "catalog:effected",
-		"@savvy-web/bundler": "workspace:*",
-		"@types/node": "catalog:build",
-		"tsx": "catalog:build",
-		"typescript": "catalog:build",
+		"@types/node": "catalog:effected:build",
+		"tsx": "catalog:effected:build",
+		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
@@ -67,7 +64,7 @@
 		"@commitlint/cli": "catalog:lint",
 		"@commitlint/config-conventional": "catalog:lint",
 		"@types/bun": "catalog:build",
-		"@types/node": "catalog:build",
+		"@types/node": "catalog:effected:build",
 		"@vitest/coverage-istanbul": "catalog:test",
 		"@vitest/coverage-v8": "catalog:test",
 		"@vitest/expect": "catalog:test",
@@ -75,9 +72,9 @@
 		"lint-staged": "catalog:lint",
 		"markdownlint-cli2": "catalog:lint",
 		"markdownlint-cli2-formatter-codequality": "catalog:lint",
-		"tsx": "catalog:build",
+		"tsx": "catalog:effected:build",
 		"turbo": "catalog:lint",
-		"typescript": "catalog:build",
+		"typescript": "catalog:effected:build",
 		"vite": "catalog:test",
 		"vitest": "catalog:test"
 	},
@@ -88,8 +85,6 @@
 	},
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/dev/pkg",
-		"linkDirectory": true,
 		"targets": {
 			"npm": true,
 			"github": true

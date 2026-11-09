@@ -1,27 +1,29 @@
 ---
 type: Gotcha
-status: draft
+status: deprecated
 title: A public-hoisted workspace package resolves to its source tree, not its built artifact
 description: "Hoisting a workspace package via publicHoistPattern symlinks the package's source directory and ignores publishConfig.directory, so a tool that resolves it by id loads raw TypeScript through Node's type-stripping and looks like it works."
-resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 tags: [deps, release, build]
 stale_after: 2027-03-17T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: hoist-config
-    resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+    resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
   - id: root-manifest
     resource: ../../package.json
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
 integrity:
   generated:
-    body: f07552401813c001
+    body: 1b7b24a8c435c4c7
 ---
 
 # A public-hoisted workspace package resolves to its source tree, not its built artifact
+
+> **Deprecated.** In the hub every workspace link, the root `@savvy-web/changelog` devDependency included, now resolves to source by design — there is no `dist/dev/pkg` link for a hoist to shadow (see [kit-package-build](../decisions/kit-package-build.md)). The root devDependency is still required, because the changesets engine resolves the changelog id from the repo root; the `excludeByRepo` entry no longer guards a built link. Kept for history.
 
 ## What you see
 
@@ -71,6 +73,6 @@ whole reason the hoist exists.
 - [`conventions/workspace-prepare-scripts.md`](../conventions/workspace-prepare-scripts.md)
 - [`decisions/per-package-prepare-builds.md`](../decisions/per-package-prepare-builds.md)
 
-[^hoist-config]: `../../packages/pnpm-plugin-silk/savvy.build.ts` — the `publicHoistPattern.excludeByRepo` block
+[^hoist-config]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts` — the `publicHoistPattern.excludeByRepo` block
 [^root-manifest]: `../../package.json` — root `devDependencies`
 [^changelog-manifest]: `../../packages/changelog/package.json`

@@ -17,11 +17,10 @@
  * from the registry, so these tests need the network and are slow. They live
  * in `@e2e/silk` so the root config serialises them.
  *
- * Packing is `packFrom: "source"`: `pnpm pack` in each SOURCE package dir,
- * which honours `publishConfig.directory` (the tarball IS `dist/dev/pkg`) and
- * rewrites `workspace:*` / `catalog:` to concrete ranges. The bundler's
- * `dist/dev/pkg` manifest keeps the protocol specifiers, so it cannot be
- * packed directly, and no `dist/prod` npm artifact exists at test time.
+ * Packing uses the default source, each package's `dist/prod/npm/pkg`: the
+ * published artifact, whose manifest `effected package build` has already
+ * resolved from `workspace:*` / `catalog:` to concrete versions. The root
+ * vitest setup builds silk's closure before the suite runs.
  *
  * The front ends declare the carrier's bin names too (`@savvy-web/cli` has
  * `savvy`, `@savvy-web/mcp` has `savvy-mcp`) — a deliberate choice, so the
@@ -86,7 +85,6 @@ const Live = Workspaces.layer({ cwd: REPO_ROOT }).pipe(Layer.provideMerge(NodeSe
 const RUN: PackedInstallOptions = {
 	carrier: CARRIER,
 	closure: "auto",
-	packFrom: "source",
 	managers: ["pnpm", "npm", "yarn", "bun"],
 	bins: ["savvy", "savvy-mcp"],
 	allowSharedBins: true,

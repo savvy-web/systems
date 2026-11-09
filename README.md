@@ -45,33 +45,9 @@ See the [mcp README](./packages/mcp/README.md) for the tool surface.
 
 ### @savvy-web/changelog
 
-The [changesets](https://github.com/changesets/changesets) changelog generator as a standalone package — the canonical `changelog` id for `.changeset/config.json`, shipped dual ESM/CJS so the vanilla changesets CLI can `require()` it. Installed automatically as a peer of `@savvy-web/silk`.
+The [changesets](https://github.com/changesets/changesets) changelog generator as a standalone package — the canonical `changelog` id for `.changeset/config.json`, shipped as ESM, which the changesets CLI `import()`s. Installed automatically as a dependency of `@savvy-web/silk`.
 
 See the [changelog README](./packages/changelog/README.md) for the config entry.
-
-### @savvy-web/github-action-builder
-
-Zero-config build tool for creating GitHub Actions from TypeScript. Bundles with rsbuild, validates `action.yml` against GitHub's schema and outputs production-ready Node.js 24 actions.
-
-See the [github-action-builder README](./packages/github-action-builder/README.md) for usage examples.
-
-### @savvy-web/bundler
-
-The zero-config bundler for Silk Suite TypeScript packages. A package configures it with a single self-executing `savvy.build.ts`, runs it against the `dev` or `npm` target and gets a clean, publishable `dist/<target>/pkg`. Install one devDependency; `tsdown` comes pinned transitively.
-
-See the [bundler README](./packages/bundler/README.md) for the `savvy.build.ts` contract and script wiring.
-
-### @savvy-web/tsdown-plugins
-
-The interface-only tsdown/rolldown plugin pack behind `@savvy-web/bundler`: entry detection, manifest transforms and catalog resolution, the dts tsconfig port, the per-target build loop, API Extractor meta generation and the output reporter. Compose the same helpers in a hand-written `tsdown.config.ts` as a published escape hatch.
-
-See the [tsdown-plugins README](./packages/tsdown-plugins/README.md) for the helper surface.
-
-### @savvy-web/rspress-builder
-
-Builds RSPress plugin packages on top of `@savvy-web/bundler`. One `definePlugin` call produces the dual-bundle shape an RSPress plugin needs: a Node plugin entry plus a browser, bundleless, CSS-module React runtime entry.
-
-See the [rspress-builder README](./packages/rspress-builder/README.md) for the `definePlugin` surface and `savvy.build.ts` wiring.
 
 ### @savvy-web/templates
 
@@ -130,7 +106,7 @@ Silk Suite spans 30+ packages across the `@savvy-web` npm scope.
 
 - [pnpm-module-template](https://github.com/savvy-web/pnpm-module-template) -- Single package starter with full Silk Suite integration
 - [pnpm-monorepo-template](https://github.com/savvy-web/pnpm-monorepo-template) -- Multi-package monorepo scaffold
-- [github-action-template](https://github.com/savvy-web/github-action-template) -- Node.js 24 GitHub Action starter wired for `@effected/github-actions` and `@savvy-web/github-action-builder`
+- [github-action-template](https://github.com/savvy-web/github-action-template) -- Node.js 24 GitHub Action starter on the `@effected` kit (`@effected/github-actions`)
 
 ## Requirements
 

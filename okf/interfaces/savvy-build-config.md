@@ -2,26 +2,28 @@
 type: Interface
 title: savvy.build.ts contract
 description: "The build() front door and defineBuild/runBuild config surface every package's savvy.build.ts is written against — what a consumer can depend on staying stable across a bundler release."
-status: draft
+status: deprecated
 kind: config
-resource: ../../packages/bundler/src/config.ts
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/config.ts
 tags: [build]
 sources:
   - id: bundler-arch-doc
-    resource: ../../packages/bundler/src/run.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/run.ts
   - id: build-options-doc
-    resource: ../../packages/bundler/src/config.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/config.ts
   - id: tsdown-plugins-arch-doc
-    resource: ../../packages/tsdown-plugins/src/build/build-target-groups.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/build-target-groups.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 03893afc6173d5f7
+    body: 19b9558e90461ebe
 ---
 
 # savvy.build.ts contract
+
+> **Deprecated.** The `savvy.build.ts` contract died with `@savvy-web/bundler`. Packages configure `effected package build` through an optional `effected.toml` instead — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## What a package author writes, and what stays stable
 

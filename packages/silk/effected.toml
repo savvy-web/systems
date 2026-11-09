@@ -1,0 +1,4 @@
+[package.build]
+meta = false
+externals = ["source-map-support", "@savvy-web/silk-effects"]
+dtsExternals = ["effect", "@effect/platform"]

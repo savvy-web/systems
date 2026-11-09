@@ -2,11 +2,11 @@
 type: Decision
 title: Build each workspace-dependency package via its own prepare script
 description: "Every package another manifest depends on as workspace:* carries its own prepare script (turbo run build:dev) instead of relying on a root prepare or turbo's dependsOn."
-status: stable
+status: deprecated
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T15:37:52Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: install-orchestration
     resource: ../../package.json
@@ -19,7 +19,7 @@ verified:
     at: 2026-10-23T15:45:32Z
 integrity:
   generated:
-    body: 4a873a220c6367ff
+    body: 132e388ea265f155
   verified:
     by: human:spencer
     at: 2026-10-23T15:45:32Z
@@ -27,6 +27,8 @@ integrity:
 ---
 
 # Build each workspace-dependency package via its own prepare script
+
+> **Deprecated.** Superseded by [kit-package-build](kit-package-build.md): workspace links now resolve to `src/` through tsx, nothing builds on install, and no package carries a `prepare` script or a `dist/dev` tree. Kept for the history of why the scripts existed.
 
 ## Context
 

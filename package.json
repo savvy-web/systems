@@ -19,11 +19,9 @@
 	},
 	"type": "module",
 	"scripts": {
-		"build": "turbo run build:dev build:prod --log-order=grouped --log-prefix=none",
-		"build:dev": "\"Built devDeps\"",
-		"build:prod": "\"Built deps\"",
+		"build": "turbo run build --log-order=grouped --log-prefix=none",
 		"check": "savvy check",
-		"ci:build": "CI=\"true\" turbo run build:dev build:prod --log-order=grouped --output-logs=full --log-prefix=none",
+		"ci:build": "CI=\"true\" turbo run build --log-order=grouped --output-logs=full --log-prefix=none",
 		"ci:test": "CI=\"true\" vitest run",
 		"ci:version": "savvy changeset version && biome format --write .",
 		"claude": "claude --plugin-dir=plugin/builds/claude",
@@ -49,7 +47,8 @@
 		"@okfit/plugin": "^0.5.29",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^6.0.5"
+		"@vitest-agent/plugin": "^6.0.5",
+		"tsx": "catalog:effected:build"
 	},
 	"engines": {
 		"node": ">=24.11.0"

@@ -2,30 +2,32 @@
 type: Interface
 title: dist/<target>/issues.json
 description: "The structured, machine-readable diagnostics artifact every dev and prod build writes: what a reader may rely on staying stable, gated on buildOk."
-status: draft
+status: deprecated
 kind: wire
-resource: ../../packages/tsdown-plugins/src/report/issues-artifact.ts
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/issues-artifact.ts
 tags: [build, tooling]
 sources:
   - id: issues-artifact
-    resource: ../../packages/tsdown-plugins/src/report/issues-artifact.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/issues-artifact.ts
   - id: report-design
-    resource: ../../packages/tsdown-plugins/src/report/pipeline.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/pipeline.ts
   - id: meta-design
-    resource: ../../packages/tsdown-plugins/src/meta/generate.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/generate.ts
   - id: report-schema
-    resource: ../../packages/tsdown-plugins/src/report/schema.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/schema.ts
   - id: bundler-run
-    resource: ../../packages/bundler/src/run.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/run.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T19:39:30Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 5a1a1bf86cbada51
+    body: 1b5c3bcd16a7062f
 ---
 
 # dist/\<target\>/issues.json
+
+> **Deprecated.** The producer described here lived in the deleted `@savvy-web/tsdown-plugins`. Builds still write `dist/prod/issues.json`, but the artifact is now `effected package build`'s and its contract is owned by `@effected/plugin`, not this repository — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## The contract
 

@@ -1,25 +1,27 @@
 ---
 type: Gotcha
-status: draft
+status: deprecated
 title: A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
 description: "Since @savvy-web/tsdown-plugins 2.11.0 declarations come from TypeScript 7.1 (tsgo), which emits any exported member whose value is a bare reference to a non-exported module-level binding (a class static such as static readonly x = x, an object-literal property, or a member of an Object.assign statics object) as a typeof reference to that binding where TypeScript 6 inlined its signature; API Extractor then reports ae-forgotten-export for each one with no source change. The fix is in the consumer's source, site by site (inline, static method, or annotation), not the build pipeline."
-resource: ../../packages/tsdown-plugins/src/build/target-groups.ts
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/target-groups.ts
 tags: [build, compat]
 stale_after: 2027-04-25T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T19:42:04Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: tp-target-groups
-    resource: ../../packages/tsdown-plugins/src/build/target-groups.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/target-groups.ts
   - id: issue-824
     resource: https://github.com/savvy-web/systems/issues/824
 integrity:
   generated:
-    body: 7c62f773b9d87e57
+    body: 84540b4501a5a013
 ---
 
 # A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
+
+> **Deprecated.** The bundler release this describes is deleted from the repository; declarations now come from `effected package build`, so read the symptom against `@effected/plugin` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## What you see
 

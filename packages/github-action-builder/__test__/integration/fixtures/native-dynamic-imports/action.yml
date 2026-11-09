@@ -1,5 +1,0 @@
-name: native-dynamic-imports
-description: Integration fixture for the build.nativeDynamicImports option.
-runs:
-  using: node24
-  main: dist/main.js

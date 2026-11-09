@@ -2,16 +2,16 @@
 type: Decision
 title: Split the build orchestrator from the plugin pack
 description: "@savvy-web/bundler and @savvy-web/tsdown-plugins are two packages, split on an interface boundary, rather than one build-tool package."
-status: stable
+status: deprecated
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: bundler-arch
-    resource: ../../packages/bundler/package.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/package.json
   - id: tp-arch
-    resource: ../../packages/tsdown-plugins/package.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -23,7 +23,7 @@ verified:
     at: 2026-10-25T14:56:24Z
 integrity:
   generated:
-    body: 414d029f20901260
+    body: 9741dd9f0755baa0
   verified:
     by: human:spencer
     at: 2026-10-25T14:56:24Z
@@ -31,6 +31,8 @@ integrity:
 ---
 
 # Split the build orchestrator from the plugin pack
+
+> **Deprecated.** Both packages are deleted; the build toolchain is the kit's `@effected/plugin` — see [kit-package-build](../decisions/kit-package-build.md). Kept for the history of the split.
 
 ## Context
 

@@ -14,11 +14,16 @@
  * exec bit from a built copy and its source in the same commit keeps the two
  * modes equal, which is what --check compares.
  */
+import type { LintStagedConfig } from "@savvy-web/silk/lint";
 import { Biome, Preset } from "@savvy-web/silk/lint";
 
 const PLUGIN_BUILDS = "plugin/builds/";
 
-export default Preset.silk({
+// Annotated: the workspace link resolves silk to source, so an inferred type would name silk-effects' source path,
+// which this root cannot reference (TS2883). The annotation names it through silk's own export.
+const config: LintStagedConfig = Preset.silk({
 	biome: { exclude: [...Biome.defaultExcludes, PLUGIN_BUILDS] },
 	markdown: { exclude: [PLUGIN_BUILDS] },
 });
+
+export default config;

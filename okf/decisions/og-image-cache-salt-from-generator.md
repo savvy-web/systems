@@ -2,20 +2,20 @@
 type: Decision
 title: OG image renders are cached only under a named salt
 description: "tsdown-plugins caches openGraph.generate renders across builds only when openGraph.cacheSalt is a string or the generator carries its own cacheSalt; otherwise, and when cacheSalt is false, it always regenerates — because the cache cannot see a generator's code."
-status: stable
+status: deprecated
 tags: [build, performance, dx]
 generated:
   by: okfit/claude-code
-  at: 2026-10-09T17:54:20Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: og-image
-    resource: ../../packages/tsdown-plugins/src/meta/og-image.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/og-image.ts
   - id: tsdoctor-config
-    resource: ../../packages/tsdown-plugins/src/meta/tsdoctor-config.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/tsdoctor-config.ts
   - id: generate
-    resource: ../../packages/tsdown-plugins/src/meta/generate.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/generate.ts
   - id: bundler-og
-    resource: ../../packages/bundler/src/og.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/og.ts
   - id: owner
     resource: conversation with the repository owner
     author: human:spencer
@@ -27,7 +27,7 @@ verified:
     at: 2026-10-13T17:19:17Z
 integrity:
   generated:
-    body: d2eb7e8ae821cf55
+    body: f5849b1d2315225c
   verified:
     by: human:spencer
     at: 2026-10-13T17:19:17Z
@@ -35,6 +35,8 @@ integrity:
 ---
 
 # OG image renders are cached only under a named salt
+
+> **Deprecated.** The OG image cache lived in the deleted `@savvy-web/tsdown-plugins` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## Context
 

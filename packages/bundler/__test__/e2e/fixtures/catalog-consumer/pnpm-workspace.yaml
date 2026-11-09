@@ -1,7 +1,0 @@
-packages:
-  - packages/*
-catalogs:
-  silk:
-    effect: ^3.21.4
-  silkPeers:
-    effect: ^3.21.0

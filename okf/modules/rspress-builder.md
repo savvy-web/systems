@@ -3,21 +3,23 @@ type: Module
 title: rspress-builder
 description: Thin bundler sibling that builds RSPress plugin packages as a dual-bundle (node plugin + browser runtime) preset over @savvy-web/bundler.
 kind: package
-resource: ../../packages/rspress-builder
-status: draft
+resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/rspress-builder
+status: deprecated
 tags: [build]
 sources:
   - id: arch
-    resource: ../../packages/rspress-builder/src/index.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/rspress-builder/src/index.ts
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 4251c418ce964f98
+    body: 0ba684a88a24b405
 ---
 
 # rspress-builder
+
+> **Deprecated.** `@savvy-web/rspress-builder` is deleted from this repository with no final release; its published versions stay on npm. Consumers migrate to `effected package build`, where `runtime: true` maps to a `[[package.build.overrides]]` block with `outSubdir = "runtime"` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## Boundary
 

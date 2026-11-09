@@ -257,9 +257,9 @@ export class Command {
 	 *
 	 * @remarks
 	 * Resolves the unified `savvy` binary via the standard tool search and
-	 * appends the `lint` subcommand, falling back to the cli dev build at
-	 * `packages/cli/dist/dev/pkg/bin/savvy.js` for dogfooding scenarios where the
-	 * bin isn't linked yet.
+	 * appends the `lint` subcommand, falling back to the cli source bin at
+	 * `packages/cli/src/bin.ts` for dogfooding scenarios where the bin isn't
+	 * linked yet. That bin registers tsx itself, so plain `node` runs it.
 	 *
 	 * @returns The command string to invoke `savvy lint`
 	 */
@@ -269,9 +269,9 @@ export class Command {
 			return `${result.command} lint`;
 		}
 
-		// Fallback for dogfooding: use the cli dev build directly
+		// Fallback for dogfooding: run the cli source bin directly
 		const root = Command.findRoot();
-		return `node ${root}/packages/cli/dist/dev/pkg/bin/savvy.js lint`;
+		return `node ${root}/packages/cli/src/bin.ts lint`;
 	}
 
 	/**

@@ -1,29 +1,31 @@
 ---
 type: Module
-status: draft
+status: deprecated
 title: "@savvy-web/bundler"
 description: The tsdown-based build orchestrator every Silk Suite TypeScript package builds through — a thin driver over @savvy-web/tsdown-plugins.
 kind: package
-resource: ../../packages/bundler
+resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/bundler
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: bundler-config
-    resource: ../../packages/bundler/src/config.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/config.ts
   - id: bundler-run
-    resource: ../../packages/bundler/src/run.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/run.ts
   - id: bundler-index
-    resource: ../../packages/bundler/src/index.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/index.ts
   - id: bundler-og
-    resource: ../../packages/bundler/src/og.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/og.ts
 integrity:
   generated:
-    body: 4567a71ce7ee615b
+    body: cc787cb86a780edb
 ---
 
 # @savvy-web/bundler
+
+> **Deprecated.** `@savvy-web/bundler` is deleted from this repository with no final release; its published versions stay on npm. Every package now builds with the kit's `effected package build` from `@effected/plugin` — see [kit-package-build](../decisions/kit-package-build.md). Kept for the history of the build model it described.
 
 `@savvy-web/bundler` is a thin orchestrator: it reads a package's
 `package.json` and its `savvy.build.ts`, derives per-TargetGroup tsdown

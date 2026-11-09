@@ -1,6 +1,6 @@
 ---
 type: Convention
-status: draft
+status: deprecated
 title: Keep prepare:turbo run build:dev on every workspace:* dependency
 description: "Any package that is a workspace:* dependency of any package.json (root, sibling, or e2e/* fixture) must carry its own `prepare: turbo run build:dev` script; never delete it as redundant, and never add injectWorkspacePackages to route around it."
 stale_after: 2027-03-12T00:00:00-04:00
@@ -12,13 +12,15 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T15:37:52Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: c185741a0b376100
+    body: 342a9d05967720d7
 ---
 
 # Keep prepare:turbo run build:dev on every workspace:* dependency
+
+> **Deprecated.** Superseded by [workspace-source-links](workspace-source-links.md): no package carries `prepare`, `build:dev` or a `dist/dev` link any more; workspace links resolve to source — see [kit-package-build](../decisions/kit-package-build.md). Do not follow the rule below.
 
 Build a package via its own `prepare` script whenever it is a `workspace:` dependency (`workspace:*` or `workspace:^`) of ANY `package.json` in the repo — root, a sibling package, or an `e2e/*` fixture. pnpm runs `prepare` for each workspace package during `pnpm install`; a consumer resolves the dependency through a `link:` symlink into `dist/dev/pkg`, and that link has to resolve at install time. That package's own `prepare` is the ONLY thing that builds it before consumers need it — nothing upstream does it for them. See [per-package-prepare-builds](../decisions/per-package-prepare-builds.md) for why this shape was chosen over a root-level build.[^install-orchestration]
 

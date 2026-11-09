@@ -6,17 +6,17 @@ status: stable
 tags: [release, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T13:23:49Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: silk-publishability
     resource: ../../packages/silk-effects/src/services/SilkPublishability.ts
   - id: versioning-strategy
     resource: "npm:@effected/workspaces/VersioningStrategy"
   - id: resolve-targets
-    resource: ../../packages/tsdown-plugins/src/targets/resolve-targets.ts
+    resource: "npm:@effected/plugin"
 integrity:
   generated:
-    body: cfc7dd18cfd010b4
+    body: 26b32dfe72d71d0e
   verified:
     by: human:spencer
     at: 2026-10-23T13:23:23Z
@@ -33,7 +33,7 @@ verified:
 ## Context
 
 A `publishConfig.targets` object can declare `releases: "all" | "stable" |
-"prerelease"`, and the bundler writes the resolved value onto every target
+"prerelease"`, and `effected package build` writes the resolved value onto every target
 in `dist/prod/targets.json`.[^resolve-targets] The filter depends on the
 version being released, which only the publishing side knows.
 `SilkPublishability` already supplies silk's rules to the kit through two
@@ -64,7 +64,7 @@ target a package has, whatever the version.[^silk-publishability]
   package whose targets skip one version is still a publishable package.
 - **Filter at build time.** Groups are packed once and a `from` target
   reuses another target's bytes, so two targets with different filters
-  share one artifact; the bundler records the filter and leaves applying it
+  share one artifact; the build records the filter and leaves applying it
   to publish time.[^resolve-targets]
 
 ## Consequences
@@ -86,9 +86,9 @@ target a package has, whatever the version.[^silk-publishability]
 
 - [`modules/silk-effects.md`](../modules/silk-effects.md) — the
   `SilkPublishability` surface.
-- [`modules/tsdown-plugins.md`](../modules/tsdown-plugins.md) — where
-  `releases` is declared, validated, and written to `targets.json`.
+- [`decisions/kit-package-build.md`](kit-package-build.md) — the kit
+  build that validates `releases` and writes it to `targets.json`.
 
 [^silk-publishability]: `../../packages/silk-effects/src/services/SilkPublishability.ts`
 [^versioning-strategy]: npm:@effected/workspaces/VersioningStrategy
-[^resolve-targets]: `../../packages/tsdown-plugins/src/targets/resolve-targets.ts`
+[^resolve-targets]: npm:@effected/plugin — `effected package build`, which writes `dist/prod/targets.json`

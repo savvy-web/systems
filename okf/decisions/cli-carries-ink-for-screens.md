@@ -6,7 +6,7 @@ status: stable
 tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
-  at: 2026-11-02T21:02:43Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: cli-manifest
     resource: ../../packages/cli/package.json
@@ -15,7 +15,7 @@ sources:
   - id: clean
     resource: ../../packages/cli/src/commands/clean.ts
   - id: plugin-silk-build
-    resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+    resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -25,7 +25,7 @@ verified:
     at: 2026-11-02T21:03:43Z
 integrity:
   generated:
-    body: 77e7e2d33ec03312
+    body: a735b17892905480
   verified:
     by: human:spencer
     at: 2026-11-02T21:03:43Z
@@ -38,7 +38,7 @@ integrity:
 
 The `feat/interactive-cli` work moved `savvy`'s prompts, confirmations and live progress views onto `@effected/cli-kit/ui`, the kit's Ink-based screen layer. `@effected/cli-kit` (then `@effected/cli`) 0.11 declares `ink`, `react` and `@types/react` as *optional* peer dependencies: a consumer that never draws a screen need not install them, and one that does must supply them itself.[^cli-manifest]
 
-`@savvy-web/cli` already seals its Effect closure as regular `dependencies` with no `peerDependencies` block, the posture shared with mcp and tsdown-plugins, and `@savvy-web/silk` pins cli as an exact regular dependency — see [silk-pins-siblings-as-dependencies](silk-pins-siblings-as-dependencies.md). Whatever cli depends on, every silk install carries.
+`@savvy-web/cli` already seals its Effect closure as regular `dependencies` with no `peerDependencies` block, the posture shared with mcp, and `@savvy-web/silk` pins cli as an exact regular dependency — see [silk-pins-siblings-as-dependencies](silk-pins-siblings-as-dependencies.md). Whatever cli depends on, every silk install carries.
 
 ## Decision
 
@@ -62,4 +62,4 @@ The weight is paid on disk, not at run time. JSX lives only in a screen's own `.
 [^cli-manifest]: `../../packages/cli/package.json`
 [^confirm]: `../../packages/cli/src/internal/confirm.ts`
 [^clean]: `../../packages/cli/src/commands/clean.ts`
-[^plugin-silk-build]: `../../packages/pnpm-plugin-silk/savvy.build.ts`
+[^plugin-silk-build]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`

@@ -1,1 +1,1 @@
-/// <reference types="@savvy-web/bundler/env"/>
+/// <reference types="@effected/plugin/env" />

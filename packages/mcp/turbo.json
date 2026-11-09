@@ -1,8 +1,4 @@
 {
 	"extends": ["//"],
-	"tasks": {
-		"build:prod": {
-			"dependsOn": ["types:check", "build:dev"]
-		}
-	}
+	"tasks": {}
 }

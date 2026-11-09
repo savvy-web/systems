@@ -2,23 +2,23 @@
 type: Decision
 title: Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
 description: "@savvy-web/tsdown-plugins pins typescript 7.1.0-beta exactly (not catalog:silk) and forces dts.generator: tsgo with an explicit tsgo.moduleUrl, while @microsoft/api-extractor keeps its own TypeScript 6 through the existing override."
-status: stable
+status: deprecated
 tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T18:12:30Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: tp-manifest
-    resource: ../../packages/tsdown-plugins/package.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
   - id: tp-target-groups
-    resource: ../../packages/tsdown-plugins/src/build/target-groups.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/target-groups.ts
   - id: tp-parse
-    resource: ../../packages/tsdown-plugins/src/dts/parse.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/dts/parse.ts
   - id: tp-api-extractor
-    resource: ../../packages/tsdown-plugins/src/meta/api-extractor.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/api-extractor.ts
   - id: tp-logger
-    resource: ../../packages/tsdown-plugins/src/report/tsdown-logger.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/tsdown-logger.ts
   - id: ts-7-1-schedule
     resource: https://github.com/microsoft/TypeScript/issues/63703
   - id: rushstack-ts7
@@ -34,7 +34,7 @@ verified:
     at: 2026-11-02T21:03:43Z
 integrity:
   generated:
-    body: b8d3bfb6e5912f8a
+    body: 4441b3030004118a
   verified:
     by: human:spencer
     at: 2026-11-02T21:03:43Z
@@ -42,6 +42,8 @@ integrity:
 ---
 
 # Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+
+> **Deprecated.** The pin lived in the deleted `@savvy-web/tsdown-plugins`; declaration emission is now `effected package build`'s, and typescript comes from `catalog:effected:build` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## Context
 
