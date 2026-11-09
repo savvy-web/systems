@@ -108,14 +108,14 @@ describe("rspress dual-bundle integration", () => {
 		expect(existsSync(join(pkg, "runtime/components/Orphan/index.spec.js"))).toBe(false);
 		// dts stayed BUNDLED into a single runtime/index.d.ts — NOT per-file (no per-component .d.ts).
 		expect(existsSync(join(pkg, "runtime/components/Orphan/index.d.ts"))).toBe(false);
-		// CSS module: locals JS + emitted stylesheet, under runtime/.
-		expect(existsSync(join(pkg, "runtime/components/Button/index.module.js"))).toBe(true);
+		// CSS module: locals JS + emitted stylesheet, under runtime/. tsdown 0.23.7+ names the locals JS index.module.css.js.
+		expect(existsSync(join(pkg, "runtime/components/Button/index.module.css.js"))).toBe(true);
 		const hasCss =
 			existsSync(join(pkg, "runtime/components/Button/index.css")) ||
 			existsSync(join(pkg, "runtime/components/Button/index.module.css"));
 		expect(hasCss).toBe(true);
 		// inject: the CSS-module locals JS side-effect imports its stylesheet.
-		const localsJs = await readFile(join(pkg, "runtime/components/Button/index.module.js"), "utf-8");
+		const localsJs = await readFile(join(pkg, "runtime/components/Button/index.module.css.js"), "utf-8");
 		expect(localsJs).toMatch(/import\s+["']\.\/index(\.module)?\.css["']/);
 		// react stays external in the component JS.
 		const componentJs = await readFile(join(pkg, "runtime/components/Button/index.js"), "utf-8");
