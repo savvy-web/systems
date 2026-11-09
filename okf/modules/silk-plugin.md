@@ -1,7 +1,7 @@
 ---
 type: Module
 title: silk-plugin
-description: "The silk agent plugin: one pluginfinity source at plugin/ (the private workspace package @savvy-web/ai-plugins) built into a Claude Code plugin and a GitHub Copilot plugin, carrying the skills, agents, hooks, monitors and server launchers for every Silk capability behind the savvy bin and the shared savvy-mcp server."
+description: "The silk agent plugin: one pluginfinity source at plugin/ (the private workspace package @savvy-web/ai-plugins) built into a Claude Code plugin and a GitHub Copilot plugin, carrying the workflow skills, agents, hooks, monitors and server launchers behind the savvy bin and the shared savvy-mcp server; builds and TSDoc belong to the effected kit, not this plugin."
 kind: plugin
 resource: ../../plugin
 status: draft
@@ -29,8 +29,6 @@ sources:
     resource: ../../plugin/hooks
   - id: changesets
     resource: ../../plugin/skills/changeset
-  - id: buildtsdoc
-    resource: ../../plugin/agents/tsdoctor.md
   - id: turbo
     resource: ../../plugin/skills/turbo
   - id: it2
@@ -39,10 +37,10 @@ sources:
     resource: ../../plugin/skills/dogfood
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T19:16:22Z
+  at: 2026-11-09T20:39:04Z
 integrity:
   generated:
-    body: e975ca0e8dbdb090
+    body: 523e51d86e4d282a
 ---
 
 # silk-plugin
@@ -59,26 +57,26 @@ The organizing split it shares with the MCP server: **information lives in the s
 
 Source layout under `plugin/`:[^config]
 
-- `pluginfinity.config.ts` — the manifest fields, every hook registration (event, matcher, timeout, `failClosed`), the `savvy-mcp` MCP server and the `biome` LSP server, the three monitors, and the session-env block. This replaces the hand-written `plugin.json`, `hooks.json` and `monitors.json`.
+- `pluginfinity.config.ts` — the manifest fields, every hook registration (event, matcher, timeout, `failClosed`), the `savvy-mcp` MCP server and the `biome` LSP server, the two monitors (`dogfood-mail`, `gitmodules-drift`), and the session-env block. This replaces the hand-written `plugin.json`, `hooks.json` and `monitors.json`.
 - `skills/`, `agents/` — Markdown with pluginfinity tokens (`{{tool …}}`, `{{skill …}}`, `{{agent …}}`, `{{skill_dir}}`, `{{plugin_root}}`) and host blocks, rendered per host at build time. Per-file `targets` frontmatter carries host-specific fields (`it2` is `copilot: false`).
 - `hooks/` — per-event scripts plus `hooks/lib/silk/` (silk's own helpers: package-manager detection and the `savvy` runner, segment splitting, the safe-command allowlists). The hook library itself (`hook_*`) is generated into each build under `lib/pluginfinity/`, not kept in source.
 - `bin/` — the `start-mcp.sh` and `biome-lsp.sh` launchers, on pluginfinity's server library.
-- `monitors/` — the three node monitor scripts.
+- `monitors/` — the two node monitor scripts.
 - `scripts/env-setup.sh` — the session-env setup script.
 - `__test__/` — the bats suites, their fixtures, `run-tests.sh`, and one vitest test (`pr-body-skill-sync.test.ts`).
 - `CLAUDE.md` (the agent router for the package) and `README.md` (install and usage for plugin users).
 
-The agents (`changeset-manager`, `turborepo`, `tsdoctor`) each carry a curated tool allowlist that must include `SendMessage` on Claude, since a teammate-dispatched agent without it cannot report back or answer a shutdown request and idle-loops until killed.
+The two agents (`changeset-manager`, `turborepo`) each carry a curated tool allowlist that must include `SendMessage` on Claude, since a teammate-dispatched agent without it cannot report back or answer a shutdown request and idle-loops until killed.
 
-**Skill naming.** User-facing skills are tool-prefixed (`changeset`, `changeset-style`, `changeset-config`, `commit-create`) because several tools share one plugin; `pr-body` is the one exception, named for its document since no tool owns a PR description; capability skills are named for their capability (`build`, `tsdoc`, `turbo`, `repos`, `dogfood`, `it2`). Internal mechanics stay unprefixed (`config`, `dependencies`, `update`, `merge`, `delete`, `status`) since only the `changeset-manager` agent calls them by name.[^changesets]
+**Skill naming.** User-facing skills are tool-prefixed (`changeset`, `changeset-style`, `changeset-config`, `commit-create`) because several tools share one plugin; `pr-body` is the one exception, named for its document since no tool owns a PR description; capability skills are named for their capability (`turbo`, `repos`, `dogfood`, `it2`). Internal mechanics stay unprefixed (`config`, `dependencies`, `update`, `merge`, `delete`, `status`) since only the `changeset-manager` agent calls them by name.[^changesets]
 
 **Server wiring.** The plugin name, the `savvy-mcp` server key and the `biome` LSP key are load-bearing: Claude names the tools `mcp__plugin_silk_savvy-mcp__<tool>`, and the skills, agents and hooks spell them that way.[^config] `bin/start-mcp.sh` execs the project's `node_modules/.bin/savvy-mcp` when present (the bin `@savvy-web/silk` carries), exporting `CLAUDE_PROJECT_DIR` and `SAVVY_MCP_PROJECT_DIR`. Otherwise the server library falls back through the project's own package manager: `pnpm dlx`, `yarn dlx` or `bunx` when that runner is on `PATH`, else `npx --yes @savvy-web/mcp`. Detection reads `devEngines.packageManager`, then `packageManager`, then lockfiles.[^start-mcp] `bin/biome-lsp.sh` launches Biome's language server from the project; neither launcher bundles a binary.
 
 ## Build, test and release
 
-**Build.** `plugin/package.json`'s `build:dev` and `build:prod` both run `pluginfinity build` (cache disabled in `plugin/turbo.json`), so `pnpm build` regenerates both builds; `build:check` runs `pluginfinity build --check`, which compares the committed builds byte for byte against a fresh build and fails on any drift.[^manifest] Biome and markdownlint are switched off over `plugin/builds/**` (root `biome.json` override, the markdownlint ignore list and the lint-staged excludes), since a formatter rewriting a built file would fail `--check`. lint-staged's `chmod -x` still covers the builds on purpose: stripping the exec bit from a built copy and its source in the same commit keeps the two modes equal, which `--check` compares.[^manifest]
+**Build.** `plugin/package.json`'s single `build` script runs `pluginfinity build` (cache disabled in `plugin/turbo.json`), so `pnpm build` regenerates both builds; `build:check` runs `pluginfinity build --check`, which compares the committed builds byte for byte against a fresh build and fails on any drift.[^manifest] Biome and markdownlint are switched off over `plugin/builds/**` (root `biome.json` override, the markdownlint ignore list and the lint-staged excludes), since a formatter rewriting a built file would fail `--check`. lint-staged's `chmod -x` still covers the builds on purpose: stripping the exec bit from a built copy and its source in the same commit keeps the two modes equal, which `--check` compares.[^manifest]
 
-**Test.** Root `pnpm test:hooks` runs `bash plugin/__test__/run-tests.sh` (the package's own `test:hooks` runs the same script). It runs `pluginfinity build`, shellcheck over the BUILT hook, launcher, skill and `scripts/` files of both targets (the hook library they source exists only in the builds), bats over `__test__/*.bats`, and `build --check`.[^run-tests] Every hook, launcher and skill-script suite runs once per target through pluginfinity's `run_hook`/`run_script`; the monitor suites run on Claude only. The count was 511 tests, none skipped, at the pluginfinity 0.3.0 cut.[^authoring] `.github/workflows/hook-tests.yml` watches `plugin/**` and runs the same script, but the job stays `if: false`; re-enabling it also needs pnpm setup and an install before the step, because the suite runs pluginfinity from `plugin/node_modules`.
+**Test.** Root `pnpm test:hooks` runs `NODE_OPTIONS= bash plugin/__test__/run-tests.sh` (the package's own `test:hooks` runs the same script). `NODE_OPTIONS` is blanked because the workspace's `nodeOptions: --import=tsx` reaches every pnpm-started process, and a bare `tsx` cannot resolve from the monitor suites' temp cwd (see [workspace-source-links](../conventions/workspace-source-links.md)). It runs `pluginfinity build`, shellcheck over the BUILT hook, launcher, skill and `scripts/` files of both targets (the hook library they source exists only in the builds), bats over `__test__/*.bats`, and `build --check`.[^run-tests] Every hook, launcher and skill-script suite runs once per target through pluginfinity's `run_hook`/`run_script`; the monitor suites run on Claude only. The count was 511 tests, none skipped, at the pluginfinity 0.3.0 cut.[^authoring] `.github/workflows/hook-tests.yml` watches `plugin/**` and runs the same script, but the job stays `if: false`; re-enabling it also needs pnpm setup and an install before the step, because the suite runs pluginfinity from `plugin/node_modules`.
 
 The `pr-body` skill's drift test lives here too: `plugin/__test__/pr-body-skill-sync.test.ts` imports `PrBody` from `@savvy-web/silk-core` (a `workspace:*` devDependency) and fails when a skill's marker literals drift from `PrBody.Markers`. Vitest discovers `plugin/` as a project like any package.[^manifest]
 
@@ -86,17 +84,17 @@ The `pr-body` skill's drift test lives here too: `plugin/__test__/pr-body-skill-
 
 ## Hosts
 
-**Claude Code** gets everything: 16 hook registrations plus a generated 17th (the session-env runner, first under SessionStart), the MCP and LSP servers, the three monitors, and every skill and agent. Its SessionStart orientation context was byte-identical to the retired `plugins/silk` one when the two were compared.[^fidelity]
+**Claude Code** gets everything: 16 hook registrations plus a generated 17th (the session-env runner, first under SessionStart), the MCP and LSP servers, the two monitors, and every skill and agent. Its SessionStart orientation context was byte-identical to the retired `plugins/silk` one when the two were compared.[^fidelity]
 
 **GitHub Copilot** gets the hooks, the MCP and LSP servers, every skill except `it2`, and the agents (with `model: inherit` and a whole-`Bash` grant, since Copilot has no per-command rules). It gets no monitors. Its SessionStart `startup` matcher is widened to `startup|new`, because a fresh Copilot session reports `source: new` (see [copilot-plugin-host-environment](../measurements/copilot-plugin-host-environment.md)). The orientation names each host's own MCP prefix, and on Copilot it tells the model to pass `cwd` (the project root's absolute path) to every savvy-mcp tool, because a Copilot MCP server cannot learn the project. That instruction keys on `hook_supports server-project`, which succeeds on Claude and fails on Copilot. What the Copilot build cannot do is the [copilot-plugin-host-gaps](../limitations/copilot-plugin-host-gaps.md) limitation.[^hook-env]
 
-**Copilot build notes.** `pluginfinity validate` passes on both hosts. The Copilot build reports 43 notes, each an accepted degradation:
+**Copilot build notes.** `pluginfinity validate` passes on both hosts. The Copilot build reports 34 notes, each an accepted degradation:
 
 - agents drop `color` and `maxTurns`, their `skills` list becomes a body list, and `AskUserQuestion`, `SendMessage` and `Skill` leave their tools;
 - skills fold `when_to_use`/`paths` into the description, and `model: haiku`/`sonnet` is dropped from five internal skills;
 - `hook-output-ignored` for the PreToolUse context of `biome-prefer-mcp.sh` and `dogfood-guard.sh` and the Stop `systemMessage` of `changeset-nudge.sh`;
 - `hook-matcher-runtime` and `hook-matcher-widened` for SessionStart;
-- `monitor-omitted` ×3 and `env-shell-unsupported`.
+- `monitor-omitted` ×2 and `env-shell-unsupported`.
 
 A change that adds a note should be one the [copilot-plugin-host-gaps](../limitations/copilot-plugin-host-gaps.md) limitation can absorb.[^config]
 
@@ -130,17 +128,9 @@ Pieces: `skills/changeset/` (the router) with `changeset-style` and `changeset-c
 
 **No hook blocks on changesets.** Whether a change needs a changeset is a human judgement no plugin hook makes: a hook can only see "commits exist, no `.changeset/*.md`", which cannot distinguish a user-facing fix from a docs-only branch. A push-time guard that did block was removed rather than repaired (it resolved its tree from `CLAUDE_PROJECT_DIR`, so its verdict depended on the caller's cwd rather than the ref being pushed, and its deny message advertised an env-var bypass), the origin case for the plugin-wide no-bypass rule. `hooks/stop/changeset-nudge.sh` (Stop) instead emits a `systemMessage` shown to the user, never the model, when the branch has commits and no changeset; it cannot block, fires only for the main agent, and is debounced on HEAD. `SILK_SKIP_CHANGESET_NUDGE` silences it, now also settable from the project's `.env`. Copilot has no `systemMessage`, so the nudge is Claude-only. Enforcement lives at CI on the pull request, where the full branch diff exists and an override is an explicit, reviewable human act.[^changesets]
 
-## Build and TSDoc capability
+## Builds and TSDoc are out of scope
 
-Pieces: `skills/build/` and `skills/tsdoc/` (each with bundled `references/`), `agents/tsdoctor.md`, `monitors/watch-issues.mjs` (the `tsdoc-diagnostics` monitor). All read the structured `dist/<target>/issues.json` artifact `@savvy-web/tsdown-plugins`' `writeIssuesArtifact` produces.[^buildtsdoc]
-
-`/silk:build` (path-triggered on `savvy.build.ts`, `package.json`, `turbo.json`) is the authoring reference for the bundler/rspress-builder/tsdown-plugins trio. Its load-bearing section distinguishes two failures that produce a clean-looking build log: a hand-run `node savvy.build.ts --target prod` skips `types:check`/`build:dev` and may leave a truncated `issues.json`; a turbo cache hit replays the previous run's output verbatim. The tell is `issues.json`'s `generatedAt` timestamp, not mtime: a turbo cache restore refreshes mtime on every replay while `generatedAt` keeps the original build's value.[^buildtsdoc]
-
-`/silk:tsdoc` (path-triggered on `savvy.build.ts` and `dist/*/issues.json`) teaches toolchain-correct TSDoc and the binary `@public`/`@internal` release-tag policy `runApiExtractor` enforces. It reads the artifact **three-state**: `buildOk: true` with empty buckets is clean; `false` is a crashed build whose empty buckets describe nothing; absent means unknown, not a pass. Every consumer of the artifact repeats this three-state read.[^buildtsdoc]
-
-`agents/tsdoctor.md` drives a package's diagnostics to zero: prod build → read the artifact → fix per the release-tag policy → rebuild to confirm. It never adds `suppressWarnings` entries (suppression is a human escape hatch) and surfaces a genuine `@beta`/`@alpha` maturity call to the user rather than guessing.[^buildtsdoc]
-
-`monitors/watch-issues.mjs` polls `dist/*/issues.json` across packages and surfaces non-zero `ae-*`/`tsdoc-*` counts as notifications. Because the artifact is gitignored, shared and mutable, the monitor reports only what it can **vouch for**: a non-zero count must hold across `STABLE_POLLS` polls before it fires (debounce); `buildOk === true` read three-state; the artifact must be at least as new as `src/**` by mtime (deliberately mtime, not `generatedAt`, since reading `generatedAt` would make every legitimate cache replay look stale); the package's `src/**` and `savvy.build.ts` must be clean; a per-project advisory pid lock (exclusive create, heartbeat-refreshed, age-judged) keeps one resident watcher per project. It deliberately does not recommend dispatching `tsdoctor`: reporting a shared mutable artifact and prescribing a fixer would turn every stray build into dispatched work.[^buildtsdoc] The monitors honour pluginfinity's `PLUGINFINITY_MONITOR_MAX_TICKS` test contract; the registered command never sets it. Stopping one by process name is the [pkill-monitor-kills-every-session](../gotchas/pkill-monitor-kills-every-session.md) trap.[^authoring]
+The plugin owns workflow only: commits, changesets, PR bodies, the dogfood protocol, vendored repos, Biome, and read-only Turborepo inspection. It carries no build or TSDoc capability. Package builds are the effected kit's `effected package build`, and build authoring, the `issues.json` diagnostics monitor and TSDoc authoring with a fixer agent belong to the kit's own agent plugin; a dogfood request asked it to take them over, and until it ships them no plugin carries them (see [kit-package-build](../decisions/kit-package-build.md)). Do not re-add a `build` or `tsdoc` skill, a TSDoc fixer agent or an `issues.json` monitor here.[^config]
 
 ## Turborepo capability
 
@@ -173,7 +163,6 @@ State is a per-loop **append-only JSONL journal**, `.claude/dogfood/<counterpart
 [^claude-marketplace]: `../../.claude-plugin/marketplace.json`
 [^hooks]: `../../plugin/hooks`
 [^changesets]: `../../plugin/skills/changeset`
-[^buildtsdoc]: `../../plugin/agents/tsdoctor.md`
 [^turbo]: `../../plugin/skills/turbo`
 [^it2]: `../../plugin/skills/it2`
 [^dogfood]: `../../plugin/skills/dogfood`

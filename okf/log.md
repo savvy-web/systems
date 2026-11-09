@@ -43,6 +43,10 @@
 * Updated silk-effects
 * Updated systems
 * Updated templates
+* Updated The Copilot build of silk drops context nudges, monitors and project discovery
+* Updated The repo-wide build ignore rule hides any plugin directory named build while build --check stays green
+* Updated pkill on a monitor script name kills every session's monitor
+* Updated silk-plugin
 
 ## 2026-11-06
 

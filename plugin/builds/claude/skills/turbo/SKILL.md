@@ -115,17 +115,13 @@ the tool does not surface.
   that matches the dependency's role (`tsdown` is `catalog:build`, `vitest` is
   `catalog:test`); `catalog:silk` is only what has no more specific home. `effect` and
   `@effect/*` come from `catalog:effected`, supplied by `@effected/pnpm-plugin-effected`.
-- **`prepare` builds are the ordering mechanism, not a smell.** Every package that is a
-  `workspace:*` dependency of another carries its own `prepare: turbo run build:dev`, and
-  pnpm runs it per package during `pnpm install` — that is what makes a consumer's `link:`
-  into `dist/dev/pkg` resolve at install time. Nine packages carry one today. DO NOT remove
-  them as redundant: turbo's `dependsOn` only orders tasks turbo was already asked to run
-  and has no say over whether a `prepare` fires.
-- **The trap is the target, not the hook.** Keep `build:prod` out of any install hook:
-  `build:prod` dependsOn `types:check` + `build:dev`, and its peer-catalog resolution reads
-  a workspace state file pnpm writes only AFTER install scripts complete, so it fails with
-  `Catalog(s) not found: <name>:peers`. `build:dev` dependsOn `^build:dev` only and is safe
-  there. The root `prepare` stays `husky` and nothing else — never a build.
+- **Nothing builds on install.** A `workspace:` dependency links to the package directory
+  and resolves through its `exports` straight to `src/*.ts`, so no package carries a
+  `prepare`, `build:dev` or `dist/dev` link. The root `prepare` stays `husky` and nothing
+  else — never a build. Do not recommend adding one.
+- **One `build` task.** Every package's `build` is `effected package build`, writing
+  `dist/prod`; turbo's `build` dependsOn `types:check`, which dependsOn `^types:check`.
+  Only a check that runs a built artifact needs a `pnpm build` first.
 
 ## Deep dives
 

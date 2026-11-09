@@ -9,7 +9,7 @@ turbo watch coordinates the **graph**, the per-package tool handles incremental
 recompilation inside one package.
 
 ```bash
-turbo watch build:dev          # rebuild dev artifacts on change, in dep order
+turbo watch types:check        # re-check types on change, in dep order
 turbo watch test --filter=@savvy-web/mcp...
 ```
 

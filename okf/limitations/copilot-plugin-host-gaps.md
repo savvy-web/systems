@@ -12,10 +12,10 @@ sources:
     resource: ../../plugin/pluginfinity.config.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-09T20:39:04Z
 integrity:
   generated:
-    body: 50394910c9a3736b
+    body: afe9849390860be9
 ---
 
 # The Copilot build of silk drops context nudges, monitors and project discovery
@@ -26,7 +26,7 @@ This bounds [silk-plugin](../modules/silk-plugin.md) on GitHub Copilot. The Clau
 
 - **PreToolUse context is ignored.** Copilot honours no `additionalContext` on PreToolUse, so the `biome-prefer-mcp` nudge, the dogfood-guard "loop still open" advisory, and pre-commit-message advice that is not a deny are silent. Every deny still works. The build reports each one as a `hook-output-ignored` note.[^copilot-build]
 - **The Stop changeset nudge never appears.** It is a `systemMessage`, and Copilot has none.[^copilot-build]
-- **No monitors.** Copilot has no monitor mechanism, so the build omits `tsdoc-diagnostics`, `dogfood-mail` and `gitmodules-drift` (three `monitor-omitted` notes). Drift and new dogfood mail are found only by asking.[^config]
+- **No monitors.** Copilot has no monitor mechanism, so the build omits `dogfood-mail` and `gitmodules-drift` (two `monitor-omitted` notes). Drift and new dogfood mail are found only by asking.[^config]
 - **No `it2` skill**, which is Claude-only (`targets: { copilot: false }`). The dogfood skill still describes its optional it2 transport and the dogfood-mail monitor on Copilot.[^copilot-build]
 - **savvy-mcp inspects the plugin root unless the model passes `cwd`.** Copilot gives an MCP server no project (see [copilot-plugin-host-environment](../measurements/copilot-plugin-host-environment.md)). The orientation tells the model to pass the project root as `cwd` to every tool; a call that omits it reads the wrong tree.[^copilot-build]
 - **Session values reach hooks and `list.sh`, not the model's shell.** Copilot has no `CLAUDE_ENV_FILE`, so a command the model runs by hand does not see `SILK_PACKAGE_MANAGER` (the `env-shell-unsupported` note).[^copilot-build]

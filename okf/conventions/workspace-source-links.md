@@ -7,7 +7,7 @@ stale_after: 2027-05-09T00:00:00Z
 tags: [build, dx]
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:56:29Z
+  at: 2026-11-09T20:39:04Z
 sources:
   - id: root-manifest
     resource: ../../package.json
@@ -19,7 +19,7 @@ sources:
     resource: ../../vitest.setup.ts
 integrity:
   generated:
-    body: f6234a300d8bb99b
+    body: b27296a63c1df322
 ---
 
 # Resolve workspace packages from source; never re-add install-time builds
@@ -33,6 +33,10 @@ Do not add a `prepare: turbo run build:dev` script, a `build:dev` or `build:prod
 ## Keep the bins self-registering
 
 Keep the guarded block at the top of every bin that a process may run without pnpm (cli and mcp `src/bin.ts`, silk `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts`): when `import.meta.url` ends in `.ts`, import `tsx/esm/api` and call `register()` before the first import that resolves a sibling's source. Keep the specifier computed (`["tsx", "esm", "api"].join("/")`) so the bundler cannot inline it, and keep the real import dynamic so it runs after registration. tsx is a root devDependency only; the built `.js` bin never takes the branch.[^cli-bin]
+
+## Blank NODE_OPTIONS for children that run outside the workspace
+
+The workspace's `nodeOptions: --import=tsx` reaches every process pnpm starts, children included, and a bare `tsx` specifier resolves against the child's working directory. Any pnpm script whose children run from outside the workspace — a temp directory, a scratch consumer — must blank it, as both `test:hooks` scripts do with `NODE_OPTIONS= bash …`: the plugin's monitor bats suites run node from a temp cwd where `tsx` cannot resolve. A child that does need tsx gets it by absolute file URL instead (see below).[^root-manifest]
 
 ## Root devDependency posture
 

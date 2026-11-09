@@ -5,12 +5,11 @@
 CI runs tasks through `turbo`, never by hand-iterating packages. The Silk job
 order is fixed: **install → build → checks**.
 
-Install DOES build the dev outputs: each `workspace:*`-depended package carries
-its own `prepare: turbo run build:dev`, which pnpm runs per package (a frozen
-install included, unless `--ignore-scripts`). What install does NOT produce is the
-prod outputs, so an explicit `pnpm build` must still run before any check that
-needs them. Checks importing a `@savvy-web/*` package resolve the built `dist/dev`
-via `linkDirectory`, which is exactly what those `prepare` scripts guarantee.
+Install builds nothing: the root `prepare` is `husky` alone and no package
+carries a `prepare`. A check importing a `@savvy-web/*` package resolves the
+sibling's TypeScript source through its `exports`, with no build. An explicit
+`pnpm build` (`turbo run build` → `dist/prod`) must still run before any check
+that runs a built artifact.
 
 ## Remote caching
 
@@ -24,7 +23,7 @@ turbo run build --remote-only
 turbo run lint test typecheck --remote-only
 ```
 
-A populated remote cache turns a no-change `build:prod` into a restore, which is
+A populated remote cache turns a no-change `build` into a restore, which is
 what keeps unaffected PRs cheap.
 
 ## Only build what changed
@@ -51,14 +50,12 @@ dependencies) changed.
 
 ## Anti-patterns
 
-Do not put `build:prod` in an install hook to "warm" CI. It dependsOn `types:check`
-and `build:dev`, and its peer-catalog resolution reads a workspace state file pnpm
-writes only AFTER install scripts complete, so it fails with
-`Catalog(s) not found: <name>:peers`. Keep the prod build a post-install turbo step.
-
-This is NOT a blanket ban on install-time builds: each workspace-dependency package
-carries its own `prepare: turbo run build:dev` precisely so consumers' `link:`
-resolution works at install time, and `build:dev` dependsOn `^build:dev` only.
+Do not build in an install hook to "warm" CI. Nothing builds on install: a
+`workspace:` dependency links to the package directory and resolves through its
+`exports` to source, so a consumer needs no built sibling to install, type-check
+or test. The one `build` task (`dependsOn: ["types:check"]`, writing `dist/prod`)
+runs as a post-install turbo step, and only checks that run a built artifact
+wait on it. Keep the root `prepare` to git-hook setup, never a build.
 
 ## See also
 

@@ -112,7 +112,7 @@ The knowledge bundle lives at `okf/`, an OKF v0.2 bundle — start at `okf/index
 **`plugin/` — the silk agent plugin, one pluginfinity source for Claude Code and Copilot (layout, build/test/release, hosts, capability map):**
 → `@./okf/modules/silk-plugin.md`
 → `@./okf/conventions/edit-plugin-source-not-builds.md`
-Load when working on `plugin/` (layout, the two builds and `build --check`, the Copilot gaps and both marketplaces, capability map, skill naming, MCP server wiring, hook registration, the changeset router skill, the read-only Turborepo capability over `turbo_inspect`, the `build`/`tsdoc` skills and `tsdoctor` agent, the it2 pane-orchestration skill, and the dogfood-mailbox capability map).
+Load when working on `plugin/` (layout, the two builds and `build --check`, the Copilot gaps and both marketplaces, capability map, skill naming, MCP server wiring, hook registration, the changeset router skill, the read-only Turborepo capability over `turbo_inspect`, the it2 pane-orchestration skill, and the dogfood-mailbox capability map). The plugin owns workflow only; builds and TSDoc belong to the effected kit and its own agent plugin — do not re-add a build or tsdoc skill, a TSDoc fixer agent or an `issues.json` monitor here.
 
 Commit/PR message contract split out of the plugin doc:
 → `@./okf/conventions/commit-and-pr-messages.md`

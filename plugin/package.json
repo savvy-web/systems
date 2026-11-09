@@ -8,7 +8,7 @@
 	"scripts": {
 		"build": "node node_modules/pluginfinity/bin/pluginfinity.js build",
 		"build:check": "node node_modules/pluginfinity/bin/pluginfinity.js build --check",
-		"test:hooks": "bash __test__/run-tests.sh",
+		"test:hooks": "NODE_OPTIONS= bash __test__/run-tests.sh",
 		"validate": "node node_modules/pluginfinity/bin/pluginfinity.js validate"
 	},
 	"devDependencies": {

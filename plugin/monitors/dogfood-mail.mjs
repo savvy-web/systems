@@ -12,9 +12,9 @@
 //      snapshot-lines; current state is the last VALID line) whose `ball` is
 //      "ours".
 //
-// Sibling of watch-issues.mjs: same self-scheduling poll loop, same
-// `diagnose(current, prev)` pure-function shape so it's importable by tests
-// without starting the interval, same `--once` single-shot mode.
+// Shape: a self-scheduling poll loop around a pure `diagnose(current, prev)`
+// step, so tests can import it without starting the interval, plus a
+// `--once` single-shot mode.
 import { globSync, realpathSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
@@ -168,7 +168,7 @@ export async function scan() {
 // --- pure diagnose ----------------------------------------------------------
 
 /**
- * Pure debounce step, mirroring watch-issues.mjs's `diagnose`. State carries,
+ * Pure debounce step. State carries,
  * per journal id, the last-notified snapshot signature (turn alerts) and,
  * per mailbox id, the set of mail filenames already notified (new-mail
  * alerts) so a quiet poll (nothing new) never re-emits.
@@ -403,8 +403,7 @@ function maxTicksFromEnv() {
 }
 
 // Compare via realpathSync so a symlinked plugin root (argv[1] is the
-// symlink, import.meta.url the resolved real path) still matches -- same
-// rationale as watch-issues.mjs.
+// symlink, import.meta.url the resolved real path) still matches.
 function invokedDirectly() {
 	const entry = process.argv[1];
 	if (!entry) return false;

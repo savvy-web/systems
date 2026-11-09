@@ -18,10 +18,10 @@ sources:
     resource: ../../.gitignore
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-09T20:39:04Z
 integrity:
   generated:
-    body: 3f1e7347c7de50c5
+    body: 031e12897651a515
 ---
 
 # Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it
@@ -32,7 +32,7 @@ Rebuild after every source change and commit the builds in the same commit as th
 
 Do not format, lint-fix or hand-tidy `plugin/builds/**`. Biome and markdownlint are switched off there (the root `biome.json` override, the markdownlint ignore list and the lint-staged excludes), because a rewritten build fails `--check`. lint-staged's `chmod -x` still runs over the builds on purpose: it strips the exec bit from a built script and its source in the same commit, so their modes stay equal.[^lint-staged][^biome]
 
-Give any directory under `plugin/` whose name matches a repo-wide ignore rule a `.gitignore` exception, in the source and in both builds, in the same change that adds it. The root `.gitignore` ignores `**/build` (and `**/dist`, `**/.turbo` and the other output directories), so a skill directory named `build` is ignored at `plugin/skills/build/` and at `plugin/builds/*/skills/build/` unless a negation re-includes it; the current exceptions are `!plugin/skills/build/`, `!plugin/builds/*/skills/build/` and their `/**` children.[^gitignore] Check with `git check-ignore -v <path>` and `git ls-files <dir>`, never with `build --check`: the check compares files on disk, so it passes on a directory git never tracked, and [gitignore-build-rule-hides-plugin-build-skill](../gotchas/gitignore-build-rule-hides-plugin-build-skill.md) is what that looks like.
+Give any directory under `plugin/` whose name matches a repo-wide ignore rule a `.gitignore` exception, in the source and in both builds, in the same change that adds it. The root `.gitignore` ignores `**/build` (and `**/dist`, `**/.turbo` and the other output directories), so a skill directory named `build` would be ignored at `plugin/skills/build/` and at `plugin/builds/*/skills/build/` unless a negation re-includes it. No plugin directory needs an exception today: the exceptions went with the deleted `build` skill.[^gitignore] Check with `git check-ignore -v <path>` and `git ls-files <dir>`, never with `build --check`: the check compares files on disk, so it passes on a directory git never tracked, and [gitignore-build-rule-hides-plugin-build-skill](../gotchas/gitignore-build-rule-hides-plugin-build-skill.md) is what that looks like.
 
 Write Markdown in `plugin/skills` and `plugin/agents` with the host-block markers inside a list indented to the item's content column. A marker at column 0 ends the list, and markdownlint's `--fix` at pre-commit then renumbers it: [markdownlint-fix-renumbers-host-block-lists](../gotchas/markdownlint-fix-renumbers-host-block-lists.md).
 

@@ -2,7 +2,7 @@
 type: Gotcha
 status: draft
 title: pkill on a monitor script name kills every session's monitor
-description: "Every Claude Code session runs its own copy of the silk monitors from the same plugin path, so pkill -f watch-issues.mjs (or any monitor file name) stops the monitor in every open session, not just the one being debugged, and the others go quiet without saying so."
+description: "Every Claude Code session runs its own copy of the silk monitors from the same plugin path, so pkill -f dogfood-mail.mjs (or any monitor file name) stops the monitor in every open session, not just the one being debugged, and the others go quiet without saying so."
 resource: ../../plugin/monitors
 tags: [tooling, dx]
 stale_after: 2027-01-05T00:00:00Z
@@ -15,17 +15,17 @@ sources:
     resource: ../../plugin/pluginfinity.config.ts
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-09T20:39:04Z
 integrity:
   generated:
-    body: aa375c1240852de4
+    body: e39088a47ad93ef2
 ---
 
 # pkill on a monitor script name kills every session's monitor
 
 ## What you see
 
-You restart a misbehaving silk monitor (`tsdoc-diagnostics`, `dogfood-mail` or `gitmodules-drift`) with `pkill -f watch-issues.mjs`, `pkill -f dogfood-mail.mjs` or similar. The command succeeds, and the current session's monitor is gone as expected.[^owner-brief]
+You restart a misbehaving silk monitor (`dogfood-mail` or `gitmodules-drift`) with `pkill -f dogfood-mail.mjs`, `pkill -f gitmodules-drift.mjs` or similar. The command succeeds, and the current session's monitor is gone as expected.[^owner-brief]
 
 ## What you will wrongly conclude
 
