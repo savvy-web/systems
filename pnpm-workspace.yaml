@@ -58,7 +58,7 @@ catalogs:
     "@types/react-dom": ^19.3.0
     react: ^19.3.1
     react-dom: ^19.3.1
-    rspress-plugin-mermaid: ^1.0.3
+    rspress-plugin-mermaid: ^2.0.0
     typescript: 7.1.0-beta
     vite: ^8.3.5
     vitepress: ^2.0.0-alpha.21
@@ -70,7 +70,7 @@ catalogs:
     "@types/react-dom": ^19.3.0
     react: ^19.3.0
     react-dom: ^19.3.0
-    rspress-plugin-mermaid: ^1.0.3
+    rspress-plugin-mermaid: ^2.0.0
     typescript: 7.1.0-beta
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.21
