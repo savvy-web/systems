@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 import { YamlFormattingOptions } from "@effected/yaml";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigDiscovery, Lint } from "../../src/index.js";
 
 const {
@@ -37,6 +37,19 @@ vi.mock("@effected/workspaces", async (importOriginal) => {
 const FIXTURES_DIR: string = join(import.meta.dirname, "fixtures");
 
 describe("Handler classes", () => {
+	// The fmtCommand handlers resolve the savvy binary through Command.findSavvyLint,
+	// which probes the host (a global lookup, then a package-manager subprocess).
+	// The handlers' contract is the command string they build, so stub the lookup:
+	// a real probe makes these tests slow and dependent on what the runner has
+	// installed. Command's own describe block below tests discovery itself.
+	beforeEach(() => {
+		vi.spyOn(Command, "findSavvyLint").mockReturnValue("savvy lint");
+	});
+
+	afterEach(() => {
+		vi.mocked(Command.findSavvyLint).mockRestore();
+	});
+
 	beforeAll(() => {
 		// Create test fixtures directory
 		if (!existsSync(FIXTURES_DIR)) {
@@ -127,10 +140,8 @@ describe("Handler classes", () => {
 			const handler = PackageJson.fmtCommand();
 			const result = handler(["src/package.json", "dist/package.json"]);
 
-			// Command resolves dynamically (savvy-lint or node fallback)
-			expect(result).toContain("fmt package-json 'src/package.json'");
-			// dist/package.json should be excluded by default
-			expect(result).not.toContain("dist/package.json");
+			// dist/package.json is excluded by default
+			expect(result).toBe("savvy lint fmt package-json 'src/package.json'");
 		});
 
 		it("should return empty array when all files excluded", () => {
@@ -410,7 +421,7 @@ describe("Handler classes", () => {
 			const handler = Yaml.fmtCommand();
 			const result = handler(["config.yaml", "pnpm-lock.yaml"]);
 			// Should exclude pnpm-lock.yaml by default and return fmt command
-			expect(result).toContain("fmt yaml");
+			expect(result).toMatch(/^savvy lint fmt yaml /);
 			expect(result).toContain("config.yaml");
 			expect(result).not.toContain("pnpm-lock.yaml");
 		});
@@ -626,7 +637,7 @@ describe("Handler classes", () => {
 			const handler = PnpmWorkspace.fmtCommand();
 			const result = handler([]);
 			// Should return a fmt command string
-			expect(result).toContain("fmt pnpm-workspace");
+			expect(result).toMatch(/^savvy lint fmt pnpm-workspace/);
 		});
 
 		it("should sort non-array values without modification", () => {
