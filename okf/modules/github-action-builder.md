@@ -3,21 +3,23 @@ type: Module
 title: github-action-builder
 description: Zero-config Effect-first build tool that bundles TypeScript into single-file Node.js 24 GitHub Actions, validates action.yml, and syncs output for act testing.
 kind: package
-resource: ../../packages/github-action-builder
-status: draft
+resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/github-action-builder
+status: deprecated
 tags: [build, ci]
 sources:
   - id: arch
-    resource: ../../packages/github-action-builder/src
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/github-action-builder/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-28T19:31:10Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: eb4d560475a90cb5
+    body: 9b4898202cf4ebf9
 ---
 
 # github-action-builder
+
+> **Deprecated.** `@savvy-web/github-action-builder` is deleted from this repository with no final release; its published versions stay on npm. GitHub Actions now build with the kit's `effected action build` from `@effected/plugin` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## Boundary
 

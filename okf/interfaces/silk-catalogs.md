@@ -2,19 +2,28 @@
 type: Interface
 title: "@savvy-web/pnpm-plugin-silk catalog names"
 description: "The catalog names a consumer manifest may reference after adding this config dependency, what the plugin hoists, and what a consumer must not assume about catalog contents."
-status: draft
+status: stable
 kind: config
-resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 tags: [release, build]
 sources:
   - id: pnpm-plugin-silk-architecture
-    resource: ../../packages/pnpm-plugin-silk/savvy.build.ts
+    resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T17:38:16Z
+  at: 2026-11-10T17:22:40Z
 integrity:
   generated:
-    body: 11f1dfd2f5cae908
+    body: d5cbb02e0b7761ac
+  verified:
+    by: human:spencer
+    at: 2026-11-10T17:22:29Z
+    content: d6e61f9574ef8764
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:59:52Z
+  - by: human:spencer
+    at: 2026-11-10T17:22:29Z
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names
@@ -24,7 +33,7 @@ integrity:
 After a consumer adds `@savvy-web/pnpm-plugin-silk` under
 `pnpm-workspace.yaml`'s `configDependencies` (pinned with its
 `+sha512-...` integrity hash), its manifests may reference the following
-catalog names. `packages/pnpm-plugin-silk/savvy.build.ts`'s
+catalog names. `packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`'s
 `PnpmConfigPlugin({ catalogs: {...} })` argument is the single source of
 truth for every catalog's contents; this concept documents the names and
 guarantees, not the version ranges.[^pnpm-plugin-silk-architecture]
@@ -44,11 +53,28 @@ advances. The two are never the same value by design — do not assume
 **`catalog:effected` is NOT provided by this package.** It comes from the
 separate `@effected/pnpm-plugin-effected` config dependency as one catalog
 holding `effect`, every `@effect/*` package and the `@effected/*` kit, with
-no `:peers` companion. The Effect closure therefore versions independently
-of the Silk catalogs. The older `catalog:effect` / `catalog:effect:peers` /
-`catalog:effected:peers` names, from the predecessor
+a `catalog:effected:peers` companion for peer ranges. The Effect closure
+therefore versions independently of the Silk catalogs. The older
+`catalog:effect` / `catalog:effect:peers` names, from the predecessor
 `@effected/pnpm-plugin-effect`, no longer exist — see
 [`decisions/kit-effect-peers-via-catalog.md`](../decisions/kit-effect-peers-via-catalog.md).[^pnpm-plugin-silk-architecture]
+
+**The build chain and toolchain are in none of these catalogs.**
+`catalog:build` (and `build:peers`) holds only the members the kit does
+not catalog — `@types/bun` today — and `catalog:docs`
+and `catalog:silk` (and their `:peers`) carry no toolchain member either.
+tsdown, rolldown, rolldown-plugin-dts, API Extractor and tsdoc, typescript,
+tsx, `@types/node`, `@types/react`, `@types/react-dom`, react, react-dom,
+`@rsbuild/core` and `@tsdown/exe` come from `catalog:effected:build` (peers
+from `catalog:effected:build:peers`), which `@effected/pnpm-plugin-effected`
+also supplies. This package hoists none of them and repeats none of the
+kit's `minimumReleaseAgeExclude` globs; both are the kit's. A consumer that
+referenced those names through a Silk catalog must move them to
+`catalog:effected:build`, and a consumer that installs `@savvy-web/silk`
+without `@effected/pnpm-plugin-effected` is not supported: silk declares
+the toolchain as `catalog:effected:build:peers` peers, so the kit is
+upstream of silk for it (see
+[`decisions/kit-package-build.md`](../decisions/kit-package-build.md)).[^pnpm-plugin-silk-architecture]
 
 ## What the config dependency hoists
 
@@ -76,8 +102,9 @@ them, or `savvy` disappears from PATH.[^pnpm-plugin-silk-architecture]
   `@savvy-web/changelog` is, and only outside this monorepo (this repo's own
   `excludeByRepo` entry drops it here, since it consumes changelog as a
   `workspace:*` link instead).
-- **Do not assume this plugin supplies the Effect catalog** — add
-  `@effected/pnpm-plugin-effected` separately for `catalog:effected`.
+- **Do not assume this plugin supplies the Effect or build-chain catalogs** —
+  add `@effected/pnpm-plugin-effected` separately for `catalog:effected`,
+  `catalog:effected:build` and their `:peers` companions.
 - **`strategy` values on a catalog package entry (`lock`/`lock-minor`) are
   an upgrade-CLI-only directive** and carry no runtime meaning for a
   consumer's install.
@@ -93,4 +120,4 @@ them, or `savvy` disappears from PATH.[^pnpm-plugin-silk-architecture]
   — why the Effect catalog is supplied separately rather than by this
   package.
 
-[^pnpm-plugin-silk-architecture]: `../../packages/pnpm-plugin-silk/savvy.build.ts`
+[^pnpm-plugin-silk-architecture]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`

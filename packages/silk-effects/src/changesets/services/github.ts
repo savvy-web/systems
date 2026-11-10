@@ -2,15 +2,16 @@
  * GitHub service for fetching commit metadata.
  *
  * Defines the {@link GitHubService} Effect service tag, its
- * `GitHubService.layer` production layer backed by `\@changesets/get-github-info`,
- * and the {@link makeGitHubTest} helper for constructing deterministic test
+ * `GitHubService.layer` production layer backed by `\@effected/github`'s
+ * `ChangelogInfo`, and the {@link makeGitHubTest} helper for constructing deterministic test
  * layers.
  *
  * @remarks
  * The GitHub service is consumed by the changelog formatters to resolve
  * commit hashes into pull-request numbers, author usernames, and link URLs.
- * In production, `GitHubService.layer` calls the GitHub REST API via the
- * vendored `getGitHubInfo` wrapper. In tests, {@link makeGitHubTest}
+ * In production, `GitHubService.layer` calls the GitHub GraphQL API through
+ * the kit's `ChangelogInfo`, whose `GitHubClient` (token and server) the host
+ * supplies — the engine reads no environment. In tests, {@link makeGitHubTest}
  * returns canned responses from a `Map` keyed by commit hash.
  *
  * @see {@link GitHubService} for the Effect service tag
@@ -18,6 +19,7 @@
  * @see {@link makeGitHubTest} for constructing test layers
  */
 
+import type { ChangelogInfo } from "@effected/github";
 import { Context, Effect, Layer } from "effect";
 
 import { GitHubApiError } from "../errors.js";
@@ -60,7 +62,7 @@ export interface GitHubServiceShape {
  * This tag follows the standard Effect `Context.Service` pattern. Two layers
  * are provided out of the box:
  *
- * - `GitHubService.layer` — production layer backed by the GitHub REST API
+ * - `GitHubService.layer` — production layer over `\@effected/github`'s `ChangelogInfo`
  * - {@link makeGitHubTest} — factory for deterministic test layers
  *
  * @example
@@ -77,8 +79,12 @@ export interface GitHubServiceShape {
  *   console.log(info.user, info.pull, info.links);
  * });
  *
- * // Provide the live layer and run
- * Effect.runPromise(program.pipe(Effect.provide(GitHubService.layer)));
+ * // Provide the live layer over a token-authenticated client and run
+ * const live = GitHubService.layer.pipe(
+ *   Layer.provide(ChangelogInfo.layer),
+ *   Layer.provide(GitHubClient.layerFromToken({ token: Redacted.make(token) })),
+ * );
+ * Effect.runPromise(program.pipe(Effect.provide(live)));
  * ```
  *
  * @example Creating a test layer with canned responses
@@ -110,15 +116,14 @@ export class GitHubService extends Context.Service<GitHubService, GitHubServiceS
 	/**
 	 * Production layer for {@link GitHubService}.
 	 *
-	 * Delegates to `\@changesets/get-github-info` to fetch commit metadata
-	 * from the GitHub REST API. Requires a `GITHUB_TOKEN` environment variable
-	 * to be set for authenticated requests.
+	 * Resolves commit metadata through `\@effected/github`'s `ChangelogInfo`,
+	 * captured once at build so lookups made through one built layer share its
+	 * GraphQL batching. The token and server come from the `GitHubClient`
+	 * under `ChangelogInfo.layer`; nothing is read from the environment.
 	 *
 	 * @remarks
-	 * This layer is used by the `\@savvy-web/changesets/changelog` entry point
-	 * to resolve commit hashes into PR numbers and author attribution. It is
-	 * used by the changelog formatter's
-	 * `MainLayer`.
+	 * The changelog formatter's runtime (`makeChangelogFunctions`) builds this
+	 * over the `ChangelogInfo` layer its host passes in.
 	 *
 	 * @example
 	 * ```typescript
@@ -130,14 +135,17 @@ export class GitHubService extends Context.Service<GitHubService, GitHubServiceS
 	 *   return yield* github.getInfo({ commit: "abc1234", repo: "owner/repo" });
 	 * });
 	 *
-	 * Effect.runPromise(program.pipe(Effect.provide(GitHubService.layer)));
+	 * Effect.runPromise(program.pipe(Effect.provide(GitHubService.layer), Effect.provide(ChangelogInfo.layerTest())));
 	 * ```
 	 *
 	 * @public
 	 */
-	static readonly layer: Layer.Layer<GitHubService> = Layer.succeed(this, {
-		getInfo: getGitHubInfo,
-	});
+	static readonly layer: Layer.Layer<GitHubService, never, ChangelogInfo> = Layer.effect(
+		this,
+		Effect.map(Effect.context<ChangelogInfo>(), (context) => ({
+			getInfo: (params) => getGitHubInfo(params).pipe(Effect.provideContext(context)),
+		})),
+	);
 }
 
 /**

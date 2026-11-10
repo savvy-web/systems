@@ -20,7 +20,7 @@ gave me stale bytes" bugs.
 {
   "globalEnv": ["NODE_ENV"],
   "tasks": {
-    "build:prod": { "env": ["TURBO_TOKEN", "TURBO_TEAM"], "outputs": ["dist/prod/**"] }
+    "build": { "env": ["TURBO_TOKEN", "TURBO_TEAM"], "outputs": ["dist/prod/**"] }
   }
 }
 ```

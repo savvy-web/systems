@@ -35,10 +35,10 @@ sources:
     resource: ../../packages/cli/src/commands/clean.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-02T21:02:43Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 2f66c4d9db9c48cb
+    body: 84087d5474206ef0
 ---
 
 # cli
@@ -97,7 +97,7 @@ A handler test runs the handler as `main()` would and asserts on data, never on 
 ## Boundaries and invariants
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk` or `@savvy-web/mcp`.** All logic comes from silk-effects; silk's package-layering test asserts the edge never exists.[^layering]
-- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` — the same posture as mcp and tsdown-plugins.[^arch]
+- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` — the same posture as mcp.[^arch]
 - **The engine takes its `cwd` from this package.** silk-effects' `ConfigDiscovery` and `BiomeSchemaSync` no longer default to `process.cwd()`; every call passes it explicitly, as the process owner.[^arch]
 - **Every hook-section id the CLI declares is spelled UPPERCASE** — a lowercase key does not error but silently grows a duplicate block. See [managed-hook-sections](../interfaces/managed-hook-sections.md).[^arch]
 - **`savvy commit hook pre-commit-message` gates its rule set on document kind** — commit-body rules apply only to a real commit message; `plan-leakage` and `closes-trailer` apply to both a commit message and a PR body. See [commit-and-pr-messages](../conventions/commit-and-pr-messages.md).[^arch]

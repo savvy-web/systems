@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/templates/src
 generated:
   by: okfit/claude-code
-  at: 2026-09-13T01:18:00Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: ae24779bc58a4a9f
+    body: be0fecf774167c5f
 ---
 
 # templates
@@ -39,6 +39,6 @@ Every template module exports a `Schema` (an Effect Schema struct), an `OptionsT
 - **No template engine.** JSON configs are built with `JSON.stringify(obj, null, "\t")` to match the Silk Suite tab style; YAML goes through `@effected/yaml`; gitignore and README are plain string concatenation.[^arch]
 - **`UpdateTemplate<O>` is a type contract only** — no template module implements an update function.[^arch]
 - **Runtime dependencies are `@effected/package-json` and `@effected/yaml` only**; `effect` is a peer, used for Schema validation and the one YAML-serialization Effect. The package has no platform dependencies and, unlike `@savvy-web/silk-effects`, does not depend on `@effect/platform` or any Effect service needing a Layer.[^arch]
-- **The package builds with `@savvy-web/bundler`** through the `build()` front door; see `savvy.build.ts` and `publishConfig.targets` for the build wiring and dual-registry publishing.[^arch]
+- **The package builds with `effected package build`** from `@effected/plugin`; see `effected.toml` and `publishConfig.targets` for the build wiring and dual-registry publishing (see [kit-package-build](../decisions/kit-package-build.md)).[^arch]
 
 [^arch]: `../../packages/templates/src`

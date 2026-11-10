@@ -8,17 +8,17 @@ resource: ../../packages/changelog
 tags: [release]
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:50:36Z
+  at: 2026-11-09T19:54:23Z
 sources:
   - id: changelog-index
     resource: ../../packages/changelog/src/index.ts
   - id: changelog-build
-    resource: ../../packages/changelog/savvy.build.ts
+    resource: ../../packages/changelog/effected.toml
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
 integrity:
   generated:
-    body: a35fa3e04545e939
+    body: 4ea294e076bb259f
 ---
 
 # @savvy-web/changelog
@@ -46,8 +46,8 @@ without a consumer `node_modules`.
   package is the host adapter for the changesets CLI, a foreign process
   that supplies no context, so the environment read belongs here rather
   than in the engine.
-- **Build posture: ESM-only, nothing inlined.** `savvy.build.ts` is a
-  bare `build({ meta: false })` — no CJS twin, no `bundleNodeModules`, no
+- **Build posture: ESM-only, nothing inlined.** `effected.toml` sets only
+  `[package.build] meta = false` — no CJS twin, no `bundleNodeModules`, no
   resolver plugins — because `@changesets/cli` v3 is `"type": "module"`
   and `import()`s the changelog module, so no `require` condition is
   needed.[^changelog-build] `@savvy-web/silk-effects`, `effect` and the
@@ -74,20 +74,19 @@ package still on that list, and `savvy changeset init` writes
 Inside this repository the wiring is different on purpose: the plugin's
 `excludeByRepo` drops the hoist for `savvy-web-systems`, and the hub's root
 `package.json` carries `@savvy-web/changelog` as a `workspace:*`
-devDependency instead, so the changesets engine resolves the built
-`dist/dev/pkg` link from the repo root. The hoist must stay excluded here —
-hoisting a workspace package symlinks its source directory, not its built
-artifact; see
-[`gotchas/hoisted-workspace-package-resolves-source.md`](../gotchas/hoisted-workspace-package-resolves-source.md)
-and [`conventions/workspace-prepare-scripts.md`](../conventions/workspace-prepare-scripts.md).
+devDependency instead, so the changesets engine resolves the id from the
+repo root. That link resolves through the package's `exports` to its
+`src/` TypeScript, which pnpm scripts load through `nodeOptions:
+--import=tsx`; see
+[`conventions/workspace-source-links.md`](../conventions/workspace-source-links.md).
 
 ## Related
 
 - [`modules/silk.md`](silk.md)
 - [`decisions/silk-pins-siblings-as-dependencies.md`](../decisions/silk-pins-siblings-as-dependencies.md)
 - [`modules/pnpm-plugin-silk.md`](pnpm-plugin-silk.md)
-- [`gotchas/hoisted-workspace-package-resolves-source.md`](../gotchas/hoisted-workspace-package-resolves-source.md)
+- [`decisions/kit-package-build.md`](../decisions/kit-package-build.md)
 
 [^changelog-index]: `src/index.ts`
-[^changelog-build]: `savvy.build.ts`
+[^changelog-build]: `effected.toml`
 [^changelog-manifest]: `package.json`

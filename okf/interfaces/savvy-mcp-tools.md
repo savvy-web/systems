@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-11-06T00:18:30Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 30a600bab4dcc9ac
+    body: 92fd9d0f06a8db91
 ---
 
 # savvy-mcp tool surface
@@ -67,7 +67,8 @@ deliberate, permanent simplification, not an omission to work around.[^mcp-tools
 Read-only Turborepo introspection; every path runs `turbo … --dry=json` and
 never executes a task. Result is a **discriminated union keyed by `mode`**
 (`cache` | `graph` | `affected`), each variant embedding the corresponding
-Turbo result schema unchanged. Its `outputSchema` is the union's `anyOf`
+Turbo result schema unchanged. `task` defaults to `build` for the `cache`
+and `graph` modes. Its `outputSchema` is the union's `anyOf`
 under a `type: "object"` root, so read the typed `structuredContent`
 variant by its `mode`.[^mcp-tools]
 

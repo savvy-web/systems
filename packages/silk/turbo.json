@@ -1,10 +1,7 @@
 {
 	"extends": ["//"],
 	"tasks": {
-		"build:dev": {
-			"passThroughEnv": ["VITEST"]
-		},
-		"build:prod": {
+		"build": {
 			"passThroughEnv": ["VITEST"]
 		}
 	}

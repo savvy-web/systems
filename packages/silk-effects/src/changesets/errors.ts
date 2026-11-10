@@ -93,7 +93,7 @@ export const GitHubApiErrorBase = Data.TaggedError("GitHubApiError");
  * GitHub API request failure.
  *
  * @remarks
- * Raised when a call to the GitHub API (via `\@changesets/get-github-info`)
+ * Raised when a call to the GitHub API (via `\@effected/github`'s `ChangelogInfo`)
  * fails due to network issues, authentication errors, rate limiting, or
  * server errors. Use the {@link GitHubApiError.isRetryable | isRetryable}
  * property to determine whether a retry strategy should be applied.
@@ -465,9 +465,10 @@ export const ReleasePlanErrorBase = Data.TaggedError("ReleasePlanError");
  * Release planning, preview, or apply failure.
  *
  * @remarks
- * Wraps any failure from the underlying `@changesets/*` machinery
- * (`getReleasePlan`, `applyReleasePlan`, config resolution) into a typed
- * Effect error, tagged with the phase that failed.
+ * Wraps any failure from the release machinery — `\@effected/changesets`'
+ * config, changeset and plan reads, the edit computation, changelog-module
+ * loading and rendering, and the writes `apply` makes — into a typed Effect
+ * error, tagged with the phase that failed.
  *
  * @public
  */

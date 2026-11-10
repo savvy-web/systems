@@ -112,11 +112,6 @@ export default defineConfig({
 	// no monitors (one monitor-omitted note each). They are node scripts, so they
 	// are command entries; ${PLUGIN_ROOT} becomes ${CLAUDE_PLUGIN_ROOT}.
 	monitors: {
-		"tsdoc-diagnostics": {
-			description: "Surfaces ae-*/tsdoc- diagnostics from dist/<target>/issues.json as builds change them",
-			// biome-ignore lint/suspicious/noTemplateCurlyInString: pluginfinity placeholder
-			command: 'node "${PLUGIN_ROOT}/monitors/watch-issues.mjs"',
-		},
 		"dogfood-mail": {
 			description:
 				"Surfaces incoming .claude/dogfood/ mail and journal turn-flips (ball changes) as they land, filesystem-only",

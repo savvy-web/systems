@@ -15,67 +15,23 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@microsoft/api-extractor": ^7.60.1
-    "@microsoft/api-extractor-model": ^7.33.16
-    "@microsoft/tsdoc": ~0.17.1
-    "@microsoft/tsdoc-config": ~0.18.3
-    "@rsbuild/core": ^2.3.0
-    "@tsdown/css": ^0.23.4
-    "@tsdown/exe": ^0.23.4
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.6
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.1
-    react-dom: ^19.3.1
-    rolldown: ^1.2.16
-    tsdown: ^0.23.4
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   build:peers:
-    "@microsoft/api-extractor": ^7.60.1
-    "@microsoft/api-extractor-model": ^7.33.16
-    "@microsoft/tsdoc": ~0.17.1
-    "@microsoft/tsdoc-config": ~0.18.3
-    "@rsbuild/core": ^2.3.0
-    "@tsdown/css": ^0.23.0
-    "@tsdown/exe": ^0.23.0
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.0
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.0
-    react-dom: ^19.3.0
-    rolldown: ^1.2.0
-    tsdown: ^0.23.0
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   docs:
     "@rspress/core": ^2.0.23
     "@rspress/plugin-sitemap": ^2.0.23
-    "@types/node": ^26.6.6
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.1
-    react-dom: ^19.3.1
     rspress-plugin-mermaid: ^1.0.3
-    typescript: 7.1.0-beta
     vite: ^8.3.5
     vitepress: ^2.0.0-alpha.21
   docs:peers:
     "@rspress/core": ^2.0.0
     "@rspress/plugin-sitemap": ^2.0.23
-    "@types/node": ^26.6.0
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.0
-    react-dom: ^19.3.0
     rspress-plugin-mermaid: ^1.0.3
-    typescript: 7.1.0-beta
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.21
   lint:
-    "@biomejs/biome": 2.6.4
+    "@biomejs/biome": 2.6.6
     "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.4
     "@commitlint/config-conventional": ^21.2.4
@@ -85,7 +41,7 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.8
     turbo: ^2.11.10
   lint:peers:
-    "@biomejs/biome": 2.6.4
+    "@biomejs/biome": 2.6.6
     "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.4
     "@commitlint/config-conventional": ^21.2.4
@@ -96,32 +52,10 @@ catalogs:
     turbo: ^2.11.10
   silk:
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.6
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    husky: ^9.1.7
     ink: ^8.0.0
-    lint-staged: ^17.6.0
-    markdownlint-cli2: ^0.24.0
-    markdownlint-cli2-formatter-codequality: ^0.0.8
-    react: ^19.3.1
-    react-dom: ^19.3.1
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   silk:peers:
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.0
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    husky: ^9.1.7
     ink: ^8.0.0
-    lint-staged: ^17.6.0
-    markdownlint-cli2: ^0.24.0
-    markdownlint-cli2-formatter-codequality: ^0.0.8
-    react: ^19.3.0
-    react-dom: ^19.3.0
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
@@ -137,28 +71,21 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effected": 0.22.0
+  "@effected/pnpm-plugin-effected": 0.26.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - "@effect/*"
-  - "@effected/*"
   - "@okfit/*"
   - "@oxc-parser/*"
-  - "@oxc-project/*"
   - "@pluginfinity/*"
   - "@pnpm/*"
-  - "@rolldown/*"
   - "@savvy-web/*"
-  - "@spencerbeggs/*"
   - "@tsdoctor/*"
-  - "@typescript/*"
   - "@vitest-agent/*"
   - "@vitest/*"
   - "@yarnpkg/*"
-  - effect
   - oxc-parser
   - pluginfinity
   - pnpm
@@ -171,8 +98,8 @@ minimumReleaseAgeExclude:
   - vitest
   - vitest-bats
   - yarn
-overrides:
-  tsdown>rolldown-plugin-dts: ^0.29.0
+  - "@effected/pnpm-plugin-effected"
+nodeOptions: --import=tsx
 packages:
   - e2e/*
   - packages/*
@@ -211,18 +138,13 @@ publicHoistPattern:
   - "@commitlint/config-conventional"
   - "@commitlint/cz-commitlint"
   - "@types/bun"
-  - "@types/node"
-  - "@types/react"
-  - "@types/react-dom"
   - "@vitest/coverage-istanbul"
   - "@vitest/coverage-v8"
   - husky
   - lint-staged
   - markdownlint-cli2
   - markdownlint-cli2-formatter-codequality
-  - tsx
   - turbo
-  - typescript
   - vitest
 resolvePeersFromWorkspaceRoot: false
 strictDepBuilds: true

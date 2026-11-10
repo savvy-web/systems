@@ -22,7 +22,7 @@ describe("TurboInspector (live layer)", () => {
 
 	it.effect("diagnoseCache reports per-task statuses for the real monorepo", () =>
 		Effect.gen(function* () {
-			const program = Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build:dev", repoRoot));
+			const program = Effect.flatMap(TurboInspector, (t) => t.diagnoseCache("build", repoRoot));
 			const d = yield* program.pipe(Effect.provide(LiveStack));
 			expect(d.totalTasks).toBeGreaterThan(0);
 			expect(d.statuses.length).toBe(d.totalTasks);

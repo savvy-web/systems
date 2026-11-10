@@ -1,8 +1,8 @@
 ---
 type: Gotcha
 status: draft
-title: The repo-wide build ignore rule hides the plugin's build skill while build --check stays green
-description: "The root .gitignore ignores every directory named build, which includes the silk plugin's build skill in plugin/ and in both committed builds; pluginfinity build --check compares files on disk, so it passes while git tracks none of them and the merged plugin ships without the skill."
+title: The repo-wide build ignore rule hides any plugin directory named build while build --check stays green
+description: "The root .gitignore ignores every directory named build, which would include a plugin skill named build in plugin/ and in both committed builds; pluginfinity build --check compares files on disk, so it passes while git tracks none of them and the merged plugin ships without the skill."
 resource: ../../.gitignore
 tags: [tooling, build, dx]
 stale_after: 2027-04-05T00:00:00Z
@@ -15,13 +15,13 @@ sources:
     resource: ../../plugin/__test__/run-tests.sh
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:43:24Z
+  at: 2026-11-09T20:39:04Z
 integrity:
   generated:
-    body: fd3ec19befe0a6fb
+    body: 04681594be935a04
 ---
 
-# The repo-wide build ignore rule hides the plugin's build skill while build --check stays green
+# The repo-wide build ignore rule hides any plugin directory named build while build --check stays green
 
 ## What you see
 
@@ -35,7 +35,7 @@ That the build skill is committed and ships in both plugins, because the check t
 
 The root `.gitignore` ignores `**/build`, so every directory named `build` is untracked unless a negation re-includes it.[^gitignore] `build --check` reads the builds from disk, not from git, so it compares two copies of files git never saw and passes. The clean `git status` is the ignore rule at work, not proof the files are tracked.
 
-This happened at the pluginfinity cutover. The exception still named only the old `plugins/silk/skills/build/` path, so the pull request that moved the plugin to `plugin/` merged to `main` with both builds missing the build skill, and nothing local reported it. The fix added `!plugin/skills/build/` and `!plugin/builds/*/skills/build/`, each with its `/**` children.[^fix-commit]
+This happened at the pluginfinity cutover. The exception still named only the old `plugins/silk/skills/build/` path, so the pull request that moved the plugin to `plugin/` merged to `main` with both builds missing the build skill, and nothing local reported it. The fix added `!plugin/skills/build/` and `!plugin/builds/*/skills/build/`, each with its `/**` children.[^fix-commit] The build skill has since been deleted from the plugin, and those exceptions with it, so the trap now waits for the next directory under `plugin/` that is named `build` (or any other ignored output name).
 
 Check tracking with `git ls-files plugin/skills/build plugin/builds/*/skills/build` or `git check-ignore -v <path>`, never with `build --check`. The rule that prevents a repeat is in [edit-plugin-source-not-builds](../conventions/edit-plugin-source-not-builds.md): any plugin directory named like an ignored output directory gets its own exception in the same change.
 

@@ -35,7 +35,7 @@ export interface TurboInspectorShape {
 	/**
 	 * Compute the packages affected relative to `base` (default `main`), split into
 	 * the directly-changed packages and their dependents. Runs
-	 * `turbo run build:dev --affected --dry=json` (with `TURBO_SCM_BASE=<base>`) for the
+	 * `turbo run build --affected --dry=json` (with `TURBO_SCM_BASE=<base>`) for the
 	 * affected set and `git diff --name-only <base>...HEAD` to identify which of those
 	 * packages actually changed; everything else in the set is a dependent.
 	 *
@@ -177,7 +177,7 @@ export class TurboInspector extends Context.Service<TurboInspector, TurboInspect
 const TURBO = Tool.named("turbo");
 
 /** Default task used by {@link TurboInspector.taskGraph} and {@link TurboInspector.affected}. */
-const DEFAULT_BUILD_TASK = "build:dev";
+const DEFAULT_BUILD_TASK = "build";
 
 /** Default git ref `affected` compares against — matches Turborepo's own `--affected` default. */
 const DEFAULT_AFFECTED_BASE = "main";

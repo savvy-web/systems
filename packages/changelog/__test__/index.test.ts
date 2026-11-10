@@ -13,20 +13,18 @@ describe("@savvy-web/changelog", () => {
 
 	describe("logMode() — the host adapter reads process.env, the engine never does", () => {
 		// Each branch re-imports the module under a stubbed environment and
-		// observes the mode through the one path that warns: a rejected GitHub
-		// lookup. The lookup is mocked so no network (or `.env`) is touched.
+		// observes the mode through the one path that warns: a failed GitHub
+		// lookup. GITHUB_TOKEN is unset, so the host builds no client, every
+		// lookup fails typed, and no network is touched.
 		afterEach(() => {
 			vi.unstubAllEnvs();
 			vi.resetModules();
-			vi.doUnmock("@changesets/get-github-info");
 		});
 
 		const warnUnderEnv = async (env: Record<string, string | undefined>): Promise<ReadonlyArray<unknown>> => {
 			vi.resetModules();
+			vi.stubEnv("GITHUB_TOKEN", undefined);
 			for (const [key, value] of Object.entries(env)) vi.stubEnv(key, value);
-			vi.doMock("@changesets/get-github-info", () => ({
-				getCommitInfo: vi.fn().mockRejectedValue(new Error("boom")),
-			}));
 			const { default: fns } = await import("../src/index.js");
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {

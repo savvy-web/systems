@@ -11,7 +11,7 @@ set -euo pipefail
 #
 # The hazard is NOT publishing: pnpm-workspace.yaml is never published, and a
 # published manifest carries registry ranges, with workspace:* transformed to
-# exact versions by the bundler. The real hazard is that a `file:../../`
+# exact versions by the package build. The real hazard is that a `file:../../`
 # override in pnpm-workspace.yaml's overrides block resolves only on THIS
 # machine -- every other clone, and any CI job that installs, fails to
 # resolve the dependency and breaks.
@@ -28,8 +28,8 @@ set -euo pipefail
 #   - a `file:`/`link:` override escaping the repo, found in
 #     pnpm-workspace.yaml's `overrides:` block, on any other branch: DENY.
 #     Only that block is scanned -- not pnpm-lock.yaml, whose link: paths are
-#     importer-relative and include the repo's own healthy internal linking
-#     strategy (root CLAUDE.md's dist/dev/pkg symlinks), which a naive scan
+#     importer-relative and include the repo's own healthy workspace links
+#     (each workspace package linked by its directory), which a naive scan
 #     over the lockfile would false-positive on for every clean checkout.
 #   - no override, and a downstream journal's last valid line is in a
 #     non-"unlinked" phase: allow, with a warning via additionalContext.
@@ -160,8 +160,7 @@ BRANCH=$(git -C "$PROJECT_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "
 # The lockfile's link: paths are importer-relative (a link:../../packages/...
 # entry resolves inside the repo from its importer but would look like an
 # escape if naively joined to the repo root) and include this repo's own
-# healthy dist/dev/pkg linking strategy, which false-positives on every
-# clean checkout (confirmed: 21 such lines in this repo's own lockfile).
+# healthy workspace links, which false-positive on every clean checkout.
 # The overrides block is where the dogfood protocol authors its links
 # (SKILL.md --init step 3), it is small, and its paths are root-relative.
 #

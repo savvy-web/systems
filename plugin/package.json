@@ -6,10 +6,9 @@
 	"license": "MIT",
 	"type": "module",
 	"scripts": {
+		"build": "node node_modules/pluginfinity/bin/pluginfinity.js build",
 		"build:check": "node node_modules/pluginfinity/bin/pluginfinity.js build --check",
-		"build:dev": "node node_modules/pluginfinity/bin/pluginfinity.js build",
-		"build:prod": "node node_modules/pluginfinity/bin/pluginfinity.js build",
-		"test:hooks": "bash __test__/run-tests.sh",
+		"test:hooks": "NODE_OPTIONS= bash __test__/run-tests.sh",
 		"validate": "node node_modules/pluginfinity/bin/pluginfinity.js validate"
 	},
 	"devDependencies": {

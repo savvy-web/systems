@@ -103,7 +103,7 @@ export interface TargetBinding {
  * The `dist/prod/targets.json` binding the bundler emits for the release action to consume.
  *
  * @remarks
- * Written by `@savvy-web/bundler`'s `--target prod` build. `groups` is the distinct
+ * Written by the prod build (`effected package build`, formerly `@savvy-web/bundler`'s `--target prod`). `groups` is the distinct
  * byte-variant build set; `targets` binds every declared registry target to one group.
  * `npm: true` + `github: true` collapse into one scoped-name group deployed to two
  * registries (one group, two targets).

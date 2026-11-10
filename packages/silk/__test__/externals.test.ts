@@ -59,7 +59,7 @@ const collectArtifacts = (dir: string): string[] => {
 };
 
 describe("built artifact externals", () => {
-	const targets = ["dist/prod/npm/pkg", "dist/dev/pkg"].map((rel) => ({
+	const targets = ["dist/prod/npm/pkg"].map((rel) => ({
 		rel,
 		files: collectArtifacts(join(PKG_ROOT, rel)),
 	}));
@@ -110,7 +110,7 @@ describe("published manifest covers silk-effects' required peers", () => {
 	// `kept` allowlist in savvy.build.ts, which filters the published manifest
 	// down. Adding to one alone is a no-op, which is how this shipped unnoticed.
 	// These assertions read the BUILT manifest, so they fail if either site drifts.
-	const builtManifest = join(PKG_ROOT, "dist/dev/pkg/package.json");
+	const builtManifest = join(PKG_ROOT, "dist/prod/npm/pkg/package.json");
 	const effectsManifest = join(PKG_ROOT, "../silk-effects/package.json");
 
 	const requiredPeers = Object.keys(
@@ -142,7 +142,7 @@ describe("silk-effects externalization", () => {
 	// nothing needs a CJS twin any more. These assertions pin both halves against the
 	// built output: no CJS artifact is emitted, and the entries that touch silk-effects
 	// do so through an external import rather than an inlined copy.
-	const targets = ["dist/prod/npm/pkg", "dist/dev/pkg"].map((rel) => ({
+	const targets = ["dist/prod/npm/pkg"].map((rel) => ({
 		rel,
 		files: collectArtifacts(join(PKG_ROOT, rel)),
 	}));
@@ -176,7 +176,7 @@ describe("carrier bins", () => {
 	// single direct dependency, no hoisting required. Each bin is a shim over the
 	// front end's `./main` export and imports NOTHING else — the shim files under
 	// `src/bin/` are the one sanctioned place silk imports `@savvy-web/cli` / `@savvy-web/mcp`.
-	const pkgDir = join(PKG_ROOT, "dist/dev/pkg");
+	const pkgDir = join(PKG_ROOT, "dist/prod/npm/pkg");
 	const manifest = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf-8")) as {
 		bin?: Record<string, string>;
 	};

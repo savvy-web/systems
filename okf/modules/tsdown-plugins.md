@@ -1,39 +1,41 @@
 ---
 type: Module
-status: draft
+status: deprecated
 title: "@savvy-web/tsdown-plugins"
 description: The interface-only plugin pack holding every build behavior @savvy-web/bundler orchestrates — entry detection, the build loop, dts emission, dual-format output, targets, exe, meta, config validation.
 kind: package
-resource: ../../packages/tsdown-plugins
+resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T18:12:30Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: tp-index
-    resource: ../../packages/tsdown-plugins/src/index.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/index.ts
   - id: tp-build
-    resource: ../../packages/tsdown-plugins/src/build
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/build
   - id: tp-dts
-    resource: ../../packages/tsdown-plugins/src/dts
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/dts
   - id: tp-meta
-    resource: ../../packages/tsdown-plugins/src/meta
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/meta
   - id: tp-og-image
-    resource: ../../packages/tsdown-plugins/src/meta/og-image.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/og-image.ts
   - id: tp-generate
-    resource: ../../packages/tsdown-plugins/src/meta/generate.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/generate.ts
   - id: tp-targets
-    resource: ../../packages/tsdown-plugins/src/targets
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/targets
   - id: tp-exe
-    resource: ../../packages/tsdown-plugins/src/exe
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/exe
   - id: tp-config-validation
-    resource: ../../packages/tsdown-plugins/src/config-validation
+    resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: da3476f1248c9a73
+    body: 45e87dc38ffde667
 ---
 
 # @savvy-web/tsdown-plugins
+
+> **Deprecated.** `@savvy-web/tsdown-plugins` is deleted from this repository with no final release; its published versions stay on npm. The plugin pack's role is now `@effected/plugin`'s — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 `@savvy-web/tsdown-plugins` is the building blocks; `@savvy-web/bundler` is
 the thin orchestrator over them (see [`modules/bundler.md`](bundler.md)).
@@ -110,7 +112,7 @@ copy.[^tp-build] The two AST readers in `src/dts/` (`relative-imports.ts`,
 `typescript` importers. The tsgo generator opens the dts-emit tsconfig as a
 TypeScript project, so `writeDtsEmitTsconfig` names the base canonically and
 restates its `files`/`include`/`exclude` as absolute canonical paths — the
-trap is [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md).
+trap is [`gotchas/tsgo-project-membership.md`](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/tsgo-project-membership.md) (archived).
 Declarations are rolled up **one entry at a time** rather than in one
 multi-entry build, because a shared chunk's content-hashed naming and split
 layout vary across otherwise byte-identical builds — determinism is a
@@ -164,7 +166,7 @@ declarations directory — dropping every source-less mapping segment
 (`scrubDeclarationMapsUnder`, `src/meta/scrub-declaration-maps.ts`, over
 `@jridgewell/sourcemap-codec`), because API Extractor's `SourceMapper`
 resolves such a segment to a directory and dies with `EISDIR`; see
-[`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md).[^tp-generate]
+[`gotchas/sourceless-declaration-map-segments.md`](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/sourceless-declaration-map-segments.md) (archived).[^tp-generate]
 For each entry it then runs the extractor **twice**
 when the build emitted a separate declarations pass: Run A reads the
 bundled `pkg/<entry>.d.ts` and produces the shipped `.api.json` (stable
@@ -283,8 +285,6 @@ any build work on every target path.
 
 - [`modules/bundler.md`](bundler.md)
 - [`decisions/typescript-7-1-dts-api.md`](../decisions/typescript-7-1-dts-api.md)
-- [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md)
-- [`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md)
 - [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 - [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)
 - [`decisions/release-filter-placement.md`](../decisions/release-filter-placement.md)

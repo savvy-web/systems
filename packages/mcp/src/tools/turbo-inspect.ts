@@ -73,7 +73,7 @@ export const turboInspect = (
 		const inspector = yield* Turbo.TurboInspector;
 		switch (args.mode) {
 			case "cache": {
-				const result = yield* inspector.diagnoseCache(args.task ?? "build:dev", root);
+				const result = yield* inspector.diagnoseCache(args.task ?? "build", root);
 				return { mode: "cache", result } as TurboInspectResultType;
 			}
 			case "graph": {
@@ -90,9 +90,7 @@ export const turboInspect = (
 /** Wire parameters for `turbo_inspect`. */
 export const TurboInspectParams = Schema.Struct({
 	mode: Schema.Literals(["cache", "graph", "affected"]).annotate({ description: "Which inspection to run." }),
-	task: Schema.optionalKey(
-		Schema.String.annotate({ description: "Task name (defaults to build:dev for cache/graph)." }),
-	),
+	task: Schema.optionalKey(Schema.String.annotate({ description: "Task name (defaults to build for cache/graph)." })),
 	base: Schema.optionalKey(Schema.String.annotate({ description: "Base git ref for affected mode." })),
 	cwd: Schema.optionalKey(Schema.String.annotate({ description: "Directory to resolve the workspace root from." })),
 });

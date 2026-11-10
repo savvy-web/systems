@@ -1,27 +1,29 @@
+import { ChangelogInfo, CommitChangelogInfo } from "@effected/github";
+import { Effect, Option } from "effect";
 import { describe, expect, it, vi } from "vitest";
 
 import changelogFunctions, { makeChangelogFunctions } from "../../src/changesets/changelog/index.js";
 
-// Mock the GitHub API to avoid real network calls
-vi.mock("@changesets/get-github-info", () => ({
-	getCommitInfo: vi.fn().mockResolvedValue({
-		commit: {
-			sha: "abc1234567890",
-			url: "https://github.com/owner/repo/commit/abc1234567890",
-			markdownLink: "[`abc1234`](https://github.com/owner/repo/commit/abc1234567890)",
-		},
-		author: {
-			login: "testuser",
-			url: "https://github.com/testuser",
-			markdownLink: "[@testuser](https://github.com/testuser)",
-		},
-		pull: {
-			number: 99,
-			url: "https://github.com/owner/repo/pull/99",
-			markdownLink: "[#99](https://github.com/owner/repo/pull/99)",
-		},
-	}),
-}));
+// The kit's ChangelogInfo double stands in for the GitHub API, so no network
+// is touched. A build without `changelogInfo` has no client at all: every
+// lookup fails typed, which is the warning path the log-mode tests observe.
+const resolving = ChangelogInfo.layerTest({
+	commit: () =>
+		Effect.succeed(
+			Option.some(
+				CommitChangelogInfo.make({
+					user: Option.some("testuser"),
+					pull: Option.some(99),
+					links: {
+						commit: "[`abc1234`](https://github.com/owner/repo/commit/abc1234567890)",
+						pull: Option.some("[#99](https://github.com/owner/repo/pull/99)"),
+						user: Option.some("[@testuser](https://github.com/testuser)"),
+					},
+				}),
+			),
+		),
+});
+const withGitHub = makeChangelogFunctions({ changelogInfo: resolving });
 
 const OPTIONS = { repo: "owner/repo" };
 
@@ -35,7 +37,7 @@ describe("changelog/index (export boundary)", () => {
 	});
 
 	it("getReleaseLine returns a formatted string", async () => {
-		const result = await changelogFunctions.getReleaseLine(
+		const result = await withGitHub.getReleaseLine(
 			{
 				id: "test-1",
 				summary: "feat: add new feature",
@@ -47,10 +49,12 @@ describe("changelog/index (export boundary)", () => {
 		);
 		expect(typeof result).toBe("string");
 		expect(result).toContain("add new feature");
+		// attribution comes from the supplied ChangelogInfo
+		expect(result).toContain("[#99](https://github.com/owner/repo/pull/99)");
 	});
 
 	it("getDependencyReleaseLine returns a formatted string", async () => {
-		const result = await changelogFunctions.getDependencyReleaseLine(
+		const result = await withGitHub.getDependencyReleaseLine(
 			[
 				{
 					id: "dep-1",
@@ -140,8 +144,6 @@ describe("changelog/index (export boundary)", () => {
 		});
 
 		it("the default export is the no-option build: a failed lookup warns plainly on stderr", async () => {
-			const { getCommitInfo } = await import("@changesets/get-github-info");
-			vi.mocked(getCommitInfo).mockRejectedValueOnce(new Error("boom"));
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
 				const result = await changelogFunctions.getReleaseLine(
@@ -164,11 +166,8 @@ describe("changelog/index (export boundary)", () => {
 		});
 
 		it("provides the requested log mode to the program", async () => {
-			// A rejected GitHub lookup is the one path that warns: it must be
+			// A failed GitHub lookup (no client configured) is the one path that warns: it must be
 			// discarded in silent mode and annotated in github mode.
-			const { getCommitInfo } = await import("@changesets/get-github-info");
-			const mocked = vi.mocked(getCommitInfo);
-			mocked.mockRejectedValueOnce(new Error("boom"));
 			const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 			try {
 				await makeChangelogFunctions({ logMode: "silent" }).getReleaseLine(
@@ -183,7 +182,6 @@ describe("changelog/index (export boundary)", () => {
 				);
 				expect(warn).not.toHaveBeenCalled();
 
-				mocked.mockRejectedValueOnce(new Error("boom"));
 				await makeChangelogFunctions({ logMode: "github" }).getReleaseLine(
 					{
 						id: "github",

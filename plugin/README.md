@@ -26,13 +26,13 @@ Requires a repository that uses `@savvy-web/silk` (it provides the `savvy` and `
 
 ## What you get
 
-- **Skills.** `/silk:changeset` (create, squash, list, preview and check changesets), `/silk:changeset-style`, `/silk:changeset-config`, `/silk:commit-create` (the commit-message contract), `/silk:pr-body` (pull-request descriptions), `/silk:build`, `/silk:tsdoc`, `/silk:turbo`, `/silk:repos` (vendored reference repos) and `/silk:dogfood` (cross-repo dogfooding).
-- **Agents.** `changeset-manager` writes and reconciles changesets, `turborepo` diagnoses Turborepo caching and task graphs, and `tsdoctor` drives API Extractor and TSDoc diagnostics to zero.
+- **Skills.** `/silk:changeset` (create, squash, list, preview and check changesets), `/silk:changeset-style`, `/silk:changeset-config`, `/silk:commit-create` (the commit-message contract), `/silk:pr-body` (pull-request descriptions), `/silk:turbo`, `/silk:repos` (vendored reference repos) and `/silk:dogfood` (cross-repo dogfooding).
+- **Agents.** `changeset-manager` writes and reconciles changesets, and `turborepo` diagnoses Turborepo caching and task graphs.
 - **MCP tools.** The `savvy-mcp` server gives structured answers about the workspace: layout, Turborepo state, Biome diagnostics, changesets, dependency changesets and vendored repos.
 - **Biome language server.** Lint and format diagnostics on the files you edit.
 - **Hooks.** A session-start orientation, guards that check commit messages, block direct Biome runs and writes into read-only vendored repos, block pushes while local `file:` overrides are linked, and validate changeset files as you write them.
 
-Claude Code also gets three background monitors (build diagnostics, dogfood mail, vendored-repo drift) and the `/silk:it2` iTerm2 pane skill, plus advisory nudges and an end-of-turn reminder when a branch has no changeset. Copilot has no equivalent for these. On Copilot the agent passes the project directory to each MCP tool, because the server cannot detect it there.
+Claude Code also gets two background monitors (dogfood mail, vendored-repo drift) and the `/silk:it2` iTerm2 pane skill, plus advisory nudges and an end-of-turn reminder when a branch has no changeset. Copilot has no equivalent for these. On Copilot the agent passes the project directory to each MCP tool, because the server cannot detect it there.
 
 ## Contributing
 

@@ -38,12 +38,22 @@ silk_file_setup() {
 	[[ "$ctx" == *"changeset_inspect"* ]]
 	[[ "$ctx" == *"/silk:commit-create"* ]]
 	[[ "$ctx" == *"/silk:dogfood"* ]]
+	# Builds belong to the effected kit's plugin now: the build and tsdoc
+	# skills, the tsdoctor agent and the tsdoc-diagnostics monitor are gone.
+	[[ "$ctx" == *"two domain agents"* ]]
+	[[ "$ctx" == *"changeset-manager, turborepo — scope"* ]]
+	[[ "$ctx" != *"tsdoctor"* ]]
+	[[ "$ctx" != *"tsdoc-diagnostics"* ]]
+	[[ "$ctx" != *"/silk:build"* ]]
+	[[ "$ctx" != *"/silk:tsdoc"* ]]
+	[[ "$ctx" != *"issues.json"* ]]
 	# The MCP prefix is the host's own (hook_tool_prefix savvy-mcp); the monitors
 	# and the it2 skill are named only where the build ships them (hook_has),
 	# which is Claude Code only.
 	if [ "$SILK_TARGET" = claude ]; then
 		[[ "$ctx" == *'prefix="mcp__plugin_silk_savvy-mcp__"'* ]]
 		[[ "$ctx" == *"dogfood-mail"* ]]
+		[[ "$ctx" == *"gitmodules-drift"* ]]
 		[[ "$ctx" == *"/silk:it2"* ]]
 	else
 		[[ "$ctx" == *'prefix="savvy-mcp-"'* ]]

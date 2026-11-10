@@ -1,26 +1,34 @@
 /**
- * `ReleasePlanner` service — drive the genuine changesets release engine to
- * compute a plan, render a read-only preview, or natively apply a release.
+ * `ReleasePlanner` service — compute a release plan, render a read-only
+ * preview, or natively apply a release, over `\@effected/changesets`.
  *
  * @remarks
- * `preview` and `apply` both run the real `@changesets/apply-release-plan`;
- * `preview` redirects every write into a throwaway temp directory by handing
- * the engine a `@manypkg`-shaped `Packages` object whose `dir`s point at temp,
- * then reads the generated CHANGELOG blocks back. No changesets-internal logic
- * (e.g. `getChangelogEntry`) is re-implemented.
+ * The kit plans and computes; this service does the IO. `ReleasePlan.readWithContext`
+ * plans the workspace containing the given directory from its root's config,
+ * pending changesets and `pre.json`; `ReleasePlan.edits` computes everything `changeset
+ * version` writes as data; `Changelog.entry` renders each release's block
+ * through the changelog module this service loads. `preview` computes and
+ * renders without writing anything; `apply` computes, then writes.
  *
  */
 
-import { dirname, isAbsolute, join, relative } from "node:path";
-import { applyReleasePlan } from "@changesets/apply-release-plan";
-import { assembleReleasePlan } from "@changesets/assemble-release-plan";
-import { readConfig } from "@changesets/config";
-import { getReleasePlan } from "@changesets/get-release-plan";
-import { readPreState } from "@changesets/pre";
-import { readChangesets } from "@changesets/read";
-import type { Config, Packages, ReleasePlan } from "@changesets/types";
-import { getPackages } from "@manypkg/get-packages";
-import { Context, Data, Effect, FileSystem, Layer } from "effect";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+import type {
+	ChangelogFunctions,
+	ManifestEdit,
+	PendingChangeset,
+	PlannedRelease,
+	ReleaseEdits,
+	ReleaseSnapshot,
+} from "@effected/changesets";
+import { Changelog, ChangesetConfig, ReleasePlan } from "@effected/changesets";
+import { Git } from "@effected/git";
+import { JsoncEdit, JsoncFormattingOptions, JsoncModifier } from "@effected/jsonc";
+import type { WorkspacePackage } from "@effected/workspaces";
+import { WorkspaceDiscovery } from "@effected/workspaces";
+import { Clock, Context, Data, Effect, FileSystem, Layer, Option, Path, Result } from "effect";
+import { resolve as resolveImport } from "import-meta-resolve";
 import { ChangelogTransformer } from "../api/transformer.js";
 import { ReleasePlanError } from "../errors.js";
 import type {
@@ -28,7 +36,7 @@ import type {
 	AppliedReleaseEntry,
 	BumpType,
 	ChangesetPreview,
-	PendingChangeset,
+	PendingChangeset as PreviewChangeset,
 	PreviewRelease,
 	VersionFileUpdateRecord,
 } from "../schemas/release-plan.js";
@@ -38,45 +46,31 @@ import { ConfigInspector } from "./config-inspector.js";
 import type { MaintenanceReason } from "./maintenance-reason.js";
 import { deriveMaintenanceReason } from "./maintenance-reason.js";
 
+type Phase = "plan" | "preview" | "apply";
+
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 /**
- * Read the changesets config, surfacing non-throwing `readConfig` errors as a
- * thrown `Error` so callers inside `Effect.tryPromise` land on the existing
- * `ReleasePlanError` mapping. Warnings are returned alongside the config so
- * the caller can log them via the Effect runtime rather than console output.
- */
-async function loadConfig(root: string, packages: Packages): Promise<{ config: Config; warnings: string[] }> {
-	const configResult = await readConfig(root, packages);
-	if (configResult.config === undefined) {
-		throw new Error(`Invalid changeset config:\n${configResult.errors.join("\n")}`);
-	}
-	return { config: configResult.config, warnings: configResult.warnings };
-}
-
-/**
  * Per-call `changeset version --snapshot` parity options, forwarded to
- * `@changesets/assemble-release-plan`. Mirrors the CLI's `--snapshot [tag]`
- * flag plus its `--snapshot-prerelease-template` override.
+ * `\@effected/changesets`' `ReleasePlan.readWithContext` as its snapshot input.
+ * Mirrors the CLI's `--snapshot [tag]` flag plus its
+ * `--snapshot-prerelease-template` override.
  *
  * @remarks
- * Setting this on either `apply` or `preview` routes plan construction through
- * `readChangesets`/`readPreState`/`assembleReleasePlan` instead of
- * `getReleasePlan` — the latter has no snapshot parameter. It is a typed
- * `ReleasePlanError` (not a defect) when: the workspace is in `pre` mode (CLI
- * parity — snapshot releases are refused there), or the resolved
- * `prereleaseTemplate` references a placeholder with no value (e.g. `{commit}`
- * with no `commit` supplied, or a template omitting `{tag}` while a `tag` is
- * given) — `assembleReleasePlan` throws synchronously on those, and this
- * option surfaces the throw as `ReleasePlanError` rather than letting it
- * escape as an uncaught defect.
+ * It is a typed `ReleasePlanError` (not a defect) when: the workspace is in
+ * `pre` mode (CLI parity — snapshot releases are refused there), or the
+ * resolved `prereleaseTemplate` references a placeholder with no value (e.g.
+ * `{commit}` with no `commit` supplied, or a template omitting `{tag}` while a
+ * `tag` is given). The `{timestamp}`/`{datetime}` placeholders are taken from
+ * the Effect `Clock` at the moment of the call.
  *
  * @public
  */
 export interface SnapshotOptions {
 	/**
 	 * The snapshot tag, e.g. `"next"` — like the bare `changeset version
-	 * --snapshot <tag>` argument. Omit it or pass `""` for the bare `--snapshot` flag; no
+	 * --snapshot <tag>` argument. Omit it or pass `""` for the bare `--snapshot`
+	 * flag (an empty tag is no tag, and dependents are still exact-pinned); no
 	 * boundary validation is performed here (a caller-side check for reserved
 	 * values like `"latest"` or `""` is the caller's responsibility).
 	 */
@@ -98,15 +92,17 @@ export interface SnapshotOptions {
  * to {@link ApplyOptions.onStep} as it lands.
  *
  * @remarks
- * `EngineApplied` fires once the changesets engine has bumped versions,
- * written and transformed CHANGELOGs, and deleted consumed changesets.
+ * `EngineApplied` fires once the release edits have landed: versions bumped,
+ * dependency ranges rewritten, CHANGELOGs written and transformed, and
+ * consumed changesets deleted (or, in pre mode, moved under
+ * `.changeset/pre/`).
  * `VersionFilesUpdated` fires after the versionFiles phase, only when it
  * updated at least one file. A `dryRun` writes nothing and reports no steps.
  *
  * @public
  */
 export type ApplyStep = Data.TaggedEnum<{
-	/** The engine phase completed: `touchedFiles` were written for `releases`. */
+	/** The release edits landed: `touchedFiles` were written for `releases`. */
 	readonly EngineApplied: {
 		readonly touchedFiles: ReadonlyArray<string>;
 		readonly releases: ReadonlyArray<AppliedReleaseEntry>;
@@ -128,10 +124,11 @@ export interface ApplyOptions<R = never> {
 	/** Compute and report the release without writing anything. */
 	readonly dryRun?: boolean;
 	/**
-	 * Map configured changelog ids to absolute module paths. When set,
-	 * `config.changelog[0]` must be a key of this map (rewritten before the
-	 * engine call; unmapped ids fail) and the engine's `format` integration
-	 * is disabled — callers in no-`node_modules` contexts own formatting.
+	 * Map configured changelog ids to absolute module paths. When set, the
+	 * configured id (a bare `changelog` string, or a pair's first element) must
+	 * be a key of this map and the mapped path is loaded instead; an unmapped
+	 * id fails typed. For no-`node_modules` contexts, where the id cannot be
+	 * resolved. No formatter is ever run over the CHANGELOG either way.
 	 */
 	readonly changelogModules?: Readonly<Record<string, string>>;
 	/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
@@ -146,7 +143,10 @@ export interface ApplyOptions<R = never> {
 
 /** The `ReleasePlanner` service surface. @public */
 export interface ReleasePlannerShape {
-	/** Compute the in-memory release plan (read-only). */
+	/**
+	 * Compute the in-memory release plan (read-only): `\@effected/changesets`'
+	 * `ReleasePlan`. `root` may be the workspace root or any directory inside it.
+	 */
 	readonly plan: (root: string) => Effect.Effect<ReleasePlan, ReleasePlanError>;
 	/**
 	 * Render a non-destructive preview of the next release.
@@ -159,10 +159,11 @@ export interface ReleasePlannerShape {
 		root: string,
 		options?: {
 			/**
-			 * Map configured changelog ids to absolute module paths. When set,
-			 * `config.changelog[0]` must be a key of this map (rewritten before the
-			 * engine call; unmapped ids fail) and the engine's `format` integration
-			 * is disabled — callers in no-`node_modules` contexts own formatting.
+			 * Map configured changelog ids to absolute module paths. When set, the
+			 * configured id (a bare `changelog` string, or a pair's first element) must
+			 * be a key of this map and the mapped path is loaded instead; an unmapped
+			 * id fails typed. For no-`node_modules` contexts, where the id cannot be
+			 * resolved. No formatter is ever run over the CHANGELOG either way.
 			 */
 			readonly changelogModules?: Readonly<Record<string, string>>;
 			/** `changeset version --snapshot` parity. See {@link SnapshotOptions}. */
@@ -178,38 +179,53 @@ export interface ReleasePlannerShape {
 
 /** Effect service tag for the release planner. @public */
 export class ReleasePlanner extends Context.Service<ReleasePlanner, ReleasePlannerShape>()("ReleasePlanner") {
-	/** Production layer. Requires {@link ConfigInspector} (used by `apply`) and `FileSystem`. @public */
-	static readonly layer: Layer.Layer<ReleasePlanner, never, ConfigInspector | FileSystem.FileSystem> = Layer.effect(
+	/**
+	 * Production layer. Requires {@link ConfigInspector} (used by `apply`), the
+	 * platform `FileSystem` and `Path`, `\@effected/workspaces`'
+	 * `WorkspaceDiscovery` (each call lists the packages of the workspace it is
+	 * given, refreshed first), and `\@effected/git`'s `Git` (the commit that
+	 * added each changeset, for the changelog module).
+	 *
+	 * @public
+	 */
+	static readonly layer: Layer.Layer<
+		ReleasePlanner,
+		never,
+		ConfigInspector | FileSystem.FileSystem | Path.Path | WorkspaceDiscovery | Git
+	> = Layer.effect(
 		this,
 		Effect.gen(function* () {
-			const inspector = yield* ConfigInspector;
-			const fs = yield* FileSystem.FileSystem;
-			return makeShape(inspector, fs);
+			const deps: Deps = {
+				inspector: yield* ConfigInspector,
+				fs: yield* FileSystem.FileSystem,
+				path: yield* Path.Path,
+				discovery: yield* WorkspaceDiscovery,
+				git: yield* Git,
+			};
+			return makeShape(deps);
 		}),
 	);
 }
 
-/** Build the service shape over a resolved {@link ConfigInspector} and {@link FileSystem.FileSystem}. */
-function makeShape(inspector: ConfigInspectorShape, fs: FileSystem.FileSystem): ReleasePlannerShape {
+/** The services one built planner holds. */
+interface Deps {
+	readonly inspector: ConfigInspectorShape;
+	readonly fs: FileSystem.FileSystem;
+	readonly path: Path.Path;
+	readonly discovery: WorkspaceDiscovery["Service"];
+	readonly git: Git["Service"];
+}
+
+/** Build the service shape over its resolved dependencies. */
+function makeShape(deps: Deps): ReleasePlannerShape {
 	const plan: ReleasePlannerShape["plan"] = (root) =>
-		Effect.tryPromise({
-			try: () => getReleasePlan(root),
-			catch: (e) => new ReleasePlanError({ phase: "plan", reason: errMsg(e) }),
-		});
+		readPlan(deps, root, "plan", undefined).pipe(Effect.map((read) => read.plan));
 
 	const preview: ReleasePlannerShape["preview"] = (root, options) =>
-		previewEffect(root, options?.changelogModules, options?.snapshot, fs);
+		previewEffect(deps, root, options?.changelogModules, options?.snapshot);
 
 	const apply: ReleasePlannerShape["apply"] = (root, options) =>
-		applyEffect(
-			root,
-			options?.dryRun ?? false,
-			options?.changelogModules,
-			options?.snapshot,
-			options?.onStep,
-			inspector,
-			fs,
-		);
+		applyEffect(deps, root, options?.dryRun ?? false, options?.changelogModules, options?.snapshot, options?.onStep);
 
 	return { plan, preview, apply };
 }
@@ -225,8 +241,7 @@ export function makeReleasePlannerTest(fixed: {
 	readonly preview?: ChangesetPreview;
 	readonly apply?: AppliedRelease;
 }): Layer.Layer<ReleasePlanner> {
-	const fail = (phase: "plan" | "preview" | "apply") =>
-		Effect.fail(new ReleasePlanError({ phase, reason: "not provided in test layer" }));
+	const fail = (phase: Phase) => Effect.fail(new ReleasePlanError({ phase, reason: "not provided in test layer" }));
 	const shape: ReleasePlannerShape = {
 		plan: () => (fixed.plan ? Effect.succeed(fixed.plan) : fail("plan")),
 		preview: () => (fixed.preview ? Effect.succeed(fixed.preview) : fail("preview")),
@@ -235,113 +250,50 @@ export function makeReleasePlannerTest(fixed: {
 	return Layer.succeed(ReleasePlanner, shape);
 }
 
+/** The configured changelog module id and its options, or `undefined` for `changelog: false`. */
+function changelogSpec(config: ChangesetConfig): { readonly id: string; readonly options: unknown } | undefined {
+	const changelog = config.changelog;
+	if (changelog === false) return undefined;
+	return typeof changelog === "string" ? { id: changelog, options: null } : { id: changelog[0], options: changelog[1] };
+}
+
 /**
- * Rewrite the engine config for a caller that supplies its own changelog module
- * paths: `config.changelog[0]` becomes the mapped absolute path and the engine's
- * `format` integration is switched off.
+ * Rewrite the config for a caller that supplies its own changelog module
+ * paths: the configured id becomes its mapped absolute path, as a
+ * `[path, options]` pair (a bare id has `null` options, as
+ * `\@changesets/config` normalises it).
  *
  * @remarks
- * Shared by `preview` and `apply` — both hand the result to
- * `applyReleasePlan`, and both are called from no-`node_modules` contexts where
- * neither the configured id nor a formatter can be resolved. An unmapped id
- * fails typed (naming the supported keys) rather than reaching
- * `import-meta-resolve`, which reports it as `expected to be defined`.
+ * Shared by `preview` and `apply` — both are called from no-`node_modules`
+ * contexts where the configured id cannot be resolved. An unmapped id fails
+ * typed (naming the supported keys) rather than reaching the resolver.
  *
  * Exported for tests only — not re-exported from the package index, so it is
- * not public API. Driving it directly is the only deterministic way to assert
- * the `format: false` half: every formatter the changesets config accepts
- * either shells out through `npx` (network) or to an ambient binary, so a
- * fixture that names one passes or fails on what the machine happens to have
- * installed rather than on this rewrite.
+ * not public API.
  *
  * @internal
  */
 export function withChangelogModules(
-	config: Config,
+	config: ChangesetConfig,
 	changelogModules: Readonly<Record<string, string>>,
 	phase: "preview" | "apply",
-): Effect.Effect<Config, ReleasePlanError> {
-	const unformatted: Config = { ...config, format: false };
-	if (!Array.isArray(config.changelog)) return Effect.succeed(unformatted);
-	const configuredId = config.changelog[0];
+): Effect.Effect<ChangesetConfig, ReleasePlanError> {
+	const spec = changelogSpec(config);
+	if (spec === undefined) return Effect.succeed(config);
 	// Own-property check, not `map[id] === undefined`: an id naming an
 	// `Object.prototype` member (`toString`, `constructor`) otherwise reads back
-	// an inherited function, skips this typed error and hands the engine a
+	// an inherited function, skips this typed error and hands the loader a
 	// non-string where it expects a module specifier.
-	if (!Object.hasOwn(changelogModules, configuredId)) {
+	if (!Object.hasOwn(changelogModules, spec.id)) {
 		const supported = Object.keys(changelogModules).join(", ");
 		return Effect.fail(
 			new ReleasePlanError({
 				phase,
-				reason: `changelog id "${configuredId}" is not in changelogModules (supported: ${supported})`,
+				reason: `changelog id "${spec.id}" is not in changelogModules (supported: ${supported})`,
 			}),
 		);
 	}
-	return Effect.succeed({ ...unformatted, changelog: [changelogModules[configuredId], config.changelog[1]] });
-}
-
-/**
- * Assemble a release plan for the `snapshot` path.
- *
- * @remarks
- * `getReleasePlan` (`@changesets/get-release-plan`) has no snapshot parameter,
- * so the snapshot path reads changesets and pre-state directly and calls
- * `@changesets/assemble-release-plan`'s `assembleReleasePlan` — the same
- * function `changeset version --snapshot` itself calls — rather than
- * reimplementing any version math. Mirrors
- * `@changesets/cli`'s `version.mjs`: `releaseConfig` overlays `snapshot`
- * overrides and forces `commit: false`, `pre` mode is refused before the
- * engine call, and a synchronous throw from `assembleReleasePlan` (bad
- * placeholder templates) is caught and surfaced typed.
- *
- * @internal
- */
-function assembleSnapshotPlan(
-	packages: Packages,
-	config: Config,
-	snapshot: SnapshotOptions,
-	phase: "preview" | "apply",
-): Effect.Effect<
-	{ readonly plan: ReleasePlan; readonly releaseConfig: Config; readonly snapshotArg: string | true },
-	ReleasePlanError
-> {
-	const releaseConfig: Config = {
-		...config,
-		snapshot: {
-			...config.snapshot,
-			...(snapshot.useCalculatedVersion !== undefined ? { useCalculatedVersion: snapshot.useCalculatedVersion } : {}),
-			...(snapshot.prereleaseTemplate !== undefined ? { prereleaseTemplate: snapshot.prereleaseTemplate } : {}),
-		},
-		commit: false,
-	};
-	// An empty tag is the bare `--snapshot` flag: the engine reads "" as a
-	// defined-but-empty placeholder, and `applyReleasePlan` reads it as "not a
-	// snapshot" and would write caret ranges instead of exact pins.
-	const tag = snapshot.tag || undefined;
-	return Effect.gen(function* () {
-		const { changesets, preState } = yield* Effect.tryPromise({
-			try: async () => {
-				const [changesets, preState] = await Promise.all([
-					readChangesets(packages.rootDir),
-					readPreState(packages.rootDir),
-				]);
-				return { changesets, preState };
-			},
-			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
-		});
-		if (preState?.mode === "pre") {
-			return yield* Effect.fail(new ReleasePlanError({ phase, reason: "Snapshot release is not allowed in pre mode" }));
-		}
-		const plan = yield* Effect.try({
-			try: () =>
-				assembleReleasePlan(changesets, packages, releaseConfig, preState, {
-					tag,
-					commit: snapshot.commit,
-				}),
-			catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
-		});
-		return { plan, releaseConfig, snapshotArg: tag ?? true };
-	});
+	return Effect.succeed(ChangesetConfig.make({ ...config, changelog: [changelogModules[spec.id], spec.options] }));
 }
 
 /**
@@ -364,21 +316,20 @@ export function extractVersionBlock(changelog: string, version: string): string 
 }
 
 /**
- * Read the `thanks` changelog option from the changesets config tuple
+ * Read the `thanks` changelog option from the changesets config pair
  * (`"changelog": ["@savvy-web/changelog", { "thanks": false }]`), if set.
  * A missing or non-boolean value returns `undefined` so the transformer's
  * default (`true`) applies.
  */
-function thanksOption(config: Config): boolean | undefined {
-	if (!Array.isArray(config.changelog)) return undefined;
-	const opts: unknown = config.changelog[1];
+function thanksOption(config: ChangesetConfig): boolean | undefined {
+	const opts = changelogSpec(config)?.options;
 	if (typeof opts !== "object" || opts === null) return undefined;
 	const thanks = (opts as { thanks?: unknown }).thanks;
 	return typeof thanks === "boolean" ? thanks : undefined;
 }
 
 /** Maintenance reasons for every changeset-less release in the plan, keyed by package name. */
-function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, MaintenanceReason> {
+function maintenanceReasons(plan: ReleasePlan, config: ChangesetConfig): Map<string, MaintenanceReason> {
 	const reasons = new Map<string, MaintenanceReason>();
 	for (const r of plan.releases) {
 		if (r.type === "none") continue;
@@ -388,170 +339,296 @@ function maintenanceReasons(plan: ReleasePlan, config: Config): Map<string, Main
 	return reasons;
 }
 
+/** The workspace one call plans: its root and every package, the root included. */
+interface LoadedWorkspace {
+	/** The workspace root the kit climbed to, whichever directory inside it the caller named. */
+	readonly root: string;
+	/** Every package, the workspace root included — what `ReleasePlan.edits` and `Changelog.entry` take. */
+	readonly packages: ReadonlyArray<WorkspacePackage>;
+}
+
+/** What one read of the workspace yields. */
+interface ReadPlan {
+	readonly workspace: LoadedWorkspace;
+	readonly config: ChangesetConfig;
+	readonly plan: ReleasePlan;
+}
+
+/** The kit's snapshot input for a call's {@link SnapshotOptions}, timestamped from the `Clock`. */
+function kitSnapshot(snapshot: SnapshotOptions): Effect.Effect<ReleaseSnapshot> {
+	return Effect.map(Clock.currentTimeMillis, (now) => ({
+		tag: snapshot.tag,
+		commit: snapshot.commit,
+		useCalculatedVersion: snapshot.useCalculatedVersion,
+		prereleaseTemplate: snapshot.prereleaseTemplate,
+		timestamp: new Date(now),
+	}));
+}
+
+/** Map a planning failure onto the phase's {@link ReleasePlanError}, keeping this service's pre-mode wording. */
+const toPlanError =
+	(phase: Phase) =>
+	(error: unknown): ReleasePlanError => {
+		if (error instanceof ReleasePlanError) return error;
+		if (typeof error === "object" && error !== null && (error as { _tag?: unknown })._tag === "SnapshotPreModeError") {
+			return new ReleasePlanError({ phase, reason: "Snapshot release is not allowed in pre mode" });
+		}
+		return new ReleasePlanError({ phase, reason: errMsg(error) });
+	};
+
 /**
- * Render a non-destructive preview by redirecting every write into a
- * scope-managed temp directory (cleaned up automatically when the scope
- * closes) and reading the generated CHANGELOG blocks back.
+ * Read the workspace containing `dir` and plan it with
+ * `ReleasePlan.readWithContext`, which climbs to the workspace root (or the
+ * lone package) and reads the config, pending changesets and `pre.json` there.
+ *
+ * @remarks
+ * `WorkspaceDiscovery` memoizes per root for the layer's lifetime, so a
+ * long-lived host (savvy-mcp) would otherwise plan against the manifests of
+ * its first call — including the versions an earlier `apply` has since
+ * bumped. Each call drops that root's memo first (savvy-web/systems#715).
+ */
+function readPlan(
+	deps: Deps,
+	dir: string,
+	phase: Phase,
+	snapshot: SnapshotOptions | undefined,
+): Effect.Effect<ReadPlan, ReleasePlanError> {
+	return Effect.gen(function* () {
+		yield* deps.discovery.refreshIn(dir).pipe(Effect.ignore);
+		const snap = snapshot === undefined ? undefined : yield* kitSnapshot(snapshot);
+		const context = yield* ReleasePlan.readWithContext(dir, snap === undefined ? undefined : { snapshot: snap });
+		return {
+			workspace: { root: context.root, packages: context.packages },
+			config: context.config,
+			plan: context.plan,
+		};
+	}).pipe(
+		Effect.provideService(FileSystem.FileSystem, deps.fs),
+		Effect.provideService(Path.Path, deps.path),
+		Effect.provideService(WorkspaceDiscovery, deps.discovery),
+		Effect.mapError(toPlanError(phase)),
+	);
+}
+
+/** `ReleasePlan.edits` for the plan, every workspace package included, failing typed. */
+function computeEdits(read: ReadPlan, phase: Phase): Effect.Effect<ReleaseEdits, ReleasePlanError> {
+	return Effect.fromResult(
+		ReleasePlan.edits(read.plan, { packages: read.workspace.packages, config: read.config }),
+	).pipe(Effect.mapError(toPlanError(phase)));
+}
+
+/**
+ * Load the changelog module the config names: `Option.none()` for
+ * `changelog: false`.
+ *
+ * @remarks
+ * Resolution matches `\@changesets/apply-release-plan`: the id is resolved
+ * with `import-meta-resolve` from the workspace's `.changeset/` directory,
+ * then, failing that, from this module's own location, and the module's
+ * default export is unwrapped (twice, for a CJS-wrapped ESM default) to the
+ * object holding `getReleaseLine` and `getDependencyReleaseLine`.
+ */
+function loadChangelogFunctions(
+	config: ChangesetConfig,
+	root: string,
+	phase: Phase,
+): Effect.Effect<Option.Option<ChangelogFunctions>, ReleasePlanError> {
+	const spec = changelogSpec(config);
+	if (spec === undefined) return Effect.succeed(Option.none());
+	return Effect.tryPromise({
+		try: async () => {
+			let url: string;
+			try {
+				url = resolveImport(spec.id, pathToFileURL(join(root, ".changeset", "x.mjs")).href);
+			} catch {
+				url = resolveImport(spec.id, import.meta.url);
+			}
+			let candidate = (await import(url)) as Record<string, unknown>;
+			if (candidate.default) {
+				candidate = candidate.default as Record<string, unknown>;
+				if (candidate.default) candidate = candidate.default as Record<string, unknown>;
+			}
+			if (typeof candidate.getReleaseLine !== "function" || typeof candidate.getDependencyReleaseLine !== "function") {
+				throw new Error(`Could not resolve changelog generation functions from "${spec.id}"`);
+			}
+			return Option.some(candidate as unknown as ChangelogFunctions);
+		},
+		catch: (e) => new ReleasePlanError({ phase, reason: errMsg(e) }),
+	});
+}
+
+/**
+ * The commit that added each changeset, keyed by its `file`, as
+ * `changeset version` finds them: `Git.commitsThatAdd` over
+ * `.changeset/<file>`. A changeset git knows nothing about, a root outside a
+ * repository, or a shallow clone whose boundary hides the adding commit gives
+ * no entry, so the module gets no `commit` rather than the boundary commit.
+ * Only `apply` deepens a shallow clone (as `changeset version` does); a
+ * preview never fetches.
+ */
+function changesetCommits(
+	deps: Deps,
+	root: string,
+	changesets: ReadonlyArray<PendingChangeset>,
+	phase: Phase,
+): Effect.Effect<ReadonlyMap<string, string>> {
+	if (changesets.length === 0) return Effect.succeed(new Map<string, string>());
+	return deps.git
+		.commitsThatAdd(
+			root,
+			changesets.map((changeset) => `.changeset/${changeset.file}`),
+			phase === "apply" ? { deepen: {} } : undefined,
+		)
+		.pipe(
+			Effect.map((shas) => {
+				const found = new Map<string, string>();
+				changesets.forEach((changeset, index) => {
+					const sha = shas[index];
+					if (sha !== undefined && Option.isSome(sha)) found.set(changeset.file, sha.value);
+				});
+				return found;
+			}),
+			Effect.orElseSucceed(() => new Map<string, string>()),
+		);
+}
+
+/**
+ * Render every real release's changelog block, before anything is written:
+ * `Option.none()` per package when the config has `changelog: false`.
+ */
+function renderBlocks(
+	deps: Deps,
+	read: ReadPlan,
+	engineConfig: ChangesetConfig,
+	phase: Phase,
+): Effect.Effect<ReadonlyMap<string, string>, ReleasePlanError> {
+	return Effect.gen(function* () {
+		const functions = yield* loadChangelogFunctions(engineConfig, read.workspace.root, phase);
+		if (Option.isNone(functions)) return new Map<string, string>();
+		const commits = yield* changesetCommits(deps, read.workspace.root, read.plan.changesets, phase);
+		const rendered = yield* Effect.forEach(
+			read.plan.releases.filter((r) => r.type !== "none"),
+			(release) =>
+				Changelog.entry(read.plan, release, functions.value, {
+					packages: read.workspace.packages,
+					config: engineConfig,
+					commits,
+				}).pipe(Effect.map((block) => [release.name, block] as const)),
+			{ concurrency: "unbounded" },
+		).pipe(Effect.mapError(toPlanError(phase)));
+		const blocks = new Map<string, string>();
+		for (const [name, block] of rendered) if (Option.isSome(block)) blocks.set(name, block.value);
+		return blocks;
+	});
+}
+
+/** The package a release names, the workspace root included. */
+const packageOf = (workspace: LoadedWorkspace, name: string): WorkspacePackage | undefined =>
+	workspace.packages.find((pkg) => pkg.name === name);
+
+/** One indentation level and line ending of a JSON document, for text `modify` has to insert. */
+function jsonFormatting(content: string): JsoncFormattingOptions {
+	const indent = /^([ \t]+)"/m.exec(content)?.[1] ?? "  ";
+	const insertSpaces = !indent.includes("\t");
+	return JsoncFormattingOptions.make({
+		insertSpaces,
+		tabSize: insertSpaces ? indent.length : 1,
+		eol: content.includes("\r\n") ? "\r\n" : "\n",
+	});
+}
+
+/**
+ * Apply one {@link ManifestEdit} to a `package.json`'s text, format-preserving:
+ * each value is replaced in place by `\@effected/jsonc`'s `modify`, never a
+ * `JSON.parse`/`JSON.stringify` round-trip.
+ */
+function editManifest(content: string, edit: ManifestEdit): Result.Result<string, Error> {
+	const formattingOptions = jsonFormatting(content);
+	const operations: Array<readonly [ReadonlyArray<string>, string]> = [
+		...edit.ranges.map((range) => [[range.kind, range.dependency], range.to] as const),
+		...(edit.version === undefined ? [] : [[["version"], edit.version] as const]),
+	];
+	let text = content;
+	for (const [path, value] of operations) {
+		const edits = JsoncModifier.modifyResult(text, [...path], value, { formattingOptions });
+		if (Result.isFailure(edits)) {
+			return Result.fail(
+				new Error(`Cannot edit ${path.join(".")} in ${edit.packageJsonPath}: ${edits.failure.message}`),
+			);
+		}
+		text = JsoncEdit.applyAll(text, edits.success);
+	}
+	return Result.succeed(text);
+}
+
+/**
+ * Render a non-destructive preview: compute the release edits and changelog
+ * blocks, insert each block into the package's current CHANGELOG text in
+ * memory, transform it, and read the version block back. Nothing is written.
  */
 function previewEffect(
+	deps: Deps,
 	root: string,
 	changelogModules: Readonly<Record<string, string>> | undefined,
 	snapshot: SnapshotOptions | undefined,
-	fs: FileSystem.FileSystem,
 ): Effect.Effect<ChangesetPreview, ReleasePlanError> {
-	const program = Effect.gen(function* () {
-		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
-		// legacy `pre.json` in place as an auto-migration — acceptable, but it
-		// means even this read-only preview path can touch disk when `pre.json`
-		// is stale.
-		let plan: ReleasePlan;
-		let packages: Packages;
-		let config: Config;
-		let snapshotArg: string | true | undefined;
-		if (snapshot) {
-			packages = yield* Effect.tryPromise({
-				try: () => getPackages(root),
-				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-			});
-			const loaded = yield* Effect.tryPromise({
-				try: () => loadConfig(root, packages),
-				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-			});
-			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
-			const built = yield* assembleSnapshotPlan(packages, loaded.config, snapshot, "preview");
-			plan = built.plan;
-			config = built.releaseConfig;
-			snapshotArg = built.snapshotArg;
-		} else {
-			const loaded = yield* Effect.tryPromise({
-				try: () => Promise.all([getReleasePlan(root), getPackages(root)]),
-				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-			});
-			plan = loaded[0];
-			packages = loaded[1];
-			const loadedConfig = yield* Effect.tryPromise({
-				try: () => loadConfig(root, packages),
-				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-			});
-			yield* Effect.forEach(loadedConfig.warnings, (w) => Effect.logWarning(w));
-			config = loadedConfig.config;
-		}
-		if (!packages.rootPackage) {
-			return yield* Effect.fail(
-				new ReleasePlanError({ phase: "preview", reason: `Workspace root has no package.json: ${root}` }),
-			);
-		}
-		const rootPackage = packages.rootPackage;
+	const { fs } = deps;
+	return Effect.gen(function* () {
+		const read = yield* readPlan(deps, root, "preview", snapshot);
+		const { plan, config, workspace } = read;
 		const reasonByName = maintenanceReasons(plan, config);
-		// The rewrite happens before any work is scaffolded so an unmapped id fails
-		// on the caller's config rather than after a temp tree has been built.
 		const engineConfig = changelogModules ? yield* withChangelogModules(config, changelogModules, "preview") : config;
 
 		const preMode: ChangesetPreview["preMode"] = plan.preState ? plan.preState.mode : null;
-		const changesets: PendingChangeset[] = plan.changesets.map((cs) => ({
+		const changesets: PreviewChangeset[] = plan.changesets.map((cs) => ({
 			id: cs.id,
 			summary: cs.summary,
-			releases: cs.releases.filter((r) => r.type !== "none").map((r) => ({ name: r.name, type: r.type as BumpType })),
+			releases: [...cs.releases]
+				.filter(([, type]) => type !== "none")
+				.map(([name, type]) => ({ name, type: type as BumpType })),
 		}));
 		const releasesToRender = plan.releases.filter((r) => r.type !== "none");
 		if (releasesToRender.length === 0) {
 			return { preMode, releases: [], changesets };
 		}
 
-		const tempRoot = yield* fs.makeTempDirectoryScoped({ prefix: "silk-preview-" });
-
-		const mapDir = (dir: string): Effect.Effect<string, ReleasePlanError> => {
-			const rel = relative(packages.rootDir, dir);
-			// Guard the non-destructive invariant: a package dir outside the
-			// workspace root would make `relative` yield `..`/an absolute path and
-			// `join` escape `tempRoot`. Refuse rather than write outside temp.
-			if (rel.startsWith("..") || isAbsolute(rel)) {
-				return Effect.fail(
-					new ReleasePlanError({
-						phase: "preview",
-						reason: `Package directory is outside the workspace root: ${dir}`,
-					}),
-				);
-			}
-			return Effect.succeed(join(tempRoot, rel));
-		};
-
-		const tempDirs = yield* Effect.forEach(packages.packages, (p) => mapDir(p.dir));
-		const tempPackages: Packages = {
-			tool: packages.tool,
-			rootDir: tempRoot,
-			rootPackage: { dir: tempRoot, packageJson: structuredClone(rootPackage.packageJson) },
-			packages: packages.packages.map((p, i) => ({
-				dir: tempDirs[i],
-				packageJson: structuredClone(p.packageJson),
-			})),
-		};
-
-		// scaffold temp dirs + seed package.json + existing CHANGELOGs and pre.json
-		yield* fs.makeDirectory(join(tempRoot, ".changeset"), { recursive: true });
-		yield* fs.copyFile(join(root, "package.json"), join(tempRoot, "package.json"));
-		const preJson = join(root, ".changeset", "pre.json");
-		const preJsonExists = yield* fs.exists(preJson);
-		if (preJsonExists) yield* fs.copyFile(preJson, join(tempRoot, ".changeset", "pre.json"));
-		for (let i = 0; i < packages.packages.length; i++) {
-			const p = packages.packages[i];
-			const tDir = tempDirs[i];
-			yield* fs.makeDirectory(tDir, { recursive: true });
-			yield* fs.copyFile(join(p.dir, "package.json"), join(tDir, "package.json"));
-			const realCl = join(p.dir, "CHANGELOG.md");
-			const realClExists = yield* fs.exists(realCl);
-			if (realClExists) yield* fs.copyFile(realCl, join(tDir, "CHANGELOG.md"));
-		}
-		const rootCl = join(packages.rootDir, "CHANGELOG.md");
-		const rootClExists = yield* fs.exists(rootCl);
-		if (rootClExists) yield* fs.copyFile(rootCl, join(tempRoot, "CHANGELOG.md"));
-
-		// run the GENUINE engine; contextDir = real root so config.changelog resolves
-		// when it is an unmapped id (a mapped one is already an absolute path).
-		yield* Effect.tryPromise({
-			try: () => applyReleasePlan(plan, tempPackages, engineConfig, snapshotArg, root),
-			catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
-		});
-
-		const dirByName = new Map<string, string>();
-		for (const p of tempPackages.packages) dirByName.set(p.packageJson.name, p.dir);
-		if (tempPackages.rootPackage?.packageJson.name) {
-			dirByName.set(tempPackages.rootPackage.packageJson.name, tempRoot);
-		}
+		// The edits are not written, but computing them holds preview to the same
+		// refusals as `apply` (a plan naming a package the workspace lacks).
+		yield* computeEdits(read, "preview");
+		const blocks = yield* renderBlocks(deps, read, engineConfig, "preview");
+		const thanks = thanksOption(config);
 
 		const releases: PreviewRelease[] = [];
 		for (const r of releasesToRender) {
-			const dir = dirByName.get(r.name);
-			if (!dir) continue;
-			const clPath = join(dir, "CHANGELOG.md");
-			const clExists = yield* fs.exists(clPath);
-			if (!clExists) continue;
-			// Sync engine call: a throw here must stay on the typed failure path
-			// rather than escaping the gen body as a defect.
+			const pkg = packageOf(workspace, r.name);
+			if (!pkg) continue;
+			const clPath = join(pkg.path, "CHANGELOG.md");
+			const existing = (yield* fs.exists(clPath)) ? yield* fs.readFileString(clPath) : undefined;
+			const block = blocks.get(r.name);
+			const content = block === undefined ? existing : Changelog.insert(existing ?? "", block, r.name);
+			if (content === undefined) continue;
 			const reason = reasonByName.get(r.name);
-			const thanks = thanksOption(config);
-			yield* Effect.try({
+			// Sync transform: a throw here must stay on the typed failure path
+			// rather than escaping the gen body as a defect.
+			const transformed = yield* Effect.try({
 				try: () =>
-					ChangelogTransformer.transformFile(clPath, {
+					ChangelogTransformer.transformContent(content, {
 						...(reason ? { maintenance: { version: r.newVersion, reason } } : {}),
 						...(thanks !== undefined ? { thanks } : {}),
 					}),
 				catch: (e) => new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 			});
-			const content = yield* fs.readFileString(clPath);
 			releases.push({
 				name: r.name,
 				type: r.type as BumpType,
 				oldVersion: r.oldVersion,
 				newVersion: r.newVersion,
 				changesetIds: [...r.changesets],
-				changelogEntry: extractVersionBlock(content, r.newVersion),
+				changelogEntry: extractVersionBlock(transformed, r.newVersion),
 			});
 		}
 		return { preMode, releases, changesets };
-	});
-
-	return Effect.scoped(program).pipe(
+	}).pipe(
 		Effect.mapError((e) =>
 			e instanceof ReleasePlanError ? e : new ReleasePlanError({ phase: "preview", reason: errMsg(e) }),
 		),
@@ -570,54 +647,96 @@ function diskVersion(
 	);
 }
 
+/**
+ * Write a computed release to disk, in `\@changesets/apply-release-plan`'s
+ * order, returning the touched files in the order touched: `pre.json` when an
+ * `exit` release removes it, then per planned release its `package.json` and
+ * `CHANGELOG.md`, then the workspace root's `package.json`, then each consumed
+ * changeset (both paths of a move into `.changeset/pre/`).
+ */
+function writeRelease(
+	deps: Deps,
+	read: ReadPlan,
+	edits: ReleaseEdits,
+	blocks: ReadonlyMap<string, string>,
+): Effect.Effect<
+	{ readonly touched: ReadonlyArray<string>; readonly changelogs: ReadonlyArray<readonly [string, PlannedRelease]> },
+	Error
+> {
+	const { fs } = deps;
+	const { plan, workspace } = read;
+	const changesetDir = join(workspace.root, ".changeset");
+	return Effect.gen(function* () {
+		const touched: string[] = [];
+		const changelogs: Array<readonly [string, PlannedRelease]> = [];
+
+		if (plan.preState !== undefined && edits.preState === undefined) {
+			const preJson = join(changesetDir, "pre.json");
+			yield* fs.remove(preJson, { force: true });
+			touched.push(preJson);
+		}
+
+		const writeManifest = (edit: ManifestEdit) =>
+			Effect.gen(function* () {
+				const content = yield* fs.readFileString(edit.packageJsonPath);
+				const updated = yield* Effect.fromResult(editManifest(content, edit));
+				yield* fs.writeFileString(edit.packageJsonPath, updated);
+				touched.push(edit.packageJsonPath);
+			});
+
+		const pending = new Map(edits.manifests.map((edit) => [edit.name, edit]));
+		for (const release of plan.releases) {
+			const edit = pending.get(release.name);
+			if (edit) {
+				yield* writeManifest(edit);
+				pending.delete(release.name);
+			}
+			const block = blocks.get(release.name);
+			const pkg = packageOf(workspace, release.name);
+			if (block !== undefined && pkg) {
+				const clPath = join(pkg.path, "CHANGELOG.md");
+				const existing = (yield* fs.exists(clPath)) ? yield* fs.readFileString(clPath) : "";
+				yield* fs.writeFileString(clPath, Changelog.insert(existing, block, release.name));
+				touched.push(clPath);
+				changelogs.push([clPath, release]);
+			}
+		}
+		// What is left is the workspace root, whose ranges alone are edited.
+		for (const edit of pending.values()) yield* writeManifest(edit);
+
+		if (edits.moveChangesets.length > 0) {
+			yield* fs.makeDirectory(join(changesetDir, "pre"), { recursive: true });
+		}
+		for (const move of edits.moveChangesets) {
+			const from = join(changesetDir, move.from);
+			if (!(yield* fs.exists(from))) continue;
+			const to = join(changesetDir, move.to);
+			yield* fs.rename(from, to);
+			touched.push(from, to);
+		}
+		for (const file of edits.deleteChangesets) {
+			const target = join(changesetDir, file);
+			if (!(yield* fs.exists(target))) continue;
+			yield* fs.remove(target, { force: true });
+			touched.push(target);
+		}
+		return { touched, changelogs };
+	});
+}
+
 function applyEffect<R>(
+	deps: Deps,
 	root: string,
 	dryRun: boolean,
 	changelogModules: Readonly<Record<string, string>> | undefined,
 	snapshot: SnapshotOptions | undefined,
 	onStepOption: ((step: ApplyStep) => Effect.Effect<void, never, R>) | undefined,
-	inspector: ConfigInspectorShape,
-	fs: FileSystem.FileSystem,
 ): Effect.Effect<AppliedRelease, ReleasePlanError, R> {
+	const { fs, inspector } = deps;
 	const onStep = onStepOption ?? (() => Effect.void);
 	return Effect.gen(function* () {
-		// v3 `readPreState` (invoked internally by `getReleasePlan`) rewrites a
-		// legacy `pre.json` in place as an auto-migration — acceptable, but it
-		// means even this read-only `plan` computation can touch disk when
-		// `pre.json` is stale.
-		let plan: ReleasePlan;
-		let packages: Packages;
-		let config: Config;
-		let snapshotArg: string | true | undefined;
-		if (snapshot) {
-			packages = yield* Effect.tryPromise({
-				try: () => getPackages(root),
-				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-			});
-			const loaded = yield* Effect.tryPromise({
-				try: () => loadConfig(root, packages),
-				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-			});
-			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
-			const built = yield* assembleSnapshotPlan(packages, loaded.config, snapshot, "apply");
-			plan = built.plan;
-			config = built.releaseConfig;
-			snapshotArg = built.snapshotArg;
-		} else {
-			const loaded = yield* Effect.tryPromise({
-				try: async () => {
-					const [plan, packages] = await Promise.all([getReleasePlan(root), getPackages(root)]);
-					const { config, warnings } = await loadConfig(root, packages);
-					return { plan, packages, config, warnings };
-				},
-				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-			});
-			plan = loaded.plan;
-			packages = loaded.packages;
-			config = loaded.config;
-			yield* Effect.forEach(loaded.warnings, (w) => Effect.logWarning(w));
-		}
-
+		const read = yield* readPlan(deps, root, "apply", snapshot);
+		const { plan, config } = read;
 		const engineConfig = changelogModules ? yield* withChangelogModules(config, changelogModules, "apply") : config;
 
 		const releases = plan.releases
@@ -626,31 +745,27 @@ function applyEffect<R>(
 
 		let touchedFiles: string[] = [];
 		if (!dryRun) {
+			// Everything is computed before the first write, so a failing
+			// changelog module or edit leaves the tree untouched.
+			const edits = yield* computeEdits(read, "apply");
+			const blocks = yield* renderBlocks(deps, read, engineConfig, "apply");
 			const reasonByName = maintenanceReasons(plan, config);
 			const thanks = thanksOption(config);
-			const versionByPkgName = new Map(plan.releases.map((r) => [r.name, r.newVersion]));
-			const nameByDir = new Map<string, string>();
-			for (const p of packages.packages) nameByDir.set(p.dir, p.packageJson.name);
-			if (packages.rootPackage?.packageJson.name) {
-				nameByDir.set(packages.rootDir, packages.rootPackage.packageJson.name);
-			}
-			touchedFiles = yield* Effect.tryPromise({
-				try: async () => {
-					const touched = await applyReleasePlan(plan, packages, engineConfig, snapshotArg);
-					for (const f of touched) {
-						if (!f.endsWith("CHANGELOG.md")) continue;
-						const pkgName = nameByDir.get(dirname(f));
-						const reason = pkgName ? reasonByName.get(pkgName) : undefined;
-						const newVersion = pkgName ? versionByPkgName.get(pkgName) : undefined;
-						ChangelogTransformer.transformFile(f, {
-							...(reason && newVersion ? { maintenance: { version: newVersion, reason } } : {}),
+			const written = yield* writeRelease(deps, read, edits, blocks).pipe(
+				Effect.mapError((e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) })),
+			);
+			for (const [clPath, release] of written.changelogs) {
+				const reason = reasonByName.get(release.name);
+				yield* Effect.try({
+					try: () =>
+						ChangelogTransformer.transformFile(clPath, {
+							...(reason ? { maintenance: { version: release.newVersion, reason } } : {}),
 							...(thanks !== undefined ? { thanks } : {}),
-						});
-					}
-					return touched;
-				},
-				catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
-			});
+						}),
+					catch: (e) => new ReleasePlanError({ phase: "apply", reason: errMsg(e) }),
+				});
+			}
+			touchedFiles = [...written.touched];
 			yield* onStep(ApplyStep.EngineApplied({ touchedFiles, releases }));
 		}
 

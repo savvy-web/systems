@@ -25,8 +25,8 @@ hook_require_input
 # https://code.claude.com/docs/en/hooks — "How agent hooks work"). Subagents
 # run with an explicit, curated `tools:` allowlist, so a session-level
 # "prefer mcp__plugin_silk_savvy-mcp__biome_check" reminder is either
-# redundant (the subagent already lists the tool — tsdoctor and turborepo
-# do) or a dead end (it doesn't have it — changeset-manager doesn't — gets
+# redundant (the subagent already lists the tool — turborepo does) or a
+# dead end (it doesn't have it — changeset-manager doesn't — gets
 # "No such tool available", falls back to Bash biome, and this very hook
 # fires again — a loop with no way out). The hook cannot tell which case it
 # is in, so it suppresses for every subagent call; the main-session nudge

@@ -14,10 +14,10 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:50:36Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: 372b34feee4394db
+    body: 27a103daaa84c86e
 ---
 
 # Respect the four-layer package graph and the non-import invariant
@@ -31,8 +31,7 @@ L3  @savvy-web/cli   @savvy-web/mcp      peer front ends (bin / main / index)
 L2  @savvy-web/silk-effects              engine: services, programs, envelopes
 L1  @savvy-web/silk-core                 domain model: schemas, errors, pure contracts
 --- tooling band (build-time only; any layer may devDepend on it; it depends on no app layer) ---
-    @savvy-web/bundler  @savvy-web/tsdown-plugins  @savvy-web/rspress-builder
-    @savvy-web/templates  @savvy-web/github-action-builder  @savvy-web/pnpm-plugin-silk
+    @savvy-web/templates  @savvy-web/pnpm-plugin-silk
 --- unconstrained (own edges not checked) ---
     @e2e/*  savvy-web-systems (the private root)
     @savvy-web/ai-plugins  (private plugin source; its one edge, a silk-core

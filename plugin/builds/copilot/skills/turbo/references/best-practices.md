@@ -5,15 +5,15 @@
 The caret matters and is the single most misread part of `dependsOn`:
 
 - `"^build"` — run **build in this package's dependencies first** (topological).
-  This is what a normal build wants: `dist/dev` of upstream packages must exist
-  before this one compiles.
+  This is what a task wants when it reads its dependencies' output: here
+  `types:check` dependsOn `^types:check`, so upstream declarations exist first.
 - `"build"` — run **another task in the same package first** (e.g. a `test` that
   `dependsOn: ["build"]`). No caret means same-package only.
 
 ```jsonc
 {
   "tasks": {
-    "build:prod": { "dependsOn": ["^build:prod"], "outputs": ["dist/prod/**"] },
+    "types:check": { "dependsOn": ["^types:check"] },
     "test": { "dependsOn": ["build"] }
   }
 }
@@ -37,8 +37,8 @@ strict topological chain through every real task.
 If a task writes files but its `outputs` glob is missing or wrong, turbo caches
 **nothing** to restore — the next "cache hit" replays the log but leaves the
 working tree without the artifacts, and the following task fails on a missing
-`dist/`. Every build task here declares its real output dir (`dist/dev/**`,
-`dist/prod/**`, `meta/**`). Deliberately uncached tasks — side-effecting or
+`dist/`. Every build task here declares its real output dir (`build` declares
+`dist/**`). Deliberately uncached tasks — side-effecting or
 nondeterministic ones — are the exceptions.
 
 ## Don't over-broaden globalDependencies

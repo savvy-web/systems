@@ -24,9 +24,7 @@
 		".": "./src/index.ts"
 	},
 	"scripts": {
-		"build:dev": "node savvy.build.ts --target dev",
-		"build:prod": "node savvy.build.ts --target prod",
-		"prepare": "turbo run build:dev",
+		"build": "effected package build",
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
@@ -36,22 +34,19 @@
 		"@effect/vitest": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
-		"@savvy-web/bundler": "workspace:*",
-		"@types/node": "catalog:build",
+		"@types/node": "catalog:effected:build",
 		"effect": "catalog:effected",
 		"fast-check": "^4.10.2",
-		"typescript": "catalog:build",
+		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/templates": "catalog:effected",
-		"@effected/workspaces": "catalog:effected",
-		"effect": "catalog:effected"
+		"@effected/templates": "catalog:effected:peers",
+		"@effected/workspaces": "catalog:effected:peers",
+		"effect": "catalog:effected:peers"
 	},
 	"publishConfig": {
 		"access": "public",
-		"directory": "dist/dev/pkg",
-		"linkDirectory": true,
 		"targets": {
 			"npm": true,
 			"github": true

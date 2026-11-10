@@ -5,7 +5,7 @@
  * `@savvy-web/silk` owns the `savvy` and `savvy-mcp` bin entries so a consumer
  * gets both off its single direct dependency on silk. Each shim is a one-line
  * import of the front end's `./main`, so what this test really exercises is
- * that `dist/dev/pkg/bin/*.js` resolves `@savvy-web/cli/main` and
+ * that `dist/prod/npm/pkg/bin/*.js` resolves `@savvy-web/cli/main` and
  * `@savvy-web/mcp/main` through silk's own dependency graph and that the front
  * ends behave over a real process boundary: the CLI reports its version and
  * exits 0; the MCP server answers `initialize` on stdout, keeps stderr silent
@@ -15,7 +15,9 @@
  * scratch project outside the workspace) lives in `@e2e/silk`.
  */
 
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { Run } from "@effected/commands";
@@ -23,7 +25,10 @@ import { McpProbe } from "@effected/mcp-kit/testing";
 import { Effect } from "effect";
 import { ChildProcess } from "effect/process";
 
-const binDir = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin");
+const binDir = resolve(import.meta.dirname, "..", "..", "dist", "prod", "npm", "pkg", "bin");
+// The built bin's workspace siblings resolve to their source, so the spawn registers tsx by absolute URL; a bare
+// `--import=tsx` inherited from pnpm's nodeOptions would resolve against the child's cwd and fail.
+const TSX_IMPORT = `--import=${pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href}`;
 
 /** node -> the front end's import graph; the 5 s default is tight on CI. */
 const BIN_TIMEOUT_MS = 30_000;
@@ -35,12 +40,17 @@ const BIN_TIMEOUT_MS = 30_000;
  * in `@effected/mcp-kit/testing`); `PackedInstall`'s `consumer.command` builds it
  * only for a packed-install consumer, which `@e2e/silk` covers.
  */
-const ENV = { PATH: process.env.PATH ?? "", HOME: process.env.HOME ?? "", NO_COLOR: "1" } as const;
+const ENV = {
+	PATH: process.env.PATH ?? "",
+	HOME: process.env.HOME ?? "",
+	NO_COLOR: "1",
+	NODE_OPTIONS: TSX_IMPORT,
+} as const;
 
 const command = (name: string, args: ReadonlyArray<string> = []) =>
 	ChildProcess.make(process.execPath, [resolve(binDir, name), ...args], { env: ENV });
 
-describe("@savvy-web/silk carrier bins (dist/dev)", () => {
+describe("@savvy-web/silk carrier bins (dist/prod)", () => {
 	it.live(
 		"savvy.js runs and reports a version",
 		() =>

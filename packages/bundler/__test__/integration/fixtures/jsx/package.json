@@ -1,7 +1,0 @@
-{
-	"name": "jsx-fixture",
-	"version": "1.0.0",
-	"type": "module",
-	"private": true,
-	"exports": { ".": "./src/index.tsx" }
-}

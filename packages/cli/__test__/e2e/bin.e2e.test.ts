@@ -5,13 +5,18 @@
  * visible from a handler test.
  */
 
+import { createRequire } from "node:module";
 import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { NodeServices } from "@effect/platform-node";
 import { describe, expect, it } from "@effect/vitest";
 import { CliTest } from "@effected/cli-kit/testing";
 import { Effect } from "effect";
 
-const BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy.js");
+const BIN = resolve(import.meta.dirname, "..", "..", "dist", "prod", "npm", "pkg", "bin", "savvy.js");
+// The built bin's workspace siblings resolve to their source, so the spawn registers tsx by absolute URL; a bare
+// `--import=tsx` inherited from pnpm's nodeOptions would resolve against the child's cwd and fail.
+const TSX_IMPORT = `--import=${pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href}`;
 
 /**
  * `FORCE_COLOR=0` is pinned: colour follows Node, so a `FORCE_COLOR` inherited
@@ -23,11 +28,11 @@ const run = (args: ReadonlyArray<string>, env: Readonly<Record<string, string>> 
 		return yield* CliTest.run(BIN, args, {
 			sandbox,
 			execPath: process.execPath,
-			env: { FORCE_COLOR: "0", ...env },
+			env: { FORCE_COLOR: "0", NODE_OPTIONS: TSX_IMPORT, ...env },
 		});
 	}).pipe(Effect.scoped, Effect.provide(NodeServices.layer));
 
-describe("savvy bin (dist/dev)", () => {
+describe("savvy bin (dist/prod)", () => {
 	it.effect("--version prints one bare line on stdout for a direct install", () =>
 		Effect.gen(function* () {
 			const result = yield* run(["--version"]);

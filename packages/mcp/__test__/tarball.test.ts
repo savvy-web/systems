@@ -24,13 +24,13 @@ import { describe, expect, it } from "vitest";
 const here = dirname(fileURLToPath(import.meta.url));
 const pkgRoot = join(here, "..");
 
-/** Prefer the prod npm group, fall back to the dev build produced on install. */
+/** The prod npm group, which the root vitest setup builds before the suite runs. */
 function resolvePackedDir(): string {
-	const candidates = [join(pkgRoot, "dist/prod/npm/pkg"), join(pkgRoot, "dist/dev/pkg")];
+	const candidates = [join(pkgRoot, "dist/prod/npm/pkg")];
 	const found = candidates.find((dir) => existsSync(join(dir, "package.json")));
 	if (!found) {
 		throw new Error(
-			`No built package found. Run \`pnpm --filter @savvy-web/mcp build:dev\` before this test. Looked in:\n${candidates.join("\n")}`,
+			`No built package found. Run \`pnpm --filter @savvy-web/mcp build\` before this test. Looked in:\n${candidates.join("\n")}`,
 		);
 	}
 	return found;

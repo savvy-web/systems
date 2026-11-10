@@ -1,9 +1,0 @@
-{
-	"name": "exe-fixture",
-	"version": "1.0.0",
-	"type": "module",
-	"private": true,
-	"os": ["darwin"],
-	"cpu": ["arm64"],
-	"exports": { ".": "./src/bin.ts", "./package.json": "./package.json" }
-}

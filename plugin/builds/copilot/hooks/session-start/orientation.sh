@@ -73,10 +73,11 @@ fi
 # Code, savvy-mcp- on Copilot). The monitors and the it2 skill are named only
 # where this build ships them (hook_has): Claude Code has both, Copilot neither.
 MCP_PREFIX=$(hook_tool_prefix savvy-mcp || true)
-if hook_has monitor tsdoc-diagnostics && hook_has monitor dogfood-mail; then
+if hook_has monitor dogfood-mail && hook_has monitor gitmodules-drift; then
 	SURFACE='the /silk:* skills, a Biome LSP,
-and two background monitors (tsdoc-diagnostics watches dist/<target>/issues.json;
-dogfood-mail watches .claude/dogfood/ mail and journal turn-flips). They already'
+and two background monitors (dogfood-mail watches .claude/dogfood/ mail and
+journal turn-flips; gitmodules-drift reports vendored-repo drift after
+.gitmodules or .repos/config.json changes). They already'
 else
 	SURFACE='the /silk:* skills and a Biome LSP. They already'
 fi
@@ -103,7 +104,7 @@ fi
 CONTEXT=$(cat <<CONTEXT
 <silk_capabilities>
 This is a Silk Suite workspace. The silk plugin provides the savvy-mcp server
-(ten structured tools), three domain agents, ${SURFACE}
+(ten structured tools), two domain agents, ${SURFACE}
 encode this repo's package boundaries, conventions and exclusion rules — a
 structured answer from a tool beats one reconstructed from shell stdout or
 memory, so reach for the matching capability first. Bash stays the escape hatch
@@ -124,10 +125,9 @@ for anything no tool surfaces.
 </mcp_tools>
 
 <agents>
-  changeset-manager, turborepo, tsdoctor — scope in the agent listing. Dispatch
+  changeset-manager, turborepo — scope in the agent listing. Dispatch
   changeset-manager when implementation work concludes and a changeset pass is
-  due, and tsdoctor the moment a build reports API Extractor issues —
-  proactively, without waiting for a slash command.
+  due — proactively, without waiting for a slash command.
 </agents>
 
 <skills>
@@ -135,7 +135,7 @@ for anything no tool surfaces.
   /silk:changeset-style, /silk:changeset-config, /silk:commit-create (load
   BEFORE composing any commit message), /silk:pr-body (load BEFORE writing or
   editing any PR description — the marker contract that decides which regions
-  survive), /silk:build, /silk:tsdoc,
+  survive),
   ${SKILLS_TAIL}
 </skills>
 

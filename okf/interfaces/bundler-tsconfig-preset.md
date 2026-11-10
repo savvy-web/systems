@@ -2,22 +2,24 @@
 type: Interface
 title: bundler tsconfig preset
 description: "The self-contained TypeScript base every plain Node library package extends, and the rule that keeps every shipped preset in the suite free of extends chains."
-status: draft
+status: deprecated
 kind: config
-resource: ../../packages/bundler/public/tsconfig/ecma.json
+resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/public/tsconfig/ecma.json
 tags: [build]
 sources:
   - id: tsconfig-preset-doc
-    resource: ../../packages/bundler/public/tsconfig/ecma.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/public/tsconfig/ecma.json
 generated:
   by: okfit/claude-code
-  at: 2026-10-25T14:59:20Z
+  at: 2026-11-09T19:54:23Z
 integrity:
   generated:
-    body: a3e8844e0579f931
+    body: 01d1a248503f4912
 ---
 
 # bundler tsconfig preset
+
+> **Deprecated.** The preset shipped in `@savvy-web/bundler`, which is deleted. tsconfigs now extend `@effected/plugin/tsconfig/ecma.json` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## What a consumer can rely on
 

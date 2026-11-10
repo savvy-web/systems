@@ -2,23 +2,23 @@
 type: Decision
 title: Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
 description: "@savvy-web/tsdown-plugins pins typescript 7.1.0-beta exactly (not catalog:silk) and forces dts.generator: tsgo with an explicit tsgo.moduleUrl, while @microsoft/api-extractor keeps its own TypeScript 6 through the existing override."
-status: stable
+status: deprecated
 tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-11-01T18:12:30Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: tp-manifest
-    resource: ../../packages/tsdown-plugins/package.json
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
   - id: tp-target-groups
-    resource: ../../packages/tsdown-plugins/src/build/target-groups.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/target-groups.ts
   - id: tp-parse
-    resource: ../../packages/tsdown-plugins/src/dts/parse.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/dts/parse.ts
   - id: tp-api-extractor
-    resource: ../../packages/tsdown-plugins/src/meta/api-extractor.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/meta/api-extractor.ts
   - id: tp-logger
-    resource: ../../packages/tsdown-plugins/src/report/tsdown-logger.ts
+    resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/tsdown-logger.ts
   - id: ts-7-1-schedule
     resource: https://github.com/microsoft/TypeScript/issues/63703
   - id: rushstack-ts7
@@ -32,16 +32,20 @@ verified:
     at: 2026-10-25T21:24:55Z
   - by: human:spencer
     at: 2026-11-02T21:03:43Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 integrity:
   generated:
-    body: b8d3bfb6e5912f8a
+    body: e509183f79007166
   verified:
     by: human:spencer
-    at: 2026-11-02T21:03:43Z
-    content: 052daf031f5acf24
+    at: 2026-11-10T15:51:58Z
+    content: 08cee3ce07d4d3ae
 ---
 
 # Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+
+> **Deprecated.** The pin lived in the deleted `@savvy-web/tsdown-plugins`; declaration emission is now `effected package build`'s, and typescript comes from `catalog:effected:build` — see [kit-package-build](../decisions/kit-package-build.md). Kept for history.
 
 ## Context
 
@@ -111,7 +115,7 @@ temp-dir tsconfig this package writes. Both premises have moved:
 The tsgo generator opens the dts-emit tsconfig as a TypeScript project, which
 is why `writeDtsEmitTsconfig` now names the base canonically and restates
 its file set absolutely; see
-[gotchas/tsgo-project-membership.md](../gotchas/tsgo-project-membership.md).
+[gotchas/tsgo-project-membership.md](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/tsgo-project-membership.md) (deleted with the code; archived copy).
 
 ## Alternatives rejected
 

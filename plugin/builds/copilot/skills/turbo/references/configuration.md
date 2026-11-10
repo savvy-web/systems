@@ -112,9 +112,9 @@ Though declared inside a task (not globally), these pair with the global ones:
 
 ## Silk note
 
-Respect the established `dependsOn` chains between packages — a consumer's build waits on
-its upstream libraries. Leave the per-package `prepare: turbo run build:dev` scripts alone:
-they are what makes a `workspace:*` consumer's `link:` resolve during `pnpm install`, and
-`dependsOn` cannot substitute for them because it never reaches the install step. What must
-stay out of an install hook is `build:prod`, whose peer-catalog resolution reads a workspace
-state file pnpm writes only after install scripts complete.
+Respect the established `dependsOn` chains. `types:check` dependsOn `^types:check`, so a
+package type-checks after its upstream libraries, and the one `build` task dependsOn
+`["types:check"]` and writes `dist/prod`. Nothing builds on install: a `workspace:`
+consumer resolves a sibling's source through its `exports`, so do not add a `prepare` or
+other install-hook build to order packages — `dependsOn` already does that for every task
+turbo runs.

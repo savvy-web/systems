@@ -1,5 +1,76 @@
 # Log
 
+## 2026-11-10
+
+* Updated @savvy-web/pnpm-plugin-silk catalog names
+* Updated @savvy-web/tsdown-plugins
+* Updated A public-hoisted workspace package resolves to its source tree, not its built artifact
+* Updated An Effect-native MCP server
+* Updated Build each workspace-dependency package via its own prepare script
+* Updated Build every package with the kit's effected package build, linked to source
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+* Updated Every package versions independently
+* Updated Kit Effect peers supplied via the effected catalog
+* Updated OG image renders are cached only under a named salt
+* Updated Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
+* Updated Resolve workspace packages from source; never re-add install-time builds
+* Updated Spell dependency ranges through purpose-scoped catalogs
+* Updated Split the build orchestrator from the plugin pack
+* Updated The per-target release filter runs outside the PublishabilityDetector
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated pnpm-plugin-silk
+* Updated silk-core
+* Updated silk-effects
+
+## 2026-11-09
+
+* Updated @savvy-web/bundler
+* Updated @savvy-web/changelog
+* Updated @savvy-web/pnpm-plugin-silk catalog names
+* Updated @savvy-web/silk
+* Updated @savvy-web/tsdown-plugins
+* Updated A green bundle followed by EISDIR from inside API Extractor's SourceMapper is a declaration-map segment with no source, not a filesystem problem
+* Updated A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
+* Updated A public-hoisted workspace package resolves to its source tree, not its built artifact
+* Updated Build each workspace-dependency package via its own prepare script
+* Added Build every package with the kit's effected package build, linked to source
+* Updated Catalog and workspace resolution coverage lives only in e2e/
+* Updated Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+* Updated Every package versions independently
+* Updated Keep prepare:turbo run build:dev on every workspace:* dependency
+* Updated OG image renders are cached only under a named salt
+* Updated Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
+* Added Resolve workspace packages from source; never re-add install-time builds
+* Updated Respect the four-layer package graph and the non-import invariant
+* Updated Run Biome only through biome_check or the three sanctioned root scripts
+* Updated Spell dependency ranges through purpose-scoped catalogs
+* Updated Split the build orchestrator from the plugin pack
+* Updated The @effect/platform-node root import needs redis, and only Yarn 1 shows it
+* Updated The per-target release filter runs outside the PublishabilityDetector
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated The tsgo generator fails with "No TypeScript Go project found" when the dts-emit tsconfig does not describe the package's files canonically
+* Updated Write Effect v4 code in the house style
+* Updated bundler tsconfig preset
+* Updated cli
+* Updated dist/<target>/issues.json
+* Updated e2e
+* Updated github-action-builder
+* Updated layers.json
+* Updated pnpm-plugin-silk
+* Updated rspress-builder
+* Updated savvy-mcp tool surface
+* Updated savvy.build.ts contract
+* Updated silk-core
+* Updated silk-effects
+* Updated systems
+* Updated templates
+* Updated The Copilot build of silk drops context nudges, monitors and project discovery
+* Updated The repo-wide build ignore rule hides any plugin directory named build while build --check stays green
+* Updated pkill on a monitor script name kills every session's monitor
+* Updated silk-plugin
+
 ## 2026-11-06
 
 * Updated An Effect-native MCP server

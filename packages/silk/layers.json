@@ -5,14 +5,7 @@
 		["@savvy-web/silk-effects"],
 		["@savvy-web/silk-core"]
 	],
-	"tooling": [
-		"@savvy-web/bundler",
-		"@savvy-web/tsdown-plugins",
-		"@savvy-web/rspress-builder",
-		"@savvy-web/templates",
-		"@savvy-web/github-action-builder",
-		"@savvy-web/pnpm-plugin-silk"
-	],
+	"tooling": ["@savvy-web/templates", "@savvy-web/pnpm-plugin-silk"],
 	"unconstrained": ["@e2e/*", "@savvy-web/ai-plugins", "savvy-web-systems"],
 	"requiredEdges": [
 		"@savvy-web/silk -> @savvy-web/cli",

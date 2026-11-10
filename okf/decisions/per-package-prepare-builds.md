@@ -2,11 +2,11 @@
 type: Decision
 title: Build each workspace-dependency package via its own prepare script
 description: "Every package another manifest depends on as workspace:* carries its own prepare script (turbo run build:dev) instead of relying on a root prepare or turbo's dependsOn."
-status: stable
+status: deprecated
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-10-23T15:37:52Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: install-orchestration
     resource: ../../package.json
@@ -17,16 +17,20 @@ verified:
     at: 2026-10-13T17:19:17Z
   - by: human:spencer
     at: 2026-10-23T15:45:32Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 integrity:
   generated:
-    body: 4a873a220c6367ff
+    body: 75c746d6c39a2822
   verified:
     by: human:spencer
-    at: 2026-10-23T15:45:32Z
-    content: 2588bdd3b064cd2d
+    at: 2026-11-10T15:51:58Z
+    content: 4dffc99c19a69915
 ---
 
 # Build each workspace-dependency package via its own prepare script
+
+> **Deprecated.** Superseded by [kit-package-build](kit-package-build.md): workspace links now resolve to `src/` through tsx, nothing builds on install, and no package carries a `prepare` script or a `dist/dev` tree. Kept for the history of why the scripts existed.
 
 ## Context
 
@@ -63,7 +67,7 @@ grep -rlE '"@savvy-web/<name>": "workspace:[*^]"' package.json packages/*/packag
 rather than trusting any list written down in a doc.
 
 The imperative rule for contributors — when to add or keep this script —
-is [conventions/workspace-prepare-scripts.md](../conventions/workspace-prepare-scripts.md).
+was `conventions/workspace-prepare-scripts.md` (deleted; [archived copy](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/conventions/workspace-prepare-scripts.md)); the rule that replaced it is [conventions/workspace-source-links.md](../conventions/workspace-source-links.md).
 
 ## Alternatives rejected
 

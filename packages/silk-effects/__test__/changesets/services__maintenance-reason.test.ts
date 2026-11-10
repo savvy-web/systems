@@ -1,8 +1,14 @@
-import type { Config, ReleasePlan } from "@changesets/types";
+import type { ChangesetConfig, ReleasePlan } from "@effected/changesets";
 import { describe, expect, it } from "vitest";
 import { deriveMaintenanceReason } from "../../src/changesets/services/maintenance-reason.js";
 
-const baseConfig = (overrides: Partial<Config>): Config => ({ fixed: [], linked: [], ...overrides }) as Config;
+const baseConfig = (
+	overrides: Partial<Pick<ChangesetConfig, "fixed" | "linked">>,
+): Pick<ChangesetConfig, "fixed" | "linked"> => ({
+	fixed: [],
+	linked: [],
+	...overrides,
+});
 
 const release = (name: string, newVersion: string, changesets: string[]) => ({
 	name,

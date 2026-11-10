@@ -2,14 +2,16 @@
  * Changesets API changelog formatter — `\@savvy-web/changesets/changelog`
  *
  * This module is the default export consumed by the Changesets CLI via the
- * `changelog` field in `.changeset/config.json`. It implements the
- * `ChangelogFunctions` interface from `\@changesets/types`, wiring the
+ * `changelog` field in `.changeset/config.json`. It implements the kit's
+ * `ChangelogFunctions` contract (`\@effected/changesets`, structurally
+ * identical to `\@changesets/types`' so it loads under `\@changesets/cli`), wiring the
  * Effect-based formatting pipeline into the async API that Changesets expects.
  *
  * @remarks
  * The module composes two Effect programs — {@link getReleaseLine} and
- * {@link getDependencyReleaseLine} — and runs each through
- * `Effect.runPromise` with `GitHubService.layer` (for commit metadata). Options are
+ * {@link getDependencyReleaseLine} — and runs each through one runtime per
+ * {@link makeChangelogFunctions} call, holding a `GitHubService` over the
+ * host-supplied `ChangelogInfo` (for commit metadata). Options are
  * validated at the boundary via `validateChangesetOptions` before being
  * passed to the formatters.
  *
@@ -49,8 +51,10 @@
  * @see {@link getDependencyReleaseLine} in `./getDependencyReleaseLine.ts` for dependency table formatting
  */
 
-import { Effect } from "effect";
+import type { ChangelogInfo } from "@effected/github";
+import { Effect, Layer, ManagedRuntime } from "effect";
 
+import { GitHubApiError } from "../errors.js";
 import { validateChangesetOptions } from "../schemas/options.js";
 import { GitHubService } from "../services/github.js";
 import type { ChangesetLogModeValue } from "../utils/logger.js";
@@ -60,16 +64,21 @@ import { getDependencyReleaseLine as getDependencyReleaseLineEffect } from "./ge
 import { getReleaseLine as getReleaseLineEffect } from "./getReleaseLine.js";
 
 /**
- * The layer providing every service the formatters need.
- *
- * `GitHubService.layer` satisfies the requirements of both `getReleaseLine` and
- * `getDependencyReleaseLine`, which each need only `GitHubService`. Markdown
- * parsing is not a layer: the formatters call `parseKitMarkdown` /
- * `emitKitMarkdown` from `utils/markdown-emit.ts` directly.
+ * The `GitHubService` a build with no `changelogInfo` gets: every lookup fails
+ * with a {@link GitHubApiError}, which the formatters already recover from by
+ * omitting attribution — the same line upstream renders when it has no token.
  *
  * @internal
  */
-const MainLayer = GitHubService.layer;
+const GitHubUnavailable: Layer.Layer<GitHubService> = Layer.succeed(GitHubService, {
+	getInfo: (params) =>
+		Effect.fail(
+			new GitHubApiError({
+				operation: "getCommitInfo",
+				reason: `no GitHub client configured to look up commit ${params.commit}`,
+			}),
+		),
+});
 
 /**
  * Options for {@link makeChangelogFunctions}.
@@ -82,32 +91,45 @@ export interface MakeChangelogFunctionsOptions {
 	 * default (`"stderr"`) in force.
 	 */
 	readonly logMode?: ChangesetLogModeValue | undefined;
+	/**
+	 * Where commit metadata comes from: `\@effected/github`'s `ChangelogInfo`,
+	 * typically `ChangelogInfo.layer` over a `GitHubClient` the host builds from
+	 * its own token and server. Omit it and every lookup fails typed, so lines
+	 * render without attribution — this engine reads no environment to find a
+	 * token itself.
+	 */
+	readonly changelogInfo?: Layer.Layer<ChangelogInfo> | undefined;
 }
 
 /**
  * Build a Changesets `ChangelogFunctions` implementation bound to a warning
- * mode.
+ * mode and a commit-metadata source.
  *
  * @remarks
  * This module is engine code and reads no environment; the host that installs
  * the functions (the `\@savvy-web/changelog` package under the changesets CLI)
- * decides the mode from its own `process.env` and passes it here. Each method
- * validates options, runs the corresponding Effect program with the merged
- * service layer and the chosen {@link ChangesetLogMode}, and returns a
- * `Promise<string>`.
+ * decides the mode and builds the GitHub client from its own `process.env`
+ * and passes both here. Each method validates options, runs the corresponding
+ * Effect program on a runtime built once per call to this factory — so the
+ * lookups the changesets engine starts concurrently share one `ChangelogInfo`
+ * and are batched into one GraphQL query, as upstream's dataloader batches
+ * them — and returns a `Promise<string>`.
  *
- * @param options - The warning mode to provide
+ * @param options - The warning mode and commit-metadata source to provide
  * @returns A `ChangelogFunctions` object for `.changeset/config.json`
  *
  * @public
  */
 export function makeChangelogFunctions(options: MakeChangelogFunctionsOptions = {}): ChangelogFunctions {
+	const github =
+		options.changelogInfo === undefined
+			? GitHubUnavailable
+			: GitHubService.layer.pipe(Layer.provide(options.changelogInfo));
+	let runtime: ManagedRuntime.ManagedRuntime<GitHubService, never> | undefined;
 	const run = <A, E>(program: Effect.Effect<A, E, GitHubService>): Promise<A> => {
-		const provided = program.pipe(Effect.provide(MainLayer));
-		return Effect.runPromise(
-			options.logMode === undefined
-				? provided
-				: provided.pipe(Effect.provideService(ChangesetLogMode, options.logMode)),
+		runtime ??= ManagedRuntime.make(github);
+		return runtime.runPromise(
+			options.logMode === undefined ? program : program.pipe(Effect.provideService(ChangesetLogMode, options.logMode)),
 		);
 	};
 

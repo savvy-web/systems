@@ -28,12 +28,16 @@ import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync }
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
 
-/** Built `savvy` bin out of this package's own dist/dev artifact (never the source tree). */
-const SAVVY_BIN = resolve(import.meta.dirname, "..", "..", "dist", "dev", "pkg", "bin", "savvy.js");
+/** Built `savvy` bin out of this package's own dist/prod artifact (never the source tree). */
+const SAVVY_BIN = resolve(import.meta.dirname, "..", "..", "dist", "prod", "npm", "pkg", "bin", "savvy.js");
+// The built bin's workspace siblings resolve to their source, so the spawn registers tsx by absolute URL; a bare
+// `--import=tsx` inherited from pnpm's nodeOptions would resolve against the child's cwd and fail.
+const TSX_IMPORT = `--import=${pathToFileURL(createRequire(import.meta.url).resolve("tsx")).href}`;
 
 const FIXTURE_TEMPLATE = join(import.meta.dirname, "fixtures", "regen-catalog");
 
@@ -41,7 +45,8 @@ const FIXTURE_TEMPLATE = join(import.meta.dirname, "fixtures", "regen-catalog");
  * `process.env` minus `NODE_V8_COVERAGE` so spawned subprocesses don't write
  * coverage temp files that race vitest's V8 provider (see packages/bundler/__test__/e2e/helpers.ts).
  */
-const { NODE_V8_COVERAGE: _omit, ...SPAWN_ENV } = process.env;
+const { NODE_V8_COVERAGE: _omit, ...INHERITED_ENV } = process.env;
+const SPAWN_ENV = { ...INHERITED_ENV, NODE_OPTIONS: TSX_IMPORT };
 
 /** Deterministic git identity for the fixture's base commit. */
 const GIT_ID = ["-c", "user.email=e2e@savvy.test", "-c", "user.name=e2e", "-c", "commit.gpgsign=false"];
