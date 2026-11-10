@@ -6,7 +6,7 @@ status: deprecated
 tags: [build, architecture]
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: install-orchestration
     resource: ../../package.json
@@ -17,13 +17,15 @@ verified:
     at: 2026-10-13T17:19:17Z
   - by: human:spencer
     at: 2026-10-23T15:45:32Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 integrity:
   generated:
-    body: 132e388ea265f155
+    body: 75c746d6c39a2822
   verified:
     by: human:spencer
-    at: 2026-10-23T15:45:32Z
-    content: 2588bdd3b064cd2d
+    at: 2026-11-10T15:51:58Z
+    content: 4dffc99c19a69915
 ---
 
 # Build each workspace-dependency package via its own prepare script
@@ -65,7 +67,7 @@ grep -rlE '"@savvy-web/<name>": "workspace:[*^]"' package.json packages/*/packag
 rather than trusting any list written down in a doc.
 
 The imperative rule for contributors — when to add or keep this script —
-is [conventions/workspace-prepare-scripts.md](../conventions/workspace-prepare-scripts.md).
+was `conventions/workspace-prepare-scripts.md` (deleted; [archived copy](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/conventions/workspace-prepare-scripts.md)); the rule that replaced it is [conventions/workspace-source-links.md](../conventions/workspace-source-links.md).
 
 ## Alternatives rejected
 

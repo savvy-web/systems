@@ -25,13 +25,15 @@ verified:
     at: 2026-10-09T17:59:10Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 integrity:
   generated:
     body: f5849b1d2315225c
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: 9b1c8c3df5ec34ff
+    at: 2026-11-10T15:51:58Z
+    content: dfb6621ce11ef2bd
 ---
 
 # OG image renders are cached only under a named salt

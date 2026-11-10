@@ -4,24 +4,31 @@ title: pnpm-plugin-silk
 description: The single pnpm config dependency that distributes the Silk Suite's shared workspace configuration — catalogs, overrides, build/hoist/peer rules, and release-age gating — to every consuming repository.
 kind: package
 resource: ../../packages/pnpm-plugin-silk
-status: draft
+status: stable
 tags: [release, tooling]
 sources:
   - id: arch
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:56:29Z
+  at: 2026-11-10T16:02:50Z
 integrity:
   generated:
-    body: 3357174bda343e89
+    body: c0be15d59de3e8d7
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:59:51Z
+    content: c0da0793e9770537
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:59:51Z
 ---
 
 # pnpm-plugin-silk
 
 ## Boundary
 
-`@savvy-web/pnpm-plugin-silk` (`packages/pnpm-plugin-silk`) is a pnpm config dependency: a consuming repo adds it to `pnpm-workspace.yaml` under `configDependencies` (pinned with its integrity hash) and thereafter references `catalog:<name>` / `catalog:<name>:peers` in its manifests.[^arch] It ships five purpose-scoped catalog pairs (`build`, `docs`, `lint`, `silk`, `test`), an `allowBuilds` allowlist, `publicHoistPattern`, `peerDependencyRules`, `minimumReleaseAge` gating, and the `strictDepBuilds`/`blockExoticSubdeps` defaults — see [purpose-scoped catalog naming](../conventions/purpose-scoped-catalogs.md) for the naming rule the catalog pairs follow and [the consumer catalog contract](../interfaces/silk-catalogs.md) for what a consumer may rely on staying stable. The Effect closure is deliberately NOT here: the single `catalog:effected` (`effect`, `@effect/*` and the `@effected/*` kit) comes from the separate `@effected/pnpm-plugin-effected` config dependency, so the two plugins version independently.[^arch] It is the only package in this repo published to npm only, never to GitHub Packages — see [independent package versioning](../decisions/independent-package-versioning.md).[^arch]
+`@savvy-web/pnpm-plugin-silk` (`packages/pnpm-plugin-silk`) is a pnpm config dependency: a consuming repo adds it to `pnpm-workspace.yaml` under `configDependencies` (pinned with its integrity hash) and thereafter references `catalog:<name>` / `catalog:<name>:peers` in its manifests.[^arch] It ships five purpose-scoped catalog pairs (`build`, `docs`, `lint`, `silk`, `test`), an `allowBuilds` allowlist, `publicHoistPattern`, `peerDependencyRules`, `minimumReleaseAge` gating, and the `strictDepBuilds`/`blockExoticSubdeps` defaults — see [purpose-scoped catalog naming](../conventions/purpose-scoped-catalogs.md) for the naming rule the catalog pairs follow and [the consumer catalog contract](../interfaces/silk-catalogs.md) for what a consumer may rely on staying stable. The Effect closure is deliberately NOT here: `catalog:effected` (`effect`, `@effect/*` and the `@effected/*` kit) and its `catalog:effected:peers` companion come from the separate `@effected/pnpm-plugin-effected` config dependency, so the two plugins version independently.[^arch] It is the only package in this repo published to npm only, never to GitHub Packages — see [independent package versioning](../decisions/independent-package-versioning.md).[^arch]
 
 ## Owner
 
@@ -29,7 +36,7 @@ The emitted plugin exports `{ hooks }` with a single `updateConfig(config)` that
 
 ## Load-bearing managed entries
 
-- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@tsdown/css` and `@types/bun`. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
+- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@tsdown/css` and `@types/bun`. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The `docs` and `silk` catalogs (and their `:peers`) carry no toolchain member either — typescript, tsx, `@types/node`, `@types/react`, `@types/react-dom`, react and react-dom left them — and neither `publicHoistPattern` nor `minimumReleaseAgeExclude` repeats what the kit already hoists or exempts (`effect`, `@effect/*`, `@effected/*`, `@oxc-project/*`, `@rolldown/*`, `@typescript/*`); the kit is upstream of `@savvy-web/silk` for the toolchain, which silk peers through `catalog:effected:build:peers`. The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
 - **Effect is exempt from release-age gating.** `minimumReleaseAgeExclude` lists `effect` and `@effect/*` alongside `@effected/*`, so a fresh Effect release installs without waiting out `minimumReleaseAge`. The two entries were once hand-added only to the root `pnpm-workspace.yaml`, and a `pnpm pnpm:export` dropped them, since the export rewrites the managed sections from the authored config. They now live in `lib/build/pnpm-config.plugin.ts` like every other managed key.[^arch]
 - **`@savvy-web/changelog` is hoisted; `@savvy-web/cli` and `@savvy-web/mcp` no longer are.** `publicHoistPattern` hoists `@savvy-web/changelog` because the changesets engine resolves the changelog id named in `.changeset/config.json` by name from the consumer root — a resolution need, not a bin. `@savvy-web/silk` now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so a consumer's `node_modules/.bin` is populated off the single silk dependency with no hoist needed for cli/mcp. `excludeByRepo` drops changelog for `savvy-web-systems` — this repo consumes it as a `workspace:*` link and a public hoist would shadow it. Release order is load-bearing here: a silk that carries the bins must ship before or with the pnpm-plugin-silk that stops hoisting, or a consumer on a bin-less silk loses `savvy` from PATH.[^arch]
 

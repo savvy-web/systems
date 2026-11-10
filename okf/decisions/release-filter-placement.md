@@ -19,13 +19,17 @@ integrity:
     body: 26b32dfe72d71d0e
   verified:
     by: human:spencer
-    at: 2026-10-23T13:23:23Z
-    content: 4c8d898d8e50c432
+    at: 2026-11-10T15:51:59Z
+    content: 372288d42c14979c
 verified:
   - by: human:spencer
     at: 2026-10-23T06:59:00Z
   - by: human:spencer
     at: 2026-10-23T13:23:23Z
+  - by: human:spencer
+    at: 2026-11-10T03:29:57Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:59Z
 ---
 
 # The per-target release filter runs outside the PublishabilityDetector

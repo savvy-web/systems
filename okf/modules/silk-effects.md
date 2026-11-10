@@ -4,7 +4,7 @@ title: silk-effects
 description: L2 engine of the Silk package graph — the shared, platform-agnostic Effect library holding Silk's policy and the business logic of six dev-tooling namespaces.
 kind: package
 resource: ../../packages/silk-effects
-status: draft
+status: stable
 tags: [architecture]
 sources:
   - id: arch
@@ -23,10 +23,17 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 integrity:
   generated:
-    body: adb6890f2738338e
+    body: d1bbe3ee3db1b83b
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:59:50Z
+    content: aae683546275c4ed
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:59:50Z
 ---
 
 # silk-effects
@@ -109,7 +116,7 @@ The Silk publishability rule, the changeset-config accessors, and the composite 
 
 ## Dependencies and platform requirements
 
-`@savvy-web/silk-core` is a regular `workspace:^` dependency, published as `^<version>`; changelog, cli and mcp depend on this package the same way, while silk pins it exactly (`workspace:*`). `effect` is the sole framework peer (`catalog:effected`, published as `~4.1.1`). Four kit packages — `@effected/commands`, `@effected/git`, `@effected/templates`, `@effected/workspaces` — are required peers (also `catalog:effected`, published at the catalog's patch caret) because their service or class identities cross this package's API boundary (templates and workspaces through the re-exported silk-core schemas); the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
+`@savvy-web/silk-core` is a regular `workspace:^` dependency, published as `^<version>`; changelog, cli and mcp depend on this package the same way, while silk pins it exactly (`workspace:*`). `effect` is the sole framework peer (`catalog:effected:peers`, published as `~4.1.0`). Six kit packages — `@effected/changesets`, `@effected/commands`, `@effected/git`, `@effected/github`, `@effected/templates`, `@effected/workspaces` — are required peers (also `catalog:effected:peers`, published at a minor-floor caret) because their service or class identities cross this package's API boundary (templates and workspaces through the re-exported silk-core schemas); the rest of the kit are regular dependencies. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). Consumers provide the platform layer and the working directory — no service defaults to `process.cwd()`.[^arch]
 
 ## Related concepts
 

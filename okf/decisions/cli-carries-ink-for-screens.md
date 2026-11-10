@@ -23,13 +23,17 @@ verified:
     at: 2026-10-13T17:19:17Z
   - by: human:spencer
     at: 2026-11-02T21:03:43Z
+  - by: human:spencer
+    at: 2026-11-10T03:29:57Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:59Z
 integrity:
   generated:
     body: a735b17892905480
   verified:
     by: human:spencer
-    at: 2026-11-02T21:03:43Z
-    content: 9784623d15cd82c8
+    at: 2026-11-10T15:51:59Z
+    content: 4c5ba531606c9655
 ---
 
 # The savvy CLI carries ink and react as regular dependencies, loaded only to draw

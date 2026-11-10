@@ -2,7 +2,7 @@
 type: Interface
 title: "@savvy-web/pnpm-plugin-silk catalog names"
 description: "The catalog names a consumer manifest may reference after adding this config dependency, what the plugin hoists, and what a consumer must not assume about catalog contents."
-status: draft
+status: stable
 kind: config
 resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 tags: [release, build]
@@ -11,10 +11,17 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 integrity:
   generated:
-    body: a1aabb749430e83b
+    body: 21f37553ef76f113
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:59:52Z
+    content: 5ede343bcfaf94f8
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:59:52Z
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names
@@ -44,20 +51,27 @@ advances. The two are never the same value by design — do not assume
 **`catalog:effected` is NOT provided by this package.** It comes from the
 separate `@effected/pnpm-plugin-effected` config dependency as one catalog
 holding `effect`, every `@effect/*` package and the `@effected/*` kit, with
-no `:peers` companion. The Effect closure therefore versions independently
-of the Silk catalogs. The older `catalog:effect` / `catalog:effect:peers` /
-`catalog:effected:peers` names, from the predecessor
+a `catalog:effected:peers` companion for peer ranges. The Effect closure
+therefore versions independently of the Silk catalogs. The older
+`catalog:effect` / `catalog:effect:peers` names, from the predecessor
 `@effected/pnpm-plugin-effect`, no longer exist — see
 [`decisions/kit-effect-peers-via-catalog.md`](../decisions/kit-effect-peers-via-catalog.md).[^pnpm-plugin-silk-architecture]
 
-**The build chain is not in `catalog:build` either.** `catalog:build` (and
-`build:peers`) holds only the members the kit does not catalog —
-`@tsdown/css` and `@types/bun` today. tsdown, rolldown,
-rolldown-plugin-dts, API Extractor and tsdoc, typescript, `@types/node`,
-tsx, react, `@rsbuild/core` and `@tsdown/exe` come from
-`catalog:effected:build`, which `@effected/pnpm-plugin-effected` also
-supplies; a consumer that referenced those names through `catalog:build`
-must move them to `catalog:effected:build` (see
+**The build chain and toolchain are in none of these catalogs.**
+`catalog:build` (and `build:peers`) holds only the members the kit does
+not catalog — `@tsdown/css` and `@types/bun` today — and `catalog:docs`
+and `catalog:silk` (and their `:peers`) carry no toolchain member either.
+tsdown, rolldown, rolldown-plugin-dts, API Extractor and tsdoc, typescript,
+tsx, `@types/node`, `@types/react`, `@types/react-dom`, react, react-dom,
+`@rsbuild/core` and `@tsdown/exe` come from `catalog:effected:build` (peers
+from `catalog:effected:build:peers`), which `@effected/pnpm-plugin-effected`
+also supplies. This package hoists none of them and repeats none of the
+kit's `minimumReleaseAgeExclude` globs; both are the kit's. A consumer that
+referenced those names through a Silk catalog must move them to
+`catalog:effected:build`, and a consumer that installs `@savvy-web/silk`
+without `@effected/pnpm-plugin-effected` is not supported: silk declares
+the toolchain as `catalog:effected:build:peers` peers, so the kit is
+upstream of silk for it (see
 [`decisions/kit-package-build.md`](../decisions/kit-package-build.md)).[^pnpm-plugin-silk-architecture]
 
 ## What the config dependency hoists
@@ -87,8 +101,8 @@ them, or `savvy` disappears from PATH.[^pnpm-plugin-silk-architecture]
   `excludeByRepo` entry drops it here, since it consumes changelog as a
   `workspace:*` link instead).
 - **Do not assume this plugin supplies the Effect or build-chain catalogs** —
-  add `@effected/pnpm-plugin-effected` separately for `catalog:effected` and
-  `catalog:effected:build`.
+  add `@effected/pnpm-plugin-effected` separately for `catalog:effected`,
+  `catalog:effected:build` and their `:peers` companions.
 - **`strategy` values on a catalog package entry (`lock`/`lock-minor`) are
   an upgrade-CLI-only directive** and carry no runtime meaning for a
   consumer's install.

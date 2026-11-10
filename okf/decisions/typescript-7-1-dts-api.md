@@ -7,7 +7,7 @@ tags: [build, deps, compat]
 supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: tp-manifest
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
@@ -32,13 +32,15 @@ verified:
     at: 2026-10-25T21:24:55Z
   - by: human:spencer
     at: 2026-11-02T21:03:43Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 integrity:
   generated:
-    body: 4441b3030004118a
+    body: e509183f79007166
   verified:
     by: human:spencer
-    at: 2026-11-02T21:03:43Z
-    content: 052daf031f5acf24
+    at: 2026-11-10T15:51:58Z
+    content: 08cee3ce07d4d3ae
 ---
 
 # Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
@@ -113,7 +115,7 @@ temp-dir tsconfig this package writes. Both premises have moved:
 The tsgo generator opens the dts-emit tsconfig as a TypeScript project, which
 is why `writeDtsEmitTsconfig` now names the base canonically and restates
 its file set absolutely; see
-[gotchas/tsgo-project-membership.md](../gotchas/tsgo-project-membership.md).
+[gotchas/tsgo-project-membership.md](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/tsgo-project-membership.md) (deleted with the code; archived copy).
 
 ## Alternatives rejected
 

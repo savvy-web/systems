@@ -52,13 +52,17 @@ verified:
     at: 2026-10-13T17:19:17Z
   - by: human:spencer
     at: 2026-11-02T21:03:43Z
+  - by: human:spencer
+    at: 2026-11-10T03:29:57Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:59Z
 integrity:
   generated:
     body: ed1662a97e9a480b
   verified:
     by: human:spencer
-    at: 2026-11-02T21:03:43Z
-    content: f519f5de22ef6c4b
+    at: 2026-11-10T15:51:59Z
+    content: d108c292a624a27f
 ---
 
 # The savvy front ends adopt the effected front-end kit

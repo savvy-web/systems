@@ -1,6 +1,6 @@
 ---
 type: Convention
-status: draft
+status: stable
 title: Resolve workspace packages from source; never re-add install-time builds
 description: "Keep workspace links resolving to src/ through exports and tsx: never add prepare, build:dev, a dist/dev link, publishConfig.directory or injectWorkspacePackages, and keep the tsx self-registration in every bin."
 stale_after: 2027-05-09T00:00:00Z
@@ -20,6 +20,13 @@ sources:
 integrity:
   generated:
     body: b27296a63c1df322
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:52:02Z
+    content: 3fb485b6409bdd31
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:52:02Z
 ---
 
 # Resolve workspace packages from source; never re-add install-time builds

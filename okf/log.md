@@ -1,5 +1,28 @@
 # Log
 
+## 2026-11-10
+
+* Updated @savvy-web/pnpm-plugin-silk catalog names
+* Updated @savvy-web/tsdown-plugins
+* Updated A public-hoisted workspace package resolves to its source tree, not its built artifact
+* Updated An Effect-native MCP server
+* Updated Build each workspace-dependency package via its own prepare script
+* Updated Build every package with the kit's effected package build, linked to source
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+* Updated Every package versions independently
+* Updated Kit Effect peers supplied via the effected catalog
+* Updated OG image renders are cached only under a named salt
+* Updated Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
+* Updated Resolve workspace packages from source; never re-add install-time builds
+* Updated Spell dependency ranges through purpose-scoped catalogs
+* Updated Split the build orchestrator from the plugin pack
+* Updated The per-target release filter runs outside the PublishabilityDetector
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated pnpm-plugin-silk
+* Updated silk-core
+* Updated silk-effects
+
 ## 2026-11-09
 
 * Updated @savvy-web/bundler

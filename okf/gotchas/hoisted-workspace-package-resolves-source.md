@@ -8,7 +8,7 @@ tags: [deps, release, build]
 stale_after: 2027-03-17T00:00:00Z
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: hoist-config
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
@@ -18,7 +18,7 @@ sources:
     resource: ../../packages/changelog/package.json
 integrity:
   generated:
-    body: 1b7b24a8c435c4c7
+    body: 97104e4adf72e0fc
 ---
 
 # A public-hoisted workspace package resolves to its source tree, not its built artifact
@@ -70,7 +70,7 @@ whole reason the hoist exists.
 
 - [`modules/changelog.md`](../modules/changelog.md)
 - [`modules/pnpm-plugin-silk.md`](../modules/pnpm-plugin-silk.md)
-- [`conventions/workspace-prepare-scripts.md`](../conventions/workspace-prepare-scripts.md)
+- [`conventions/workspace-source-links.md`](../conventions/workspace-source-links.md)
 - [`decisions/per-package-prepare-builds.md`](../decisions/per-package-prepare-builds.md)
 
 [^hoist-config]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts` — the `publicHoistPattern.excludeByRepo` block

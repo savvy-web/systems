@@ -4,17 +4,24 @@ title: silk-core
 description: L1 domain core of the Silk package graph — platform-free schemas, tagged errors, and the frozen PrBody contract.
 kind: package
 resource: ../../packages/silk-core
-status: draft
+status: stable
 tags: [architecture]
 sources:
   - id: arch
     resource: ../../packages/silk-core/src
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 integrity:
   generated:
-    body: 5f4134b971846c16
+    body: d6b0160eb25b680e
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:59:51Z
+    content: 56a776380b8b1a74
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:59:51Z
 ---
 
 # silk-core
@@ -46,7 +53,7 @@ The rule for future moves: a candidate that imports a silk-effects sibling stays
 
 - **No platform, no `process`, no allowlist** under `src/`, enforced by `__test__/boundaries.test.ts`.[^arch]
 - **`PrBody.Markers` is frozen.** The `silk-release:` token names the contract, not the emitting action; byte-parity with `silk-release-action` is pinned by fixture and drift-lint tests. See [pr-body-contract](../interfaces/pr-body-contract.md).[^arch]
-- **`@effected/workspaces` and `@effected/templates` are required peers (`catalog:effected`), not regular dependencies.** `SilkPublishConfig` extends workspaces' `PublishConfig` class and `AnalyzedWorkspace` carries its value classes; `SavvySections`, `SavvyOkfSection`, and `SavvyInstallSection` build on templates' nominal `Section`, `CommentStyle`, and `SectionId` classes. If silk-core held its own copy of either, silk-core and silk-effects could resolve two instances and `instanceof`/Schema identity would break across the layer edge. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). `@effected/github-references` stays a regular dependency because `parseBareLines` returns a plain interface — only functions and structural types cross the boundary there.[^arch]
+- **`@effected/workspaces` and `@effected/templates` are required peers (`catalog:effected:peers`), not regular dependencies.** `SilkPublishConfig` extends workspaces' `PublishConfig` class and `AnalyzedWorkspace` carries its value classes; `SavvySections`, `SavvyOkfSection`, and `SavvyInstallSection` build on templates' nominal `Section`, `CommentStyle`, and `SectionId` classes. If silk-core held its own copy of either, silk-core and silk-effects could resolve two instances and `instanceof`/Schema identity would break across the layer edge. See [kit-effect-peers-via-catalog](../decisions/kit-effect-peers-via-catalog.md). `@effected/github-references` stays a regular dependency because `parseBareLines` returns a plain interface — only functions and structural types cross the boundary there.[^arch]
 - **Linked to source** — silk-effects consumes this package as `workspace:^`, resolved through its `exports` to `src/`; nothing builds it on install. See [workspace-source-links](../conventions/workspace-source-links.md).[^arch]
 - **Cross-package `{@link}` targets are plain backticks, never `{@link}`.** API Extractor cannot resolve a link through a re-export, so a silk-effects doc comment naming a silk-core symbol (and vice versa) uses a code span instead.[^arch]
 

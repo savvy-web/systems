@@ -17,11 +17,13 @@ integrity:
     body: 09d566976e5cf40d
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: a7f94068ffb8078f
+    at: 2026-11-10T15:51:58Z
+    content: 9fb2f6110d3205c1
 verified:
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-10T15:51:58Z
 ---
 
 # Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission

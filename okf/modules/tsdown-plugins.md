@@ -8,7 +8,7 @@ resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plu
 tags: [build]
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T16:02:50Z
 sources:
   - id: tp-index
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/index.ts
@@ -30,7 +30,7 @@ sources:
     resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/config-validation
 integrity:
   generated:
-    body: fe170ef7d9e0298f
+    body: 45e87dc38ffde667
 ---
 
 # @savvy-web/tsdown-plugins
@@ -112,7 +112,7 @@ copy.[^tp-build] The two AST readers in `src/dts/` (`relative-imports.ts`,
 `typescript` importers. The tsgo generator opens the dts-emit tsconfig as a
 TypeScript project, so `writeDtsEmitTsconfig` names the base canonically and
 restates its `files`/`include`/`exclude` as absolute canonical paths — the
-trap is [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md).
+trap is [`gotchas/tsgo-project-membership.md`](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/tsgo-project-membership.md) (archived).
 Declarations are rolled up **one entry at a time** rather than in one
 multi-entry build, because a shared chunk's content-hashed naming and split
 layout vary across otherwise byte-identical builds — determinism is a
@@ -166,7 +166,7 @@ declarations directory — dropping every source-less mapping segment
 (`scrubDeclarationMapsUnder`, `src/meta/scrub-declaration-maps.ts`, over
 `@jridgewell/sourcemap-codec`), because API Extractor's `SourceMapper`
 resolves such a segment to a directory and dies with `EISDIR`; see
-[`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md).[^tp-generate]
+[`gotchas/sourceless-declaration-map-segments.md`](https://github.com/savvy-web/systems/blob/3cb3a9ff/okf/gotchas/sourceless-declaration-map-segments.md) (archived).[^tp-generate]
 For each entry it then runs the extractor **twice**
 when the build emitted a separate declarations pass: Run A reads the
 bundled `pkg/<entry>.d.ts` and produces the shipped `.api.json` (stable
@@ -285,8 +285,6 @@ any build work on every target path.
 
 - [`modules/bundler.md`](bundler.md)
 - [`decisions/typescript-7-1-dts-api.md`](../decisions/typescript-7-1-dts-api.md)
-- [`gotchas/tsgo-project-membership.md`](../gotchas/tsgo-project-membership.md)
-- [`gotchas/sourceless-declaration-map-segments.md`](../gotchas/sourceless-declaration-map-segments.md)
 - [`decisions/og-image-cache-salt-from-generator.md`](../decisions/og-image-cache-salt-from-generator.md)
 - [`interfaces/build-issues-json.md`](../interfaces/build-issues-json.md)
 - [`decisions/release-filter-placement.md`](../decisions/release-filter-placement.md)

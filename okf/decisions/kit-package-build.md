@@ -2,7 +2,7 @@
 type: Decision
 title: Build every package with the kit's effected package build, linked to source
 description: "Every package builds with `effected package build` from @effected/plugin; workspace links resolve to src/ through exports and tsx, nothing builds on install, and the in-repo bundler, tsdown-plugins, rspress-builder and github-action-builder are deleted with no final release."
-status: draft
+status: stable
 tags: [build, architecture, deps]
 supersedes: per-package-prepare-builds.md
 generated:
@@ -26,6 +26,13 @@ sources:
 integrity:
   generated:
     body: 9adae80882b1a02d
+  verified:
+    by: human:spencer
+    at: 2026-11-10T15:52:01Z
+    content: de0d19fc7266f597
+verified:
+  - by: human:spencer
+    at: 2026-11-10T15:52:01Z
 ---
 
 # Build every package with the kit's effected package build, linked to source
