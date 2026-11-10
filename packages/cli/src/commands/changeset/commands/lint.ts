@@ -26,6 +26,7 @@ import { CliExit } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Console, Effect } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
+import { workspacePackageNames } from "../../../internal/workspace-package-names.js";
 
 const { ChangesetLinter } = Changesets;
 
@@ -54,7 +55,8 @@ const quietOption = Flag.Boolean("quiet").pipe(
 export function runLint(dir: string, quiet: boolean) {
 	return Effect.gen(function* () {
 		const resolved = resolve(dir);
-		const messages = yield* Effect.try(() => ChangesetLinter.validate(resolved));
+		const packages = yield* workspacePackageNames(resolved);
+		const messages = yield* Effect.try(() => ChangesetLinter.validate(resolved, { packages }));
 
 		for (const msg of messages) {
 			yield* Console.log(`${msg.file}:${msg.line}:${msg.column} ${msg.rule} ${msg.message}`);

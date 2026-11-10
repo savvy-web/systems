@@ -13,7 +13,7 @@
 
 import { ToolDiscovery } from "@effected/commands";
 import type { Git } from "@effected/git";
-import type { WorkspaceRoot } from "@effected/workspaces";
+import type { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { Workspaces } from "@effected/workspaces";
 import {
 	ChangesetConfig,
@@ -46,6 +46,7 @@ import { ChildProcessSpawner } from "effect/process";
 export type McpServices =
 	| SilkWorkspaceAnalyzer
 	| WorkspaceRoot
+	| WorkspaceDiscovery
 	| Turbo.TurboInspector
 	| Changesets.BranchAnalyzer
 	| Changesets.ConfigInspector

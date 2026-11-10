@@ -109,7 +109,7 @@ const tags = strategy.tagsFor([{ name: "@savvy-web/silk-effects", version: "1.0.
 
 #### ChangesetLinter
 
-Validate a changeset file against the Silk section rules. `ChangesetLinter.validateContent(content, filePath?)` and `ChangesetLinter.validateFile(filePath)` are static and synchronous, returning `LintMessage[]` — no Effect, no layers. Rules cover the valid section headings, structural constraints, and the dependency-table format: a `## Dependencies` section must contain a dependency table somewhere between its heading and the next — prose may sit before or after the table — and a section with no table at all is reported at the heading. Each rule is documented under [`docs/rules/`](./docs/rules/CSH001.md) (CSH001 through CSH005).
+Validate a changeset file against the Silk section rules. `ChangesetLinter.validateContent(content, filePath?, options?)`, `ChangesetLinter.validateFile(filePath, options?)` and `ChangesetLinter.validate(dir, options?)` are static and synchronous, returning `LintMessage[]` — no Effect, no layers. The front matter is checked with `@effected/changesets/lint`'s rules: a YAML block of package names to `major`/`minor`/`patch`/`none`, and, when you pass `{ packages }` (the workspace's package names), that each named package exists. The body rules cover the valid section headings, structural constraints, and the dependency-table format: a `## Dependencies` section must contain a dependency table somewhere between its heading and the next — prose may sit before or after the table — and a section with no table at all is reported at the heading. Each rule is documented under [`docs/rules/`](./docs/rules/CSH001.md) (CSH001 through CSH005).
 
 ```typescript
 import { Changesets } from "@savvy-web/silk-effects";

@@ -38,6 +38,8 @@
 		"@effected/git": "catalog:effected",
 		"@effected/github": "catalog:effected",
 		"@effected/kit": "catalog:effected",
+		"@effected/markdown": "catalog:effected",
+		"@effected/markdown-lint": "catalog:effected",
 		"@effected/mcp-kit": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",

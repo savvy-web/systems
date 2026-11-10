@@ -23,17 +23,19 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T16:02:50Z
+  at: 2026-11-10T21:25:56Z
 integrity:
   generated:
-    body: d1bbe3ee3db1b83b
+    body: be23906d0b837b7a
   verified:
     by: human:spencer
-    at: 2026-11-10T15:59:50Z
-    content: aae683546275c4ed
+    at: 2026-11-10T21:24:50Z
+    content: 7ea2487dc9b24c52
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:50Z
+  - by: human:spencer
+    at: 2026-11-10T21:24:50Z
 ---
 
 # silk-effects
@@ -66,14 +68,15 @@ Every service is a `Context.Service` class with a companion exported `*Shape` in
 
 ### Changesets
 
-`Changesets` (`src/changesets/`, `export * as Changesets`) holds the business logic of the former `@savvy-web/changesets` package: the changeset transformer and linter, the changelog renderer, the kit-based changelog transforms (on `@effected/markdown`) and markdownlint rules, and the services that inspect config, plan releases, and regenerate dependency changesets. It runs the genuine changesets **v3 engine** at runtime.[^changesets]
+`Changesets` (`src/changesets/`, `export * as Changesets`) holds the business logic of the former `@savvy-web/changesets` package: the changeset transformer and linter, the changelog renderer, the kit-based changelog transforms (on `@effected/markdown`), the changeset lint rules, and the services that inspect config, plan releases, and regenerate dependency changesets. It runs the genuine changesets **v3 engine** at runtime.[^changesets]
 
 - **`ConfigInspector`** resolves `.changeset/config.json` into package scopes and classifies file paths against them, with a release-surface fallback built from `SilkPublishability.detect` when no explicit `packages` record exists, and fixed attribution precedence (directory containment deepest-first, then `additionalScopes`, `versionFiles`, then root-as-package).[^changesets]
 - **`ReleasePlanner`** backs `plan`, `preview`, and `apply` with the real `@changesets/get-release-plan` + `@changesets/apply-release-plan` machinery. `apply` is the destructive native release `savvy changeset version` runs — no `changeset` binary shell-out — and is deliberately not exposed over MCP; only `preview` is.[^changesets] `apply` also takes an optional `onStep` callback, called with each completed `ApplyStep` (exported as `Changesets.ApplyStep`) as it lands, so `savvy changeset version` reports progress that survives a later failure. Both take an optional `snapshot: SnapshotOptions` (`tag`, `useCalculatedVersion`, `prereleaseTemplate`, `commit`; exported as `Changesets.SnapshotOptions`) for `changeset version --snapshot` parity with the CLI 3.0.3 `version.mjs`: per-call overrides of `config.snapshot`, CHANGELOGs still written and changesets consumed, internal non-`workspace:*` ranges pinned exactly by the engine — the path silk-release-action's snapshot publish phase drives. Because `getReleasePlan` has no snapshot parameter, the snapshot path builds its plan from `@changesets/read` + `@changesets/pre` + `@changesets/assemble-release-plan` directly (the non-snapshot path still uses `getReleasePlan`); pre mode and template placeholders without values fail typed as `ReleasePlanError`. An empty `tag` is normalized to the bare flag, since `applyReleasePlan` reads `""` as not-a-snapshot and would write caret ranges.[^changesets]
 - **`VersionFiles`** patches version files with format-preserving minimal edits through `@effected/jsonc`'s `modify` + `applyEdits`; never a `JSON.parse`/`JSON.stringify` round-trip.[^changesets]
 - **`DepsRegen`** (`plan`/`execute`) computes and applies the cumulative dependency-changeset diff between two workspace snapshots (merge-base→worktree by default), cross-seeding catalogs between the two sides so a config-dependency hook injection cannot masquerade as a version change. Since `@effected/workspaces` 0.24.0, `WorkspaceSnapshots.at(ref)` replays each ref's *declared* config-dependency version — resolved from the live `node_modules/.pnpm-config` copy when its version matches, else the local pnpm store's `links/<name>/<version>/…` tree, else a typed `CatalogAssemblyError` — so a hook-only catalog (`catalog:*:peers`) that moved between the refs now produces its `peerDependency` rows. `plan()` fails with a typed `HookReplayError` when a ref's `pnpm-workspace.yaml` declares `configDependencies` its snapshot's `hookReplays` record does not carry at the declared version: the guard against a non-replaying `ConfigDependencyHooks` layer being wired in, which was the silent-omission failure of savvy-web/systems#674. Pure-dependency changesets are written to a stable package-derived filename (`<scope>-<name>-deps.md`, unscoped `<name>-deps.md`, via `depsChangesetFilename`) so a no-op regen produces no file churn (savvy-web/systems#673); detection still classifies a changeset as pure by content, never by name. `execute` takes an optional `onStep` callback, called with each `RegenStep` (`Written`/`Deleted`, exported as `Changesets.RegenStep`) right after it reaches disk — a tolerated delete failure fires nothing — so the CLI prints per completed step. `DepsRegen.layer` is the injection seam; `DepsRegenDefault` is the batteries-included composition.[^changesets]
 - **Changelog rendering** carries no commit-link prefixes (squash-merge workflows make per-changeset commit links point at squash commits) and is AST-native: `renderSectionNode` decides on markdown node type, never string prefixes. Changeset-less releases render a `### Maintenance` note via the pure `deriveMaintenanceReason`.[^changesets]
-- The five `CSH00x` lint rules exist twice — as kit rules over `@effected/markdown` nodes and as markdownlint rules — kept from drifting by one shared version pattern (`VERSION_RE`) and one shared `## Dependencies` table scanner (`scanDependencySection`).[^changesets]
+- **The five `CSH00x` rules exist once.** Each is a single `@effected/markdown-lint` `LintRule` under `src/changesets/lint/`, collected in reporting order as `CHANGESET_RULES`. Two hosts run the same definitions: `ChangesetLinter` (behind `savvy changeset lint`/`check`/`validate-file` and the MCP `changeset_validate` tool) runs them through `@effected/changesets/lint`'s `ChangesetLint.lint`, and `src/changesets/markdownlint/index.ts` (behind `@savvy-web/silk/changesets/markdownlint`) exports each through `MarkdownlintAdapter.rule` under the same rule names, ids, named exports and default array as before, so markdownlint-cli2 and the editor extension report what the CLI reports, on the same lines. The `## Dependencies` table checks share one scanner (`scanDependencySection`) and one parser (`parseDependencyTable`, which also owns the readable CSH005 row messages and the `VERSION_RE` check); CSH005 findings anchor at the table, not the row.[^changesets]
+- **`ChangesetLinter` also lints the front matter**, with the kit's rules: CF001 `changeset-front-matter` (a YAML block, a mapping when not empty — a file with no front matter fails), CF002 `changeset-package-name`, CF003 `changeset-release-type`, and CF004 `changeset-known-package`, which runs only when the caller passes the workspace's names through the optional `ChangesetLinterOptions` (`{ packages }`) argument on `validateContent`/`validateFile`/`validate`. The CLI and MCP front ends pass them from `WorkspaceDiscovery` and skip CF004 when discovery is unavailable or fails.[^changesets]
 
 ### Commitlint
 

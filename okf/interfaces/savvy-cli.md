@@ -23,12 +23,14 @@ sources:
     resource: ../../packages/cli/src/internal/confirm.ts
   - id: cli-command-error
     resource: ../../packages/cli/src/internal/command-error.ts
+  - id: cli-changeset-lint
+    resource: ../../packages/cli/src/internal/workspace-package-names.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-02T21:02:43Z
+  at: 2026-11-10T21:25:56Z
 integrity:
   generated:
-    body: 4310e93cb6b46bda
+    body: f9d350850ddae1f5
 ---
 
 # savvy command tree
@@ -136,6 +138,14 @@ subcommands of their own.[^cli-architecture]
 - **`savvy changeset version` natively applies the pending release** —
   bumping versions, transforming CHANGELOGs, updating `versionFiles` — with
   no `changeset` binary shell-out. `--dry-run` never writes.[^cli-architecture]
+- **`savvy changeset lint`, `check` and `validate-file` run one rule set**:
+  the front matter rules CF001–CF004 and the CSH001–CSH005 body rules, the
+  same definitions the `changeset_validate` MCP tool and the
+  `@savvy-web/silk/changesets/markdownlint` rules run. A changeset with no
+  front matter fails CF001. CF004 (every key names a workspace package)
+  runs only when the workspace's packages can be discovered; outside a
+  discoverable workspace it is skipped and every other rule still
+  runs.[^cli-changeset-lint]
 - **`savvy changeset version`/`transform` refuse to run against an invalid
   `.changeset/config.json`**; an absent config passes (an un-bootstrapped
   project keeps working). `savvy changeset lint` deliberately skips this
@@ -260,3 +270,4 @@ deregister [section]           clear a stale submodule.<section> local-config
 [^cli-clean]: `../../packages/cli/src/commands/clean.ts`
 [^cli-confirm]: `../../packages/cli/src/internal/confirm.ts`
 [^cli-command-error]: `../../packages/cli/src/internal/command-error.ts`
+[^cli-changeset-lint]: `../../packages/cli/src/internal/workspace-package-names.ts`

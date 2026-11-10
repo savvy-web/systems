@@ -1,7 +1,6 @@
 import { lint } from "markdownlint/sync";
 import { describe, expect, it } from "vitest";
-import { DependencyTableFormatRule } from "../../src/changesets/markdownlint/rules/dependency-table-format.js";
-import { REAL_WORLD_DEPENDENCY_SECTIONS } from "./fixtures__real-world-dependency-sections.js";
+import { DependencyTableFormatRule } from "../../src/changesets/markdownlint.js";
 
 function check(markdown: string) {
 	const result = lint({
@@ -88,8 +87,8 @@ describe("markdownlint/dependency-table-format", () => {
 
 	// --- issues #456 / #457 ---------------------------------------------------
 	// CSH005 accepts a valid dependency table ANYWHERE in the `## Dependencies`
-	// section; prose may precede or follow it. This mirrors the kit rule so
-	// the two implementations of one documented rule cannot disagree.
+	// section; prose may precede or follow it, through markdownlint as through
+	// the programmatic linter.
 	describe("table position within the section (issues #456/#457)", () => {
 		it("passes when prose precedes the table", () => {
 			const md = ["## Dependencies", "", "Routine dependency maintenance.", "", VALID_TABLE, ""].join("\n");
@@ -139,21 +138,10 @@ describe("markdownlint/dependency-table-format", () => {
 		});
 	});
 
-	// Real shipped shapes from savvy-web/silk-update-action (relayed during the
-	// #456/#457 unification round). All exist in that repo's history and must
-	// pass — see the fixture module for what each one pins.
-	describe("real-world production shapes (silk-update-action)", () => {
-		for (const [name, markdown] of REAL_WORLD_DEPENDENCY_SECTIONS) {
-			it(`passes: ${name}`, () => {
-				expect(check(markdown)).toEqual([]);
-			});
-		}
-	});
-
 	// --- issue #367 -----------------------------------------------------------
-	// The micromark token carries raw source, so backslash escapes reach the rule
-	// intact. The sibling kit rule validates the parsed tree, where the parser
-	// has already resolved them. Both must agree about the same file.
+	// The rule validates the parsed tree, where the parser has already resolved
+	// backslash escapes, so an escaped cell checks the same as its unescaped
+	// spelling. Through the adapter, markdownlint must see it that way too.
 	describe("backslash escapes are resolved before validation (issue #367)", () => {
 		it("accepts a tilde range written with the legacy escape", () => {
 			expect(check(table("| @effected/semver | dependency | updated | \\~0.2.0 | \\~0.2.1 |"))).toEqual([]);

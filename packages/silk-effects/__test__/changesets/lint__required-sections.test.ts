@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DOCS } from "../../src/changesets/constants.js";
-import { requiredSections } from "../../src/changesets/rules/required-sections.js";
-import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
+import { RequiredSectionsRule } from "../../src/changesets/lint/required-sections.js";
+import { findings } from "./lint-findings.js";
 
 function lint(markdown: string) {
-	return requiredSections(parseKitMarkdown(markdown)).map((f) => f.message);
+	return findings(RequiredSectionsRule, markdown).map((f) => f.message);
 }
 
 describe("required-sections", () => {

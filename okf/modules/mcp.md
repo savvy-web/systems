@@ -9,6 +9,8 @@ tags: [architecture, tooling]
 sources:
   - id: arch
     resource: ../../packages/mcp/src
+  - id: mcp-manifest
+    resource: ../../packages/mcp/package.json
   - id: main
     resource: ../../packages/mcp/src/main.ts
   - id: server
@@ -23,10 +25,10 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-06T00:18:30Z
+  at: 2026-11-10T21:34:34Z
 integrity:
   generated:
-    body: 339af1a25a1f9339
+    body: 06ff5ed92d698526
 ---
 
 # mcp
@@ -69,6 +71,7 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 - **Only `main.ts` touches `process`.** It is the one file the `process` rules allow wholesale; `version.ts` is waived only for the single `process.env.__PACKAGE_VERSION__` token through `allowRules`, and `bin.ts` may not touch `process` at all. Everything below takes its facts as values; `__test__/boundaries.test.ts` pins it with `SourceBoundary`, and asserts the version token was actually waived.[^tests]
 - **`src/index.ts` never exports `main`.**[^arch]
 - **ESM-only, real Node process.** silk-effects is a normal runtime dependency here, not bundled — the same posture every package in the repo now holds, including `@savvy-web/silk`.[^arch]
+- **`@effected/markdown` and `@effected/markdown-lint` are load-bearing dependencies with no importer.** They satisfy `@effected/changesets`' optional peers: importing silk-effects always loads `@effected/changesets/lint`, so under a strict resolver (pnpm `hoist=false`, Yarn PnP) an install of this package alone would fail with `ERR_MODULE_NOT_FOUND` without them. silk, cli, mcp and changelog all declare both; see [silk](silk.md).[^mcp-manifest]
 - **Effect Schema is the only schema language.** Parameters, results, and the failure union are Effect `Schema`; the framework derives the wire JSON Schema. No zod, no bridge.[^arch]
 - **stdout is the JSON-RPC wire; logs go to stderr; a non-JSON stdin line gets a `-32700` reply and the server keeps serving; a clean disconnect exits 0.** All four are `McpStdio`'s, pinned end to end by `__test__/e2e/server-lifecycle.e2e.test.ts` over `@effected/mcp-kit/testing`'s `McpProcess`/`McpProbe`, and in process over `McpHarness`, which every in-process server suite drives through the thin `__test__/utils/harness.ts` wrapper — there is no hand-ported harness. The one exception is `server.strict.test.ts`, which pins `Tool.Strict` on a fixture toolkit over core `effect/ai`'s in-memory `McpTest.makeClient` (protocols `McpStdio.protocols`, `2025-11-25`), since its subject is the registration, not stdio.[^tests]
 - **Read-only is the convention; `biome_check`, `changeset_deps_regen`, and `repos_manage` are the three documented exceptions.** See [savvy-mcp-tools](../interfaces/savvy-mcp-tools.md).[^arch]
@@ -90,3 +93,4 @@ A plugin declares the server via an `mcpServers` block in its `.claude-plugin/pl
 [^errors]: `../../packages/mcp/src/errors.ts`
 [^repos-manage]: `../../packages/mcp/src/tools/repos-manage.ts`
 [^layering]: `../../packages/silk/__test__/package-layering.test.ts`
+[^mcp-manifest]: `../../packages/mcp/package.json`

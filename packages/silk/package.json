@@ -42,14 +42,15 @@
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
 		"@effected/github": "catalog:effected",
+		"@effected/markdown": "catalog:effected",
+		"@effected/markdown-lint": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/cli": "workspace:*",
 		"@savvy-web/mcp": "workspace:*",
 		"@savvy-web/silk-effects": "workspace:*",
-		"effect": "catalog:effected",
-		"semver": "^7.8.6"
+		"effect": "catalog:effected"
 	},
 	"devDependencies": {
 		"@effect/platform-node": "catalog:effected",
@@ -58,6 +59,7 @@
 		"@types/node": "catalog:effected:build",
 		"@types/react": "catalog:effected:build",
 		"@types/react-dom": "catalog:effected:build",
+		"markdownlint": "^0.42.0",
 		"react": "catalog:effected:build",
 		"react-dom": "catalog:effected:build",
 		"tsx": "catalog:effected:build",

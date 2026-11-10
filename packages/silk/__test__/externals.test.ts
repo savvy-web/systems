@@ -9,11 +9,13 @@
  * dropping the declaration makes rolldown inline that package's source into
  * the artifacts instead of leaving an `import` for the consumer to resolve.
  *
- * `semver` is the live case. Nothing in `src/` imports it — the importers are
- * the `@changesets/*` packages inside `@savvy-web/silk-effects`' transitive
- * tree. Inlining it pulls semver's circular CommonJS modules into the ESM
- * output, which is the documented `require_range is not a function`
- * init-order hazard (see savvy.build.ts).
+ * `semver` was the case this guard was written for. silk once declared it
+ * only so rolldown would not inline the copy the `\@changesets/*` packages
+ * inside silk-effects' tree imported: inlined, semver's circular CommonJS
+ * modules hit the `require_range is not a function` init-order hazard in the
+ * ESM output. silk-effects now runs on the kit's changesets engine, nothing in
+ * silk's bundled graph imports semver, and the declaration is gone; the scan
+ * stays so a future dependency that drags semver back in is caught here.
  *
  * These assertions read the built output rather than the manifest, because the
  * manifest is the input to the behavior under test, not evidence of it.
@@ -82,8 +84,8 @@ describe("built artifact externals", () => {
 					}
 				}
 
-				// If this fails, `semver` was dropped from package.json dependencies or
-				// from the manifest keep-list in savvy.build.ts. It must stay in both.
+				// If this fails, something silk bundles imports npm `semver` again.
+				// Declare that importer (or `semver`) as a dependency so it stays external.
 				expect(offenders).toEqual([]);
 			});
 

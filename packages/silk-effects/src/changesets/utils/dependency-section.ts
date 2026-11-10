@@ -2,15 +2,11 @@
  * Shared section-scanning decision for the CSH005 dependency-table rule.
  *
  * @remarks
- * CSH005 has two implementations — a kit rule over the @effected/markdown tree and
- * a markdownlint rule over micromark tokens. Both must agree on ONE question:
- * given the blocks of a `## Dependencies` section, which block (if any) is the
- * dependency table? Issues #456/#457 arose because each rule answered it with
- * its own inline loop and the answers drifted: the markdownlint rule required
- * the table to be the FIRST block after the heading, while the kit rule (then on remark)
- * accepted a table anywhere in the section.
- *
- * The decided semantics live here, engine-agnostically:
+ * Answers one question: given the blocks of a `## Dependencies` section, which
+ * block (if any) is the dependency table? Issues #456/#457 arose when CSH005
+ * had two implementations (a tree rule and a markdownlint micromark rule) that
+ * answered it differently. There is now one rule, run by both hosts through
+ * `\@effected/markdown-lint`, but the decision stays written down here:
  *
  * - A section spans from the node after its heading to the next heading (any
  *   depth) or end of document.
@@ -18,15 +14,9 @@
  *   precede or follow it.
  * - A section with no table (prose/list only) fails.
  *
- * Each rule supplies a tiny {@link SectionScanAdapter} describing its node
- * representation; the scanning decision itself cannot drift because it is
- * written once.
- *
- * Position reporting (documented here so both rules stay aligned): the
- * "section has no table" diagnostic anchors at the `## Dependencies` HEADING
- * in both engines — there is no table node to point at, and the heading is
- * the one position both parsers agree on. Diagnostics about a table that was
- * found anchor at the table (or the offending row).
+ * Position reporting: the "section has no table" diagnostic anchors at the
+ * `## Dependencies` HEADING, since there is no table node to point at.
+ * Diagnostics about a table that was found anchor at the table.
  *
  * @internal
  */

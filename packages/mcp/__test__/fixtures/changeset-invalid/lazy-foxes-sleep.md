@@ -1,5 +1,5 @@
 ---
-"@savvy-web/mcp": patch
+"@scope/foo": patch
 ---
 
 This paragraph sits before any section heading, so it is uncategorized content.

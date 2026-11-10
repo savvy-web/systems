@@ -118,7 +118,7 @@ describe("check command – rendering", () => {
 
 	beforeEach(() => {
 		tempDir = mkdtempSync(join(tmpdir(), "cli-check-render-"));
-		writeFileSync(join(tempDir, "bad.md"), "# Bad\n");
+		writeFileSync(join(tempDir, "bad.md"), '---\n"@savvy-web/changesets": patch\n---\n\n# Bad\n');
 	});
 
 	afterEach(() => {
@@ -135,7 +135,7 @@ describe("check command – rendering", () => {
 			const lines = result.stdout[0].split("\n");
 			expect(lines[0]).toBe(file);
 			expect(lines[2]).toMatch(/^position {2}rule {2,}message/);
-			expect(lines[4]).toMatch(/^1:1 {7}changeset-heading-hierarchy {2}h1 headings are not allowed/);
+			expect(lines[4]).toMatch(/^5:1 {7}changeset-heading-hierarchy {2}h1 headings are not allowed/);
 			expect(lines.at(-1)).toBe("✗ 1 file(s) with errors, 1 error(s) found");
 			// Only the Actions log draws an annotation.
 			expect(result.stdout[0]).not.toContain("::error");
@@ -162,7 +162,7 @@ describe("check command – rendering", () => {
 			expect(annotations).toHaveLength(1);
 			expect(annotations[0]).toMatch(
 				new RegExp(
-					`^::error title=changeset-heading-hierarchy,file=${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")},line=1,col=1::h1 headings`,
+					`^::error title=changeset-heading-hierarchy,file=${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")},line=5,col=1::h1 headings`,
 				),
 			);
 		}),

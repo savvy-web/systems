@@ -42,6 +42,8 @@
 		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
 		"@effected/kit": "catalog:effected",
+		"@effected/markdown": "catalog:effected",
+		"@effected/markdown-lint": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/toml": "catalog:effected",
 		"@effected/walker": "catalog:effected",

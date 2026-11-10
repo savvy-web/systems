@@ -11,10 +11,10 @@ sources:
     resource: ../../packages/silk/package.json
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:22:20Z
+  at: 2026-11-10T21:25:56Z
 integrity:
   generated:
-    body: 1d76ac85e709c88d
+    body: b608e0cc97035973
 ---
 
 # @savvy-web/silk export map
@@ -60,6 +60,14 @@ importing one fails to resolve rather than loading a stale shim.
   contract. The remaining entries — `./biome`, the `./tsconfig/*` presets
   and `./package.json` — are JSON assets, not modules, and are read by
   path.[^silk-architecture]
+- **`./changesets/markdownlint` reports what `savvy changeset lint`
+  reports.** Its five rules (CSH001–CSH005, the same rule names, ids, named
+  exports and default array) are the `@effected/markdown-lint` definitions
+  `ChangesetLinter` runs, adapted to markdownlint, so markdownlint-cli2 and
+  the editor extension flag the same body findings on the same lines. The
+  front matter rules (CF001–CF004) are not part of this entry; they run
+  only in `savvy changeset lint` and the `changeset_validate` MCP
+  tool.[^silk-architecture]
 - **`./lint` exposes the lint-staged consumer surface only** — handlers,
   `Preset`, `createConfig`, workspace utilities, section/template data. CLI
   commands are never re-exported here; that surface belongs to

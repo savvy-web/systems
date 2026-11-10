@@ -31,6 +31,7 @@ import { Argument, Command } from "effect/cli";
 import { DisplayPath } from "../../../internal/display-path.js";
 import type { ReportEnv } from "../../../internal/report.js";
 import { Report } from "../../../internal/report.js";
+import { workspacePackageNames } from "../../../internal/workspace-package-names.js";
 import type { CheckSection } from "../../check-section.js";
 
 type LintMessage = Changesets.LintMessage;
@@ -66,8 +67,9 @@ const dirArg = Argument.Directory("dir").pipe(Argument.withDefault(".changeset")
 export function changesetCheckSection(dir: string): Effect.Effect<CheckSection, Error> {
 	return Effect.gen(function* () {
 		const resolved = resolve(dir);
+		const packages = yield* workspacePackageNames(resolved);
 		const messages = yield* Effect.try({
-			try: () => ChangesetLinter.validate(resolved),
+			try: () => ChangesetLinter.validate(resolved, { packages }),
 			catch: (e) => new Error(String(e)),
 		});
 

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DOCS } from "../../src/changesets/constants.js";
-import { uncategorizedContent } from "../../src/changesets/rules/uncategorized-content.js";
-import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
+import { UncategorizedContentRule } from "../../src/changesets/lint/uncategorized-content.js";
+import { findings } from "./lint-findings.js";
 
 function lint(markdown: string) {
-	return uncategorizedContent(parseKitMarkdown(markdown)).map((f) => f.message);
+	return findings(UncategorizedContentRule, markdown).map((f) => f.message);
 }
 
 describe("uncategorized-content", () => {

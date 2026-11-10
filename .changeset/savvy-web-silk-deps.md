@@ -6,4 +6,6 @@
 
 | Dependency | Type | Action | From | To |
 | --- | --- | --- | --- | --- |
-| semver | dependency | updated | ^7.8.5 | ^7.8.6 |
+| semver | dependency | removed | ^7.8.5 | — |
+| @effected/markdown | dependency | added | — | ^0.29.0 |
+| @effected/markdown-lint | dependency | added | — | ^0.2.0 |

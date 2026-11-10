@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from "@effect/vitest";
 import { Git, LsFilesEntry } from "@effected/git";
 import { MemoryFileSystem } from "@effected/memfs";
 import { Effect, Layer, Path } from "effect";
+import { vi } from "vitest";
 import { Lint } from "../../src/index.js";
 
 const { TextFiles, Preset, createConfig } = Lint;
@@ -172,16 +173,24 @@ describe("TextFiles.matches", () => {
 });
 
 describe("TextFiles handler", () => {
+	// The handler's contract is the command string it builds; stub the savvy
+	// binary lookup rather than probing the host (a package-manager subprocess).
+	beforeEach(() => {
+		vi.spyOn(Lint.Command, "findSavvyLint").mockReturnValue("savvy lint");
+	});
+
+	afterEach(() => {
+		vi.mocked(Lint.Command.findSavvyLint).mockRestore();
+	});
+
 	it("returns a savvy lint text command over the staged files", () => {
 		const result = TextFiles.handler(["src/a.ts", "docs/it's.md"]);
-		expect(typeof result).toBe("string");
-		expect(result).toMatch(/ lint text --staged 'src\/a\.ts' 'docs\/it'\\''s\.md'$/);
+		expect(result).toBe("savvy lint text --staged 'src/a.ts' 'docs/it'\\''s.md'");
 	});
 
 	it("filters excluded files", () => {
 		const result = TextFiles.create({ exclude: ["vendor/"] })(["vendor/x.ts", "src/y.ts"]);
-		expect(result).toContain("text --staged 'src/y.ts'");
-		expect(result).not.toContain("vendor/x.ts");
+		expect(result).toBe("savvy lint text --staged 'src/y.ts'");
 	});
 
 	it("returns no command when every file is excluded", () => {

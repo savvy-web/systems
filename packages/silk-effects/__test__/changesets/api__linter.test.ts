@@ -172,3 +172,56 @@ describe("ChangesetLinter enforces the dependency-table format", () => {
 		expect(messages.filter((m) => m.rule.includes("dependency-table-format"))).toHaveLength(0);
 	});
 });
+
+describe("ChangesetLinter runs the kit's front matter rules", () => {
+	it("reports a file with no front matter (CF001)", () => {
+		const messages = ChangesetLinter.validateContent("## Features\n\n- Added login\n");
+		expect(messages.map((m) => [m.rule, m.line])).toEqual([["changeset-front-matter", 1]]);
+	});
+
+	it("reports an invalid release type on its own line (CF003)", () => {
+		const messages = ChangesetLinter.validateContent('---\n"@x/y": minro\n---\n\n## Features\n\n- Added login\n');
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({ rule: "changeset-release-type", line: 2 });
+		expect(messages[0].message).toContain('"minro" is not a release type');
+	});
+
+	it("accepts an empty changeset, as changeset add --empty writes it", () => {
+		expect(ChangesetLinter.validateContent("---\n---\n")).toEqual([]);
+	});
+
+	it("does not check package names against the workspace without packages", () => {
+		expect(ChangesetLinter.validateContent('---\n"@x/nope": patch\n---\n\n## Bug Fixes\n\n- Fixed it\n')).toEqual([]);
+	});
+
+	it("reports a package outside the workspace when packages are given (CF004)", () => {
+		const content = '---\n"@x/y": patch\n"@x/nope": patch\n---\n\n## Bug Fixes\n\n- Fixed it\n';
+		const messages = ChangesetLinter.validateContent(content, "a.md", { packages: ["@x/y"] });
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({ file: "a.md", rule: "changeset-known-package", line: 3 });
+		expect(messages[0].message).toContain("@x/nope is not a package of this workspace");
+	});
+
+	describe("validate with packages", () => {
+		let dir: string;
+
+		beforeEach(() => {
+			dir = mkdtempSync(join(tmpdir(), "linter-packages-"));
+		});
+
+		afterEach(() => {
+			rmSync(dir, { recursive: true, force: true });
+		});
+
+		it("checks every file against the same package list, even from a one-shot iterable", () => {
+			for (const name of ["a.md", "b.md"]) {
+				writeFileSync(join(dir, name), '---\n"@x/nope": patch\n---\n\n## Bug Fixes\n\n- Fixed it\n');
+			}
+			function* names() {
+				yield "@x/y";
+			}
+			const messages = ChangesetLinter.validate(dir, { packages: names() });
+			expect(messages.map((m) => m.rule)).toEqual(["changeset-known-package", "changeset-known-package"]);
+		});
+	});
+});

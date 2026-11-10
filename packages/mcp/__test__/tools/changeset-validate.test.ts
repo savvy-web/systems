@@ -1,5 +1,6 @@
 import { expect, layer } from "@effect/vitest";
-import { WorkspaceRoot } from "@effected/workspaces";
+import type { WorkspacePackage } from "@effected/workspaces";
+import { WorkspaceDiscovery, WorkspaceDiscoveryError, WorkspaceRoot } from "@effected/workspaces";
 import { Effect, Layer } from "effect";
 
 import { changesetValidate } from "../../src/tools/changeset-validate.js";
@@ -9,7 +10,14 @@ const WorkspaceRootTest = Layer.succeed(
 	WorkspaceRoot.of({ find: (_base: string) => Effect.succeed(process.cwd()) }),
 );
 
-layer(WorkspaceRootTest)("changesetValidate handler", (it) => {
+// Only `name` is read from a discovered package.
+const packagesNamed = (...names: string[]) => names.map((name) => ({ name }) as unknown as WorkspacePackage);
+
+const DiscoveryTest = WorkspaceDiscovery.layerTest({
+	listPackagesIn: () => Effect.succeed(packagesNamed("@scope/foo")),
+});
+
+layer(Layer.merge(WorkspaceRootTest, DiscoveryTest))("changesetValidate handler", (it) => {
 	it.effect("ok=true, no messages for a valid changeset dir", () =>
 		Effect.gen(function* () {
 			const data = yield* changesetValidate({ dir: "packages/mcp/__test__/fixtures/changeset-valid" }, process.cwd());
@@ -39,6 +47,68 @@ layer(WorkspaceRootTest)("changesetValidate handler", (it) => {
 				changesetValidate({ dir: "packages/mcp/__test__/fixtures/does-not-exist" }, process.cwd()),
 			);
 			expect(error._tag).toBe("ChangesetValidateError");
+		}),
+	);
+
+	it.effect("reports a front matter package outside the workspace (CF004)", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetValidate(
+				{ dir: "packages/mcp/__test__/fixtures/changeset-valid" },
+				process.cwd(),
+			).pipe(
+				Effect.provide(
+					WorkspaceDiscovery.layerTest({ listPackagesIn: () => Effect.succeed(packagesNamed("@savvy-web/other")) }),
+				),
+			);
+			expect(data.ok).toBe(false);
+			expect(data.messages.map((m) => m.rule)).toEqual(["changeset-known-package"]);
+		}),
+	);
+
+	it.effect("skips the workspace package check when discovery fails", () =>
+		Effect.gen(function* () {
+			const data = yield* changesetValidate(
+				{ dir: "packages/mcp/__test__/fixtures/changeset-valid" },
+				process.cwd(),
+			).pipe(
+				Effect.provide(
+					WorkspaceDiscovery.layerTest({
+						listPackagesIn: (root) =>
+							Effect.fail(
+								new WorkspaceDiscoveryError({ root, path: `${root}/package.json`, kind: "read", cause: undefined }),
+							),
+					}),
+				),
+			);
+			expect(data.ok).toBe(true);
+		}),
+	);
+
+	it.effect("re-discovers the workspace on every call, so a package added mid-session counts (CF004)", () =>
+		Effect.gen(function* () {
+			// A memoizing double: listPackagesIn keeps serving its first answer
+			// until refreshIn drops the memo, as the live layer does.
+			let onDisk = packagesNamed("@scope/other");
+			let memo: ReadonlyArray<WorkspacePackage> | undefined;
+			const discovery = WorkspaceDiscovery.layerTest({
+				refreshIn: () =>
+					Effect.sync(() => {
+						memo = undefined;
+					}),
+				listPackagesIn: () =>
+					Effect.sync(() => {
+						memo ??= onDisk;
+						return memo;
+					}),
+			});
+			const run = changesetValidate({ dir: "packages/mcp/__test__/fixtures/changeset-valid" }, process.cwd()).pipe(
+				Effect.provide(discovery),
+			);
+			const before = yield* run;
+			expect(before.messages.map((m) => m.rule)).toEqual(["changeset-known-package"]);
+			onDisk = packagesNamed("@scope/foo");
+			const after = yield* run;
+			expect(after.ok).toBe(true);
 		}),
 	);
 });
