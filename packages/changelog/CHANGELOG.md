@@ -1,5 +1,15 @@
 # @savvy-web/changelog
 
+## 1.0.32
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 12.0.0 | 12.1.0 |
+| @effected/markdown | dependency | added | — | ^0.29.0 |
+| @effected/markdown-lint | dependency | added | — | ^0.2.0 |
+
 ## 1.0.31
 
 ### Dependencies

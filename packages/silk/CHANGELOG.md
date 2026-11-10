@@ -1,5 +1,23 @@
 # @savvy-web/silk
 
+## 5.1.0
+
+### Features
+
+- The `./changesets/markdownlint` rules now come from the shared `@effected/markdown-lint` definitions. Rule names, ids and exports are unchanged, but the rules report what `ChangesetLinter` reports, including the new findings on indented code blocks and on CSH005 tables (reported at the table line)
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| semver | dependency | removed | ^7.8.5 | — |
+| @savvy-web/changelog | dependency | updated | 1.0.31 | 1.0.32 |
+| @savvy-web/cli | dependency | updated | 3.7.20 | 3.8.0 |
+| @savvy-web/mcp | dependency | updated | 3.5.0 | 3.6.0 |
+| @savvy-web/silk-effects | dependency | updated | 12.0.0 | 12.1.0 |
+| @effected/markdown | dependency | added | — | ^0.29.0 |
+| @effected/markdown-lint | dependency | added | — | ^0.2.0 |
+
 ## 5.0.0
 
 ### Breaking Changes
