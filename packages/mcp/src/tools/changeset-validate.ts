@@ -9,7 +9,7 @@
 import { resolve } from "node:path";
 import { ToolFailure, ToolRefusal } from "@effected/mcp-kit";
 import type { WorkspaceRootNotFoundError } from "@effected/workspaces";
-import { WorkspaceRoot } from "@effected/workspaces";
+import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Data, Effect, Schema } from "effect";
 import { Tool } from "effect/ai";
@@ -51,8 +51,10 @@ export interface ChangesetValidateArgs {
 }
 
 /**
- * Effect handler: resolve the workspace root, then validate the changeset
- * directory via the pure {@link Changesets.ChangesetLinter.validate}. The
+ * Effect handler: resolve the workspace root, discover its package names
+ * (for the `changeset-known-package` rule; skipped when discovery fails),
+ * then validate the changeset directory via the pure
+ * {@link Changesets.ChangesetLinter.validate}. The
  * synchronous call is wrapped in {@link Effect.try} so a thrown error (e.g. a
  * missing directory) surfaces as a typed {@link ChangesetValidateError} rather
  * than escaping as a defect.
@@ -60,13 +62,22 @@ export interface ChangesetValidateArgs {
 export const changesetValidate = (
 	args: ChangesetValidateArgs,
 	fallbackCwd: string,
-): Effect.Effect<ChangesetValidateResultType, WorkspaceRootNotFoundError | ChangesetValidateError, WorkspaceRoot> =>
+): Effect.Effect<
+	ChangesetValidateResultType,
+	WorkspaceRootNotFoundError | ChangesetValidateError,
+	WorkspaceRoot | WorkspaceDiscovery
+> =>
 	Effect.gen(function* () {
 		const workspaceRoot = yield* WorkspaceRoot;
+		const discovery = yield* WorkspaceDiscovery;
 		const root = yield* workspaceRoot.find(args.cwd ?? fallbackCwd);
 		const dir = resolve(root, args.dir ?? ".changeset");
+		const packages = yield* discovery.listPackagesIn(root).pipe(
+			Effect.map((found) => found.map((pkg) => pkg.name)),
+			Effect.orElseSucceed(() => undefined),
+		);
 		const messages = yield* Effect.try({
-			try: () => Changesets.ChangesetLinter.validate(dir),
+			try: () => Changesets.ChangesetLinter.validate(dir, { packages }),
 			catch: (cause) => new ChangesetValidateError({ dir, cause }),
 		});
 		return {
@@ -93,11 +104,11 @@ const DIR_REMEDIATION = {
 /** The `changeset_validate` tool value. */
 export const changesetValidateTool = Tool.make("changeset_validate", {
 	description:
-		"Read-only validation of changeset files against the section-aware rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
+		"Read-only validation of changeset files: the front matter (YAML block, release types, workspace package names) and the section-aware body rules. Pass dir (default .changeset). Returns typed diagnostics (file, rule, line, column, message) plus ok/errorCount in structuredContent. Prefer this over shelling out to savvy changeset lint. Returns a typed object in structuredContent (content[] carries the same object as JSON).",
 	parameters: ChangesetValidateParams,
 	success: ChangesetValidateResult,
 	failure: McpToolError,
-	dependencies: [WorkspaceRoot],
+	dependencies: [WorkspaceRoot, WorkspaceDiscovery],
 })
 	.annotate(Tool.Title, "Validate changesets")
 	.annotate(Tool.Readonly, true)

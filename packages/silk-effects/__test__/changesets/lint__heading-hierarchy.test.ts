@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { RULE_DOCS } from "../../src/changesets/constants.js";
-import { headingHierarchy } from "../../src/changesets/rules/heading-hierarchy.js";
-import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
+import { HeadingHierarchyRule } from "../../src/changesets/lint/heading-hierarchy.js";
+import { findings } from "./lint-findings.js";
 
 function lint(markdown: string) {
-	return headingHierarchy(parseKitMarkdown(markdown)).map((f) => f.message);
+	return findings(HeadingHierarchyRule, markdown).map((f) => f.message);
 }
 
 describe("heading-hierarchy", () => {
@@ -93,7 +93,7 @@ describe("heading-hierarchy", () => {
 	});
 
 	it("positions the finding on the offending heading", () => {
-		const [f] = headingHierarchy(parseKitMarkdown("## A\n\n#### B\n"));
+		const [f] = findings(HeadingHierarchyRule, "## A\n\n#### B\n");
 		expect(f.rule).toBe("changeset-heading-hierarchy");
 		expect(f.position.start.line).toBe(3);
 		expect(f.position.start.column).toBe(1);

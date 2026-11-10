@@ -1,7 +1,7 @@
 /**
  * Class-based API wrapper for changeset linting.
  *
- * Provides a static class interface that runs all five kit-node lint rules
+ * Provides a static class interface that runs the front matter and CSH lint rules
  * against changeset markdown files and returns structured diagnostics.
  *
  * @internal
@@ -10,22 +10,23 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
-import { contentStructure } from "../rules/content-structure.js";
-import { dependencyTableFormat } from "../rules/dependency-table-format.js";
-import { headingHierarchy } from "../rules/heading-hierarchy.js";
-import { requiredSections } from "../rules/required-sections.js";
-import type { LintRule } from "../rules/types.js";
-import { uncategorizedContent } from "../rules/uncategorized-content.js";
-import { parseKitMarkdownBody } from "../utils/markdown-emit.js";
+import { ChangesetLint } from "@effected/changesets/lint";
+import { Option } from "effect";
+import { CHANGESET_RULES } from "../lint/index.js";
 
-/** The five changeset lint rules, in reporting order. */
-const RULES: ReadonlyArray<LintRule> = [
-	headingHierarchy,
-	requiredSections,
-	contentStructure,
-	dependencyTableFormat,
-	uncategorizedContent,
-];
+/**
+ * Options for {@link ChangesetLinter}.
+ *
+ * @public
+ */
+export interface ChangesetLinterOptions {
+	/**
+	 * The workspace's package names. When given, the `changeset-known-package`
+	 * (CF004) rule checks every front matter key against them; without them,
+	 * package names are not checked against the workspace.
+	 */
+	readonly packages?: Iterable<string> | undefined;
+}
 
 /**
  * A single lint diagnostic message produced by changeset validation.
@@ -36,7 +37,14 @@ const RULES: ReadonlyArray<LintRule> = [
  * (file, line, column) for integration with editors, CI reporters, and
  * the Effect CLI's `lint` and `check` commands.
  *
- * The five rules that produce lint messages are:
+ * The front matter rules come from `\@effected/changesets/lint`:
+ *
+ * - **changeset-front-matter** (CF001) -- a YAML front matter block, a mapping when not empty
+ * - **changeset-package-name** (CF002) -- every key names a package
+ * - **changeset-release-type** (CF003) -- every value is major, minor, patch or none
+ * - **changeset-known-package** (CF004) -- every key names a workspace package (only when the names are given)
+ *
+ * The five body rules are:
  *
  * - **heading-hierarchy** -- ensures headings follow a valid nesting order
  * - **required-sections** -- checks that mandatory sections are present
@@ -61,10 +69,12 @@ export interface LintMessage {
 	 * Identifier of the lint rule that produced this message.
 	 *
 	 * @remarks
-	 * Corresponds to one of the five built-in rules:
-	 * `"changeset-heading-hierarchy"`, `"changeset-required-sections"`,
-	 * `"changeset-content-structure"`, `"changeset-dependency-table-format"`,
-	 * or `"changeset-uncategorized-content"`.
+	 * The rule's primary name: one of the front matter rules
+	 * (`"changeset-front-matter"`, `"changeset-package-name"`,
+	 * `"changeset-release-type"`, `"changeset-known-package"`) or one of the
+	 * five body rules (`"changeset-heading-hierarchy"`,
+	 * `"changeset-required-sections"`, `"changeset-content-structure"`,
+	 * `"changeset-dependency-table-format"`, `"changeset-uncategorized-content"`).
 	 */
 	rule: string;
 
@@ -99,19 +109,21 @@ export interface LintMessage {
 /**
  * Static class for linting changeset markdown files.
  *
- * Runs the five `@effected/markdown` kit-node lint rules (heading-hierarchy, required-sections,
- * content-structure, dependency-table-format, uncategorized-content) against
- * changeset markdown and returns structured {@link LintMessage} diagnostics.
+ * Runs `\@effected/changesets/lint`'s front matter rules (CF001-CF004) and the
+ * five CSH body rules (heading-hierarchy, required-sections, content-structure,
+ * dependency-table-format, uncategorized-content) against changeset markdown
+ * and returns structured {@link LintMessage} diagnostics.
  *
  * @remarks
  * This class implements the pre-validation layer of the three-layer
  * pipeline. It validates that changeset markdown conforms to the
  * expected structure before the changelog formatter processes it.
  *
- * YAML frontmatter (the `---` delimited block at the top of changeset
- * files containing package bump declarations) is automatically stripped
- * before validation, since frontmatter is managed by Changesets itself
- * and is not part of the markdown structure being validated.
+ * The YAML front matter (the `---` delimited block of package bump
+ * declarations) is checked by the CF rules, as `\@changesets/parse` reads
+ * it; the CSH rules lint only the body after it. Every rule is an
+ * `\@effected/markdown-lint` rule, so the same definitions run in
+ * markdownlint through `\@savvy-web/silk/changesets/markdownlint`.
  *
  * The class provides three granularity levels:
  *
@@ -187,43 +199,47 @@ export class ChangesetLinter {
 	 * Validate a single changeset file by path.
 	 *
 	 * @remarks
-	 * Reads the file synchronously, strips YAML frontmatter, and runs all
-	 * five lint rules. The file path is preserved in each returned
-	 * {@link LintMessage} for error reporting.
+	 * Reads the file synchronously and runs every lint rule. The file path is
+	 * preserved in each returned {@link LintMessage} for error reporting.
 	 *
 	 * @param filePath - Absolute or relative path to the changeset `.md` file
+	 * @param options - The workspace's package names, for CF004
 	 * @returns Array of {@link LintMessage} diagnostics (empty if the file is valid)
 	 */
-	static validateFile(filePath: string): LintMessage[] {
+	static validateFile(filePath: string, options?: ChangesetLinterOptions): LintMessage[] {
 		const raw = readFileSync(filePath, "utf-8");
-		return ChangesetLinter.validateContent(raw, filePath);
+		return ChangesetLinter.validateContent(raw, filePath, options);
 	}
 
 	/**
 	 * Validate a markdown string directly.
 	 *
 	 * @remarks
-	 * Strips YAML frontmatter (if present) and runs all five lint rules
-	 * against the remaining content. This method is useful for validating
-	 * changeset content that is already in memory, such as in test suites
-	 * or editor integrations.
+	 * Runs every lint rule over the whole file, front matter included. This
+	 * method is useful for validating changeset content that is already in
+	 * memory, such as in test suites or editor integrations.
 	 *
-	 * @param content - Raw markdown content (may include YAML frontmatter)
+	 * @param content - Raw changeset file content, front matter included
 	 * @param filePath - File path for error reporting; defaults to `"<input>"`
 	 *   when validating in-memory content
+	 * @param options - The workspace's package names, for CF004
 	 * @returns Array of {@link LintMessage} diagnostics (empty if the content is valid)
 	 */
-	static validateContent(content: string, filePath = "<input>"): LintMessage[] {
-		const root = parseKitMarkdownBody(content);
-		return RULES.flatMap((rule) =>
-			rule(root).map((finding) => ({
+	static validateContent(content: string, filePath = "<input>", options?: ChangesetLinterOptions): LintMessage[] {
+		return ChangesetLint.lint(content, {
+			name: filePath,
+			packages: options?.packages,
+			rules: CHANGESET_RULES,
+		}).map((diagnostic) => {
+			const rule = diagnostic.ruleNames[0];
+			return {
 				file: filePath,
-				rule: finding.rule,
-				line: finding.position.start.line,
-				column: finding.position.start.column,
-				message: finding.message,
-			})),
-		);
+				rule,
+				line: diagnostic.lineNumber,
+				column: diagnostic.column,
+				message: Option.getOrElse(diagnostic.detail, () => rule),
+			};
+		});
 	}
 
 	/**
@@ -239,11 +255,13 @@ export class ChangesetLinter {
 	 *
 	 * @param dir - Path to the directory containing changeset files
 	 *   (typically `.changeset/`)
+	 * @param options - The workspace's package names, for CF004
 	 * @returns Aggregated array of {@link LintMessage} diagnostics from all files
 	 */
-	static validate(dir: string): LintMessage[] {
+	static validate(dir: string, options?: ChangesetLinterOptions): LintMessage[] {
+		const packages = options?.packages === undefined ? undefined : [...options.packages];
 		return readdirSync(dir)
 			.filter((f) => f.endsWith(".md") && f !== "README.md")
-			.flatMap((filename) => ChangesetLinter.validateFile(join(dir, filename)));
+			.flatMap((filename) => ChangesetLinter.validateFile(join(dir, filename), { packages }));
 	}
 }

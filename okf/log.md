@@ -22,6 +22,10 @@
 * Updated pnpm-plugin-silk
 * Updated silk-core
 * Updated silk-effects
+* Updated @savvy-web/silk
+* Updated @savvy-web/silk export map
+* Updated savvy command tree
+* Updated savvy-mcp tool surface
 
 ## 2026-11-09
 

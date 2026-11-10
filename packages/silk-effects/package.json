@@ -33,6 +33,7 @@
 		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
 		"@effected/markdown": "catalog:effected",
+		"@effected/markdown-lint": "catalog:effected",
 		"@effected/package-json": "catalog:effected",
 		"@effected/toml": "catalog:effected",
 		"@effected/walker": "catalog:effected",
@@ -57,7 +58,6 @@
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:effected",
 		"fast-check": "^4.10.2",
-		"markdownlint": "^0.41.1",
 		"tsx": "catalog:effected:build",
 		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"

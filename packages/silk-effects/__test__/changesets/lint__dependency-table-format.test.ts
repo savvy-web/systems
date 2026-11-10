@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { dependencyTableFormat } from "../../src/changesets/rules/dependency-table-format.js";
-import { parseKitMarkdown } from "../../src/changesets/utils/markdown-emit.js";
+import { DependencyTableFormatRule } from "../../src/changesets/lint/dependency-table-format.js";
 import { REAL_WORLD_DEPENDENCY_SECTIONS } from "./fixtures__real-world-dependency-sections.js";
+import { findings } from "./lint-findings.js";
 
 function lint(markdown: string) {
-	return dependencyTableFormat(parseKitMarkdown(markdown)).map((f) => f.message);
+	return findings(DependencyTableFormatRule, markdown).map((f) => f.message);
 }
 
 describe("dependency-table-format rule", () => {
@@ -20,11 +20,9 @@ describe("dependency-table-format rule", () => {
 		expect(lint(md)).toEqual([]);
 	});
 
-	// Engine-agreement pin for the setext spelling: the kit parser normalizes a
-	// setext level-2 heading to a depth-2 heading node, so this rule enforces
-	// the section; the markdownlint sibling accepts setextHeading tokens for
-	// the same reason. Both suites carry this pair so a drift is loud.
-	describe("setext level-2 Dependencies heading (engine agreement)", () => {
+	// The parser normalizes a setext level-2 heading to a depth-2 heading node,
+	// so the rule enforces a section under one exactly as under `## `.
+	describe("setext level-2 Dependencies heading", () => {
 		it("flags a table-less section under a setext heading", () => {
 			const md = ["Dependencies", "------------", "", "Routine maintenance only.", ""].join("\n");
 			const messages = lint(md);
@@ -161,11 +159,11 @@ describe("dependency-table-format rule", () => {
 
 		it("fails a prose-only section, reporting at the Dependencies heading", () => {
 			const md = "## Dependencies\n\nUpdated effect to 3.19.1.\n";
-			const findings = dependencyTableFormat(parseKitMarkdown(md));
-			expect(findings.length).toBe(1);
-			expect(findings[0].message).toContain("must contain a table");
+			const found = findings(DependencyTableFormatRule, md);
+			expect(found.length).toBe(1);
+			expect(found[0].message).toContain("must contain a table");
 			// Anchored at the `## Dependencies` heading (line 1 here)
-			expect(findings[0].position.start.line).toBe(1);
+			expect(found[0].position.start.line).toBe(1);
 		});
 
 		it("does not scan past the next heading for a table", () => {
@@ -235,7 +233,7 @@ describe("dependency-table-format rule", () => {
 	});
 
 	it("reports a wrong header at the table with the parser's message", () => {
-		const [f] = dependencyTableFormat(parseKitMarkdown("## Dependencies\n\n| A | B |\n| - | - |\n| x | y |\n"));
+		const [f] = findings(DependencyTableFormatRule, "## Dependencies\n\n| A | B |\n| - | - |\n| x | y |\n");
 		expect(f.message).toMatch(/^Table must have columns: Dependency, Type, Action, From, To\./);
 		expect(f.position.start.line).toBe(3);
 	});

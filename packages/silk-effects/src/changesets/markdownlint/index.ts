@@ -1,11 +1,13 @@
 /**
- * \@savvy-web/changesets/markdownlint
+ * \@savvy-web/silk/changesets/markdownlint
  *
  * markdownlint custom rules for validating changeset file structure.
  *
- * Provides the same validation as the kit rules under `src/changesets/rules/` but using
- * markdownlint's micromark token API for integration with
- * markdownlint-cli2 and the VS Code markdownlint extension.
+ * Each rule is the same `\@effected/markdown-lint` definition
+ * {@link ChangesetLinter} runs, exported to markdownlint through
+ * `MarkdownlintAdapter`, so markdownlint-cli2 and the VS Code markdownlint
+ * extension report the same findings, on the same lines, as
+ * `savvy changeset lint` and the `changeset_validate` MCP tool.
  *
  * Rules included:
  * - {@link HeadingHierarchyRule | changeset-heading-hierarchy} (CSH001): Enforce h2 start, no h1, no depth skips
@@ -22,26 +24,44 @@
  *
  */
 
-import type { Rule } from "markdownlint";
+import type { MarkdownlintRule } from "@effected/markdown-lint";
+import { MarkdownlintAdapter } from "@effected/markdown-lint";
+import * as Rules from "../lint/index.js";
 
-import { ContentStructureRule } from "./rules/content-structure.js";
-import { DependencyTableFormatRule } from "./rules/dependency-table-format.js";
-import { HeadingHierarchyRule } from "./rules/heading-hierarchy.js";
-import { RequiredSectionsRule } from "./rules/required-sections.js";
-import { UncategorizedContentRule } from "./rules/uncategorized-content.js";
+/**
+ * markdownlint rule `changeset-heading-hierarchy` (CSH001).
+ *
+ * @public
+ */
+export const HeadingHierarchyRule: MarkdownlintRule = MarkdownlintAdapter.rule(Rules.HeadingHierarchyRule);
 
-export {
-	/** {@inheritDoc ContentStructureRule} @public */
-	ContentStructureRule,
-	/** {@inheritDoc DependencyTableFormatRule} @public */
-	DependencyTableFormatRule,
-	/** {@inheritDoc HeadingHierarchyRule} @public */
-	HeadingHierarchyRule,
-	/** {@inheritDoc RequiredSectionsRule} @public */
-	RequiredSectionsRule,
-	/** {@inheritDoc UncategorizedContentRule} @public */
-	UncategorizedContentRule,
-};
+/**
+ * markdownlint rule `changeset-required-sections` (CSH002).
+ *
+ * @public
+ */
+export const RequiredSectionsRule: MarkdownlintRule = MarkdownlintAdapter.rule(Rules.RequiredSectionsRule);
+
+/**
+ * markdownlint rule `changeset-content-structure` (CSH003).
+ *
+ * @public
+ */
+export const ContentStructureRule: MarkdownlintRule = MarkdownlintAdapter.rule(Rules.ContentStructureRule);
+
+/**
+ * markdownlint rule `changeset-uncategorized-content` (CSH004).
+ *
+ * @public
+ */
+export const UncategorizedContentRule: MarkdownlintRule = MarkdownlintAdapter.rule(Rules.UncategorizedContentRule);
+
+/**
+ * markdownlint rule `changeset-dependency-table-format` (CSH005).
+ *
+ * @public
+ */
+export const DependencyTableFormatRule: MarkdownlintRule = MarkdownlintAdapter.rule(Rules.DependencyTableFormatRule);
 
 /**
  * All changeset rules as an array for markdownlint-cli2 `customRules` config.
@@ -49,13 +69,13 @@ export {
  * @example
  * ```json
  * {
- *   "customRules": ["@savvy-web/changesets/markdownlint"]
+ *   "customRules": ["@savvy-web/silk/changesets/markdownlint"]
  * }
  * ```
  *
  * @public
  */
-const SilkChangesetsRules: Rule[] = [
+const SilkChangesetsRules: MarkdownlintRule[] = [
 	HeadingHierarchyRule,
 	RequiredSectionsRule,
 	ContentStructureRule,

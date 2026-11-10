@@ -1,7 +1,13 @@
 import { lint } from "markdownlint/sync";
 import { describe, expect, it } from "vitest";
-import { HeadingHierarchyRule } from "../../src/changesets/markdownlint/rules/heading-hierarchy.js";
-import { RULE_DOCS } from "../../src/changesets/markdownlint/rules/utils.js";
+import { HeadingHierarchyRule } from "../../src/changesets/markdownlint.js";
+
+const RULE_DOCS = Object.fromEntries(
+	(["CSH001", "CSH002", "CSH003", "CSH004", "CSH005"] as const).map((id) => [
+		id,
+		`https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/${id}.md`,
+	]),
+) as Record<"CSH001" | "CSH002" | "CSH003" | "CSH004" | "CSH005", string>;
 
 function check(markdown: string) {
 	const result = lint({

@@ -382,6 +382,28 @@ describe("ServerLayer struct-rooted results round-trip under structuredContent v
 		}).pipe(Effect.scoped),
 	);
 
+	it.effect("changeset_validate: a front matter package outside the workspace -> changeset-known-package", () =>
+		Effect.gen(function* () {
+			const { dir, harness } = yield* open();
+			mkdirSync(join(dir, ".changeset"));
+			writeFileSync(
+				join(dir, ".changeset", "stray-name.md"),
+				'---\n"@scope/missing": patch\n---\n\n## Bug Fixes\n\n- Fixed it\n',
+			);
+			const result = asResult(yield* harness.callTool("changeset_validate", {}));
+			assert.notOk(result.isError, JSON.stringify(result));
+			const structured = result.structuredContent as {
+				readonly ok: boolean;
+				readonly messages: ReadonlyArray<{ readonly rule: string; readonly line: number }>;
+			};
+			assert.strictEqual(structured.ok, false);
+			assert.deepStrictEqual(
+				structured.messages.map((m) => [m.rule, m.line]),
+				[["changeset-known-package", 2]],
+			);
+		}).pipe(Effect.scoped),
+	);
+
 	it.effect("changeset_validate: invalid fixture -> typed diagnostics in structuredContent", () =>
 		Effect.gen(function* () {
 			const { dir, harness } = yield* open();

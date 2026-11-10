@@ -1,10 +1,11 @@
 import { expect, layer } from "@effect/vitest";
+import { MarkdownLint } from "@effected/markdown-lint";
 import { Effect } from "effect";
 
 import { ChangelogTransformer } from "../../src/changesets/api/transformer.js";
 import { getDependencyReleaseLine } from "../../src/changesets/changelog/getDependencyReleaseLine.js";
 import { getReleaseLine } from "../../src/changesets/changelog/getReleaseLine.js";
-import { dependencyTableFormat } from "../../src/changesets/rules/dependency-table-format.js";
+import { DependencyTableFormatRule } from "../../src/changesets/lint/dependency-table-format.js";
 import type { ChangesetOptions } from "../../src/changesets/schemas/options.js";
 import { makeGitHubTest } from "../../src/changesets/services/github.js";
 import { aggregateDependencyTables } from "../../src/changesets/transforms/aggregate-dependency-tables.js";
@@ -261,7 +262,7 @@ layer(testLayer)("Full pipeline integration", (it) => {
 `;
 
 		// Layer 1: lint validation
-		const lintFindings = dependencyTableFormat(parseKitMarkdown(changeset));
+		const lintFindings = MarkdownLint.lint(changeset, [DependencyTableFormatRule]);
 		expect(lintFindings).toHaveLength(0);
 
 		// Layer 3: transform (simulate changelog with version heading)

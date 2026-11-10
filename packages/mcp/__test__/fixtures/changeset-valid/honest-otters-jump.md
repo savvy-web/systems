@@ -1,5 +1,5 @@
 ---
-"@savvy-web/mcp": patch
+"@scope/foo": patch
 ---
 
 ## Bug Fixes

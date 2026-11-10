@@ -58,7 +58,7 @@
 export { Categories } from "./api/categories.js";
 export { Changelog } from "./api/changelog.js";
 export { DependencyTable } from "./api/dependency-table.js";
-export type { LintMessage } from "./api/linter.js";
+export type { ChangesetLinterOptions, LintMessage } from "./api/linter.js";
 export { ChangesetLinter } from "./api/linter.js";
 export type { TransformOptions } from "./api/transformer.js";
 export { ChangelogTransformer } from "./api/transformer.js";
@@ -232,7 +232,7 @@ export type { SectionCategory } from "./categories/types.js";
 export type { GitHubCommitInfo } from "./vendor/github-info.js";
 
 // === Markdownlint rules ===
-// These are the markdownlint (micromark token API) implementations.
+// The CSH rules adapted to markdownlint through @effected/markdown-lint's MarkdownlintAdapter.
 // Alias exports keep their historical "Markdownlint" prefix.
 
 // The default export is the rules array for markdownlint-cli2 `customRules` config.

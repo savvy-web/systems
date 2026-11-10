@@ -13,12 +13,14 @@
  * @internal
  */
 
+import { dirname, resolve } from "node:path";
 import { CliExit } from "@effected/cli-kit";
 import { Changesets } from "@savvy-web/silk-effects";
 import { Effect } from "effect";
 import { Argument, Command } from "effect/cli";
 import { CommandError } from "../../../internal/command-error.js";
 import { Report } from "../../../internal/report.js";
+import { workspacePackageNames } from "../../../internal/workspace-package-names.js";
 
 const { ChangesetLinter } = Changesets;
 
@@ -40,8 +42,9 @@ const fileArg = Argument.File("file");
  */
 export function runValidateFile(filePath: string) {
 	return Effect.gen(function* () {
+		const packages = yield* workspacePackageNames(dirname(resolve(filePath)));
 		const result = yield* Effect.try({
-			try: () => ChangesetLinter.validateFile(filePath),
+			try: () => ChangesetLinter.validateFile(filePath, { packages }),
 			catch: (error) =>
 				CommandError.from(error, {
 					message: `could not validate ${filePath}`,

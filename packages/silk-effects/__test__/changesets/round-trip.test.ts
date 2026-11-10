@@ -99,7 +99,9 @@ describe("Round-trip: lint → format → transform", () => {
 			const changesetContent = "## Features\n\n- Added login system\n\n## Documentation\n\n- Updated README";
 
 			// Step 1: Verify changeset passes lint
-			const lintMessages = ChangesetLinter.validateContent(changesetContent);
+			const lintMessages = ChangesetLinter.validateContent(
+				`---\n"@savvy-web/example": minor\n---\n\n${changesetContent}`,
+			);
 			expect(lintMessages).toHaveLength(0);
 
 			// Step 2: Format via getReleaseLine

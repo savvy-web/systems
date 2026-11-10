@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T21:25:56Z
 integrity:
   generated:
-    body: 92fd9d0f06a8db91
+    body: 3027c760b1078d4d
 ---
 
 # savvy-mcp tool surface
@@ -85,8 +85,15 @@ this twice to see a change land.[^mcp-changeset-tools]
 ## changeset_validate — read-only
 
 Validates `.changeset/*.md` (or a given `dir`) against the changeset format
-rules. Returns typed diagnostics plus `ok` and `errorCount`. The structured
-counterpart to `savvy changeset lint`.[^mcp-changeset-tools]
+rules: the front matter (CF001 a YAML block, CF002 package names, CF003
+release types, CF004 every key a workspace package) and the CSH001–CSH005
+body rules. A file with no front matter fails CF001. The tool passes the
+workspace's package names from `WorkspaceDiscovery`; when discovery fails,
+CF004 is skipped and every other rule still runs. Returns typed diagnostics
+(`file`, `rule`, `line`, `column`, `message`) plus `ok` and `errorCount`.
+The structured counterpart to `savvy changeset lint`, running the same
+rule definitions as the `@savvy-web/silk/changesets/markdownlint`
+rules.[^mcp-changeset-tools]
 
 ## changeset_preview — read-only
 

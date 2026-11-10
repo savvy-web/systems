@@ -23,7 +23,12 @@ import { Mdast, Root, Table, TableCell, TableRow, Text } from "@effected/markdow
 import { Schema } from "effect";
 
 import type { DependencyTableRow } from "../schemas/dependency-table.js";
-import { DependencyTableRowSchema } from "../schemas/dependency-table.js";
+import {
+	DependencyActionSchema,
+	DependencyTableRowSchema,
+	DependencyTableTypeSchema,
+	VERSION_RE,
+} from "../schemas/dependency-table.js";
 import { emitKitMarkdown } from "./markdown-emit.js";
 
 /**
@@ -47,6 +52,34 @@ const COLUMN_KEYS: readonly (keyof DependencyTableRow)[] = ["dependency", "type"
 
 /** Schema decoder for validating raw cell values into a typed row. */
 const decode = Schema.decodeUnknownSync(DependencyTableRowSchema);
+
+const isType = Schema.is(DependencyTableTypeSchema);
+const isAction = Schema.is(DependencyActionSchema);
+
+/**
+ * The first problem with one data row, in words a changeset author can act
+ * on, or `undefined` when the row's cells are well-formed. Checked before the
+ * schema decode so a lint finding names the bad cell and its valid values
+ * rather than echoing a schema issue.
+ */
+function rowProblem(raw: Readonly<Record<string, string>>, cellCount: number): string | undefined {
+	if (cellCount < COLUMN_KEYS.length) {
+		return `Dependency table row has too few columns (expected ${COLUMN_KEYS.length}, got ${cellCount})`;
+	}
+	if (raw.dependency === "") return "Dependency table row has an empty 'Dependency' cell";
+	if (!isType(raw.type)) {
+		return `Invalid dependency type '${raw.type}'. Valid types are: ${DependencyTableTypeSchema.literals.join(", ")}`;
+	}
+	if (!isAction(raw.action)) {
+		return `Invalid dependency action '${raw.action}'. Valid actions are: ${DependencyActionSchema.literals.join(", ")}`;
+	}
+	for (const key of ["from", "to"] as const) {
+		if (!VERSION_RE.test(raw[key] ?? "")) {
+			return `Invalid '${key}' value '${raw[key]}'. Must be a semver string or em dash (\u2014)`;
+		}
+	}
+	return undefined;
+}
 
 /**
  * Parse a kit table node into validated dependency table rows.
@@ -100,6 +133,8 @@ export function parseDependencyTable(table: Table): DependencyTableRow[] {
 			const cell = cells[c];
 			raw[COLUMN_KEYS[c]] = cell === undefined ? "" : Mdast.toText(cell).trim();
 		}
+		const problem = rowProblem(raw, cells.length);
+		if (problem !== undefined) throw new Error(problem);
 		result.push(decode(raw));
 	}
 

@@ -8,7 +8,7 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T21:25:56Z
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -24,9 +24,11 @@ sources:
     resource: ../../packages/silk/__test__/package-layering.test.ts
   - id: silk-boundaries-test
     resource: ../../packages/silk/__test__/boundaries.test.ts
+  - id: silk-deps
+    resource: ../../packages/silk/package.json
 integrity:
   generated:
-    body: 0d308693708a93a4
+    body: a22def7e22b89e23
 ---
 
 # @savvy-web/silk
@@ -71,14 +73,28 @@ tool subpath (markdownlint, commitlint, lint-staged).
   The Changesets CLI (v3, `"type": "module"`), markdownlint-cli2 (0.23+)
   and commitlint (v19+) all `import()` their config modules, so no entry
   ships a CJS twin and nothing force-bundles `silk-effects`; every entry
-  externalizes `@savvy-web/silk-effects` (a declared runtime dependency),
-  `semver` and `source-map-support`, and `effect`/`@effect/platform` in
-  the declaration pass only. There is no manifest `transform` keep-list
+  externalizes `@savvy-web/silk-effects` (a declared runtime dependency)
+  and `source-map-support`, and `effect`/`@effect/platform` in the
+  declaration pass only. There is no manifest `transform` keep-list
   either — the default transform publishes `dependencies` as-is, so any
   package a shim's emitted `.d.ts` names must be a real `dependencies`
   entry. `__test__/externals.test.ts` pins all of this against the built
   output: no `.cjs` emitted, and the entries import silk-effects
-  externally.[^silk-build][^silk-externals-test]
+  externally. It also scans the built output for an inlined npm
+  `semver`: nothing silk bundles imports semver now that silk-effects runs
+  on the kit's changesets engine, so silk no longer declares it, and the
+  scan catches a future dependency that drags it back in (inlined, its
+  circular CommonJS modules hit the `require_range is not a function`
+  init-order hazard).[^silk-build][^silk-externals-test]
+- **Some dependencies are load-bearing without an importer.**
+  `@effected/commands`, `@effected/git`, `@effected/workspaces` and
+  `effect` satisfy `@savvy-web/silk-effects`' `peerDependencies`;
+  `@effected/markdown` and `@effected/markdown-lint` satisfy
+  `@effected/changesets`' optional peers, so its `./lint` entry (behind
+  `ChangesetLinter`) resolves in a consumer install. No file under `src/`
+  imports any of them, and dropping one breaks installs rather than any
+  lint pass. `markdownlint` is a devDependency only: the markdownlint-host
+  tests of the changeset rules live in `__test__/changesets/`.[^silk-deps]
 - **The bins run from source in the workspace.** `bin` points at
   `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts`; each registers tsx when
   `import.meta.url` ends in `.ts` and then imports the front end's `main`
@@ -133,3 +149,4 @@ tool subpath (markdownlint, commitlint, lint-staged).
 [^silk-layers]: `layers.json`
 [^silk-layering-test]: `__test__/package-layering.test.ts`
 [^silk-boundaries-test]: `__test__/boundaries.test.ts`
+[^silk-deps]: `package.json`

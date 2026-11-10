@@ -1,7 +1,13 @@
 import { lint } from "markdownlint/sync";
 import { describe, expect, it } from "vitest";
-import { RequiredSectionsRule } from "../../src/changesets/markdownlint/rules/required-sections.js";
-import { RULE_DOCS } from "../../src/changesets/markdownlint/rules/utils.js";
+import { RequiredSectionsRule } from "../../src/changesets/markdownlint.js";
+
+const RULE_DOCS = Object.fromEntries(
+	(["CSH001", "CSH002", "CSH003", "CSH004", "CSH005"] as const).map((id) => [
+		id,
+		`https://github.com/savvy-web/systems/blob/main/packages/silk-effects/docs/rules/${id}.md`,
+	]),
+) as Record<"CSH001" | "CSH002" | "CSH003" | "CSH004" | "CSH005", string>;
 
 function check(markdown: string) {
 	const result = lint({
@@ -103,9 +109,9 @@ describe("markdownlint/required-sections", () => {
 	});
 });
 
-// --- issue #367: shared extractors resolve escapes -----------------------------
-// getHeadingText reads RAW micromark source while the sibling kit rule reads
-// the parsed tree via mdast-util-to-string. Both must judge the same heading.
+// --- issue #367: escapes resolve before the heading is judged -----------------
+// The rule reads the parsed tree, so markdownlint judges an escaped heading the
+// same as its parsed form.
 describe("markdownlint/required-sections: backslash escapes in headings", () => {
 	it("does not treat a backslash before a space as an escape", () => {
 		// CommonMark escapes ASCII punctuation only, so `\ ` is a literal
