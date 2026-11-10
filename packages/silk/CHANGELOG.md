@@ -1,5 +1,13 @@
 # @savvy-web/silk
 
+## 5.0.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| semver | dependency | updated | ^7.8.5 | ^7.8.6 |
+
 ## 5.0.0
 
 ### Breaking Changes
