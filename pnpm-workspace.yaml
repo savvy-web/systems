@@ -23,25 +23,13 @@ catalogs:
   docs:
     "@rspress/core": ^2.0.23
     "@rspress/plugin-sitemap": ^2.0.23
-    "@types/node": ^26.6.6
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.1
-    react-dom: ^19.3.1
     rspress-plugin-mermaid: ^1.0.3
-    typescript: 7.1.0-beta
     vite: ^8.3.5
     vitepress: ^2.0.0-alpha.21
   docs:peers:
     "@rspress/core": ^2.0.0
     "@rspress/plugin-sitemap": ^2.0.23
-    "@types/node": ^26.6.0
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
-    react: ^19.3.0
-    react-dom: ^19.3.0
     rspress-plugin-mermaid: ^1.0.3
-    typescript: 7.1.0-beta
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.21
   lint:
@@ -66,32 +54,18 @@ catalogs:
     turbo: ^2.11.10
   silk:
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.6
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
     husky: ^9.1.7
     ink: ^8.0.0
     lint-staged: ^17.6.0
     markdownlint-cli2: ^0.24.0
     markdownlint-cli2-formatter-codequality: ^0.0.8
-    react: ^19.3.1
-    react-dom: ^19.3.1
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   silk:peers:
     "@types/bun": ^1.4.4
-    "@types/node": ^26.6.0
-    "@types/react": ^19.3.0
-    "@types/react-dom": ^19.3.0
     husky: ^9.1.7
     ink: ^8.0.0
     lint-staged: ^17.6.0
     markdownlint-cli2: ^0.24.0
     markdownlint-cli2-formatter-codequality: ^0.0.8
-    react: ^19.3.0
-    react-dom: ^19.3.0
-    tsx: ^4.23.15
-    typescript: 7.1.0-beta
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
@@ -107,28 +81,22 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effected": 0.24.0
+  "@effected/pnpm-plugin-effected": 0.26.0
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
 minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
-  - "@effect/*"
-  - "@effected/*"
   - "@okfit/*"
   - "@oxc-parser/*"
-  - "@oxc-project/*"
   - "@pluginfinity/*"
   - "@pnpm/*"
-  - "@rolldown/*"
   - "@savvy-web/*"
   - "@spencerbeggs/*"
   - "@tsdoctor/*"
-  - "@typescript/*"
   - "@vitest-agent/*"
   - "@vitest/*"
   - "@yarnpkg/*"
-  - effect
   - oxc-parser
   - pluginfinity
   - pnpm
@@ -180,18 +148,13 @@ publicHoistPattern:
   - "@commitlint/config-conventional"
   - "@commitlint/cz-commitlint"
   - "@types/bun"
-  - "@types/node"
-  - "@types/react"
-  - "@types/react-dom"
   - "@vitest/coverage-istanbul"
   - "@vitest/coverage-v8"
   - husky
   - lint-staged
   - markdownlint-cli2
   - markdownlint-cli2-formatter-codequality
-  - tsx
   - turbo
-  - typescript
   - vitest
 resolvePeersFromWorkspaceRoot: false
 strictDepBuilds: true

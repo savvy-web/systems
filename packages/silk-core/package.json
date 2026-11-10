@@ -41,9 +41,9 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/templates": "catalog:effected",
-		"@effected/workspaces": "catalog:effected",
-		"effect": "catalog:effected"
+		"@effected/templates": "catalog:effected:peers",
+		"@effected/workspaces": "catalog:effected:peers",
+		"effect": "catalog:effected:peers"
 	},
 	"publishConfig": {
 		"access": "public",

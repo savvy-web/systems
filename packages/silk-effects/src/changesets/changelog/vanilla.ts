@@ -1,34 +1,33 @@
 /**
- * The vanilla changesets changelog renderer — `\@changesets/changelog-git`,
- * re-exported.
+ * The vanilla changesets changelog renderer, matching
+ * `\@changesets/changelog-git` byte for byte.
  *
  * @remarks
  * Some consumers (notably `silk-release-action`) need the STOCK changesets
  * rendering — plain summary lines with commit hashes, no sections, no
  * attribution, no dependency tables — as a fallback or comparison path
- * alongside the silk formatter. Re-exporting the upstream implementation
- * here means those consumers depend only on this package: they get exact
- * parity with `\@changesets/changelog-git` (this is a re-export, never a
- * reimplementation) without declaring the dependency themselves.
+ * alongside the silk formatter. This module is that renderer written over the
+ * kit's `ChangelogFunctions` contract, so those consumers depend only on this
+ * package. `__test__/changesets/changelog__vanilla.test.ts` holds its output
+ * equal to `\@changesets/changelog-git`'s.
  *
  * @see {@link changelogFunctions} in `./index.ts` for the silk formatter
  *   this is the vanilla alternative to
  */
 
-import changelogGit from "@changesets/changelog-git";
-
 import type { ChangelogFunctions } from "../vendor/types.js";
 
 /**
- * The stock `\@changesets/changelog-git` changelog implementation.
+ * The stock changesets changelog implementation.
  *
  * @remarks
- * This is the exact upstream default export (identity-equal, pinned by
- * test), typed against this package's re-exported {@link ChangelogFunctions}
- * interface. Use it wherever the plain changesets rendering is wanted
- * instead of the silk section-aware formatter — e.g. in
- * `.changeset/config.json` via a changelog module that forwards it, or
- * programmatically from a release pipeline.
+ * Renders what `\@changesets/changelog-git` renders, synchronously as it does:
+ * each release line is `- <short sha>: <first summary line>` (no sha prefix
+ * when the changeset has no commit) with later summary lines indented two
+ * spaces; the dependency line lists one `- Updated dependencies [<short sha>]`
+ * per changeset, then `  - <name>@<newVersion>` per updated dependency, and is
+ * empty when no dependency was updated. Use it wherever the plain changesets
+ * rendering is wanted instead of the silk section-aware formatter.
  *
  * @example
  * ```typescript
@@ -43,4 +42,21 @@ import type { ChangelogFunctions } from "../vendor/types.js";
  *
  * @public
  */
-export const vanillaChangelogFunctions: ChangelogFunctions = changelogGit;
+export const vanillaChangelogFunctions: ChangelogFunctions = {
+	getReleaseLine: (changeset) => {
+		const [firstLine, ...futureLines] = changeset.summary.split("\n").map((line) => line.trimEnd());
+		let line = `- ${changeset.commit ? `${changeset.commit.slice(0, 7)}: ` : ""}${firstLine}`;
+		if (futureLines.length > 0) line += `\n${futureLines.map((l) => `  ${l}`).join("\n")}`;
+		return line;
+	},
+	getDependencyReleaseLine: (changesets, dependenciesUpdated) => {
+		if (dependenciesUpdated.length === 0) return "";
+		const changesetLinks = changesets.map(
+			(changeset) => `- Updated dependencies${changeset.commit ? ` [${changeset.commit.slice(0, 7)}]` : ""}`,
+		);
+		const updatedDependencies = dependenciesUpdated.map(
+			(dependency) => `  - ${dependency.name}@${dependency.newVersion}`,
+		);
+		return [...changesetLinks, ...updatedDependencies].join("\n");
+	},
+};

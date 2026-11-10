@@ -1,32 +1,27 @@
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
-// `vi` stays on the plain "vitest" entrypoint: vitest hoists its mock wiring
-// above all imports, and a re-exported binding is not initialized in time.
-import { vi } from "vitest";
+import { ChangelogInfo, CommitChangelogInfo } from "@effected/github";
+import { Effect, Layer, Option } from "effect";
 
-vi.mock("@changesets/get-github-info", () => ({
-	getCommitInfo: vi.fn(async ({ commit }: { commit: string }) =>
-		commit === "missing"
-			? undefined
-			: {
-					commit: {
-						sha: commit,
-						url: "https://github.com/o/r/commit/abc",
-						markdownLink: "[`abc1234`](https://github.com/o/r/commit/abc)",
-					},
-					author: {
-						login: "spencer",
-						url: "https://github.com/spencer",
-						markdownLink: "[@spencer](https://github.com/spencer)",
-					},
-					pull: {
-						number: 7,
-						url: "https://github.com/o/r/pull/7",
-						markdownLink: "[#7](https://github.com/o/r/pull/7)",
-					},
-				},
-	),
-}));
+// The kit's ChangelogInfo double stands in for the GitHub API: "missing" is
+// a commit the repository does not have, anything else resolves.
+const changelogInfo = ChangelogInfo.layerTest({
+	commit: (sha) =>
+		Effect.succeed(
+			sha === "missing"
+				? Option.none()
+				: Option.some(
+						CommitChangelogInfo.make({
+							user: Option.some("spencer"),
+							pull: Option.some(7),
+							links: {
+								commit: "[`abc1234`](https://github.com/o/r/commit/abc)",
+								pull: Option.some("[#7](https://github.com/o/r/pull/7)"),
+								user: Option.some("[@spencer](https://github.com/spencer)"),
+							},
+						}),
+					),
+		),
+});
 
 import { GitHubApiError } from "../../src/changesets/errors.js";
 import { GitHubService, makeGitHubTest } from "../../src/changesets/services/github.js";
@@ -93,7 +88,7 @@ describe("GitHubService (test layer)", () => {
 				expect(typeof github.getInfo).toBe("function");
 			});
 
-			yield* program.pipe(Effect.provide(GitHubService.layer));
+			yield* program.pipe(Effect.provide(GitHubService.layer.pipe(Layer.provide(changelogInfo))));
 		}),
 	);
 
@@ -112,10 +107,10 @@ describe("GitHubService (test layer)", () => {
 	);
 });
 
-describe("getGitHubInfo (v3 adapter)", () => {
-	it.effect("adapts CommitInfo to the legacy GitHubCommitInfo shape", () =>
+describe("getGitHubInfo (ChangelogInfo adapter)", () => {
+	it.effect("adapts CommitChangelogInfo to the legacy GitHubCommitInfo shape", () =>
 		Effect.gen(function* () {
-			const info = yield* getGitHubInfo({ commit: "abc1234", repo: "o/r" });
+			const info = yield* getGitHubInfo({ commit: "abc1234", repo: "o/r" }).pipe(Effect.provide(changelogInfo));
 			expect(info.user).toBe("spencer");
 			expect(info.pull).toBe(7);
 			expect(info.links.pull).toBe("[#7](https://github.com/o/r/pull/7)");
@@ -130,7 +125,7 @@ describe("getGitHubInfo (v3 adapter)", () => {
 				return yield* getGitHubInfo({ commit: "missing", repo: "o/r" });
 			});
 
-			const error = yield* program.pipe(Effect.flip);
+			const error = yield* program.pipe(Effect.provide(changelogInfo), Effect.flip);
 			expect(error).toBeInstanceOf(GitHubApiError);
 			expect(error.reason).toContain("not found");
 		}),

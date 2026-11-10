@@ -64,12 +64,12 @@ export type { TransformOptions } from "./api/transformer.js";
 export { ChangelogTransformer } from "./api/transformer.js";
 
 // === Changelog formatter entry point (Changesets API integration) ===
-// This object implements ChangelogFunctions from @changesets/types — it is the
+// This object implements the kit's ChangelogFunctions (structurally @changesets/types') — it is the
 // value that belongs in .changeset/config.json under "changelog": ["...", opts].
 export type { MakeChangelogFunctionsOptions } from "./changelog/index.js";
 export { default as changelogFunctions, makeChangelogFunctions } from "./changelog/index.js";
-// The stock changesets renderer (@changesets/changelog-git), re-exported so
-// consumers need not depend on it directly. Exact upstream parity.
+// The stock changesets renderer, matching @changesets/changelog-git byte for byte, so
+// consumers need not depend on it directly.
 export { vanillaChangelogFunctions } from "./changelog/vanilla.js";
 
 // === Effect Services ===

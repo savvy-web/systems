@@ -33,14 +33,14 @@
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effected",
-		"@types/node": "catalog:silk",
+		"@types/node": "catalog:effected:build",
 		"effect": "catalog:effected",
 		"tsx": "catalog:effected:build",
 		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"effect": "catalog:effected"
+		"effect": "catalog:effected:peers"
 	},
 	"publishConfig": {
 		"access": "public",

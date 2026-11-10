@@ -28,14 +28,6 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@changesets/apply-release-plan": "^8.1.1",
-		"@changesets/assemble-release-plan": "^7.0.0",
-		"@changesets/changelog-git": "^1.0.0",
-		"@changesets/config": "^4.0.1",
-		"@changesets/get-github-info": "^1.0.1",
-		"@changesets/get-release-plan": "^5.0.2",
-		"@changesets/pre": "^3.0.0",
-		"@changesets/read": "^1.0.1",
 		"@effected/files": "catalog:effected",
 		"@effected/github-references": "catalog:effected",
 		"@effected/glob": "catalog:effected",
@@ -45,17 +37,19 @@
 		"@effected/toml": "catalog:effected",
 		"@effected/walker": "catalog:effected",
 		"@effected/yaml": "catalog:effected",
-		"@manypkg/get-packages": "^3.1.0",
 		"@savvy-web/silk-core": "workspace:^",
+		"import-meta-resolve": "^4.2.0",
 		"shell-quote": "^1.12.0"
 	},
 	"devDependencies": {
-		"@changesets/types": "^7.0.0",
+		"@changesets/changelog-git": "^1.0.0",
 		"@commitlint/types": "^21.2.0",
 		"@effect/platform-node": "catalog:effected",
 		"@effect/vitest": "catalog:effected",
+		"@effected/changesets": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
+		"@effected/github": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
@@ -69,11 +63,13 @@
 		"vitest": "catalog:test"
 	},
 	"peerDependencies": {
-		"@effected/commands": "catalog:effected",
-		"@effected/git": "catalog:effected",
-		"@effected/templates": "catalog:effected",
-		"@effected/workspaces": "catalog:effected",
-		"effect": "catalog:effected"
+		"@effected/changesets": "catalog:effected:peers",
+		"@effected/commands": "catalog:effected:peers",
+		"@effected/git": "catalog:effected:peers",
+		"@effected/github": "catalog:effected:peers",
+		"@effected/templates": "catalog:effected:peers",
+		"@effected/workspaces": "catalog:effected:peers",
+		"effect": "catalog:effected:peers"
 	},
 	"publishConfig": {
 		"access": "public",

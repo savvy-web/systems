@@ -4,6 +4,7 @@ import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit, Layer, Result } from "effect";
 import { Changesets } from "../../src/index.js";
+import { PlannerDeps } from "./support/planner-deps.js";
 import { makeReleaseFixture, readFixtureChangelog } from "./support/release-fixture.js";
 
 const roots: string[] = [];
@@ -29,6 +30,7 @@ function getPlanner(projectDir: string) {
 	return Changesets.ReleasePlanner.pipe(
 		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
+		Effect.provide(PlannerDeps),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;
 }
@@ -74,6 +76,7 @@ function getPlannerWithVersionFiles(opts: {
 	return Changesets.ReleasePlanner.pipe(
 		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
+		Effect.provide(PlannerDeps),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;
 }
@@ -182,6 +185,7 @@ describe("ReleasePlanner.apply (versionFiles)", () => {
 			const planner = yield* Changesets.ReleasePlanner.pipe(
 				Effect.provide(Changesets.ReleasePlanner.layer),
 				Effect.provide(cachingInspector),
+				Effect.provide(PlannerDeps),
 				Effect.provide(NodeServices.layer),
 			);
 

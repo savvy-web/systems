@@ -1,35 +1,29 @@
 /**
  * Unit coverage for the `changelogModules` config rewrite shared by
- * `ReleasePlanner.preview` and `ReleasePlanner.apply`.
- *
- * The engine-level behaviour is covered by the preview/apply suites. This file
- * drives the rewrite directly because that is the only deterministic way to
- * assert the `format: false` half: every formatter value the changesets config
- * accepts resolves through `npx` (network) or an ambient binary, so a fixture
- * naming one would pass or fail on what the host machine has installed.
+ * `ReleasePlanner.preview` and `ReleasePlanner.apply`. The end-to-end
+ * behaviour is covered by the preview/apply suites; this file drives the
+ * rewrite directly over every shape the kit's `ChangesetConfig.changelog`
+ * keeps (`false`, a bare id, an `[id, options]` pair).
  */
-import type { Config } from "@changesets/types";
 import { describe, expect, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { ChangesetConfig } from "@effected/changesets";
+import { Effect, Schema } from "effect";
 import { withChangelogModules } from "../../src/changesets/services/release-planner.js";
 
-const baseConfig = (overrides: Partial<Config> = {}): Config =>
-	({
+const baseConfig = (overrides: Record<string, unknown> = {}): ChangesetConfig =>
+	Schema.decodeUnknownSync(ChangesetConfig)({
 		changelog: ["@savvy-web/changelog", { repo: "o/r" }],
 		format: "auto",
 		commit: false,
-		fixed: [],
-		linked: [],
 		access: "restricted",
 		baseBranch: "main",
 		updateInternalDependencies: "patch",
-		ignore: [],
 		privatePackages: { version: true, tag: false },
 		...overrides,
-	}) as Config;
+	});
 
 describe("withChangelogModules", () => {
-	it.effect("rewrites the configured id to its mapped path and disables the engine formatter", () =>
+	it.effect("rewrites the configured id to its mapped path", () =>
 		Effect.gen(function* () {
 			const config = yield* withChangelogModules(
 				baseConfig(),
@@ -38,7 +32,18 @@ describe("withChangelogModules", () => {
 			);
 
 			expect(config.changelog).toEqual(["/abs/changelog.mjs", { repo: "o/r" }]);
-			expect(config.format).toBe(false);
+		}),
+	);
+
+	it.effect("maps a bare id to a [path, null] pair, as @changesets/config normalises it", () =>
+		Effect.gen(function* () {
+			const config = yield* withChangelogModules(
+				baseConfig({ changelog: "@savvy-web/changelog" }),
+				{ "@savvy-web/changelog": "/abs/changelog.mjs" },
+				"apply",
+			);
+
+			expect(config.changelog).toEqual(["/abs/changelog.mjs", null]);
 		}),
 	);
 
@@ -55,7 +60,7 @@ describe("withChangelogModules", () => {
 		}),
 	);
 
-	it.effect("disables the formatter but rewrites nothing when changelog is false", () =>
+	it.effect("rewrites nothing when changelog is false", () =>
 		Effect.gen(function* () {
 			const config = yield* withChangelogModules(
 				baseConfig({ changelog: false }),
@@ -64,7 +69,6 @@ describe("withChangelogModules", () => {
 			);
 
 			expect(config.changelog).toBe(false);
-			expect(config.format).toBe(false);
 		}),
 	);
 

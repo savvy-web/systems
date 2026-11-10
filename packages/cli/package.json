@@ -33,10 +33,12 @@
 	},
 	"dependencies": {
 		"@effect/platform-node": "catalog:effected",
+		"@effected/changesets": "catalog:effected",
 		"@effected/cli-kit": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/env": "catalog:effected",
 		"@effected/git": "catalog:effected",
+		"@effected/github": "catalog:effected",
 		"@effected/glob": "catalog:effected",
 		"@effected/jsonc": "catalog:effected",
 		"@effected/kit": "catalog:effected",
@@ -48,13 +50,13 @@
 		"@savvy-web/silk-effects": "workspace:^",
 		"effect": "catalog:effected",
 		"ink": "catalog:silk",
-		"react": "catalog:silk"
+		"react": "catalog:effected:build"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
 		"@types/node": "catalog:effected:build",
-		"@types/react": "catalog:silk",
+		"@types/react": "catalog:effected:build",
 		"tsx": "catalog:effected:build",
 		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"

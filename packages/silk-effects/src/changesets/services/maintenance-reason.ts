@@ -4,7 +4,10 @@
  * @remarks
  * A release whose `changesets` array is empty was forced by workspace
  * coupling — a `fixed` or `linked` version group in the changesets config —
- * or by an engine behavior we do not model. The derived reason feeds the
+ * or by an engine behavior we do not model. `\@effected/changesets` pins the
+ * premise: an empty `PlannedRelease.changesets` always means the bump did not
+ * come from a changeset of the package's own (a dependent ripple, a `fixed`
+ * member, or an `exit`-mode completion). The derived reason feeds the
  * `maintenanceNote` transform so the generated CHANGELOG never ships an empty
  * version block.
  *
@@ -14,7 +17,7 @@
  * @public
  */
 
-import type { ComprehensiveRelease, Config, ReleasePlan } from "@changesets/types";
+import type { ChangesetConfig as KitChangesetConfig, PlannedRelease } from "@effected/changesets";
 import { Schema } from "effect";
 
 import { ChangesetConfig } from "../../services/ChangesetConfig.js";
@@ -74,15 +77,18 @@ export type MaintenanceReason = typeof MaintenanceReasonSchema.Type;
  * `"unspecified"` fallback sentence instead of naming its triggers.
  *
  * Co-members releasing as `type: "none"` are never triggers — they carry no
- * version bump (and, per `@changesets/types`, no guaranteed `newVersion`), so
- * naming one would print an unchanged version as the cause of the release.
+ * version bump, so naming one would print an unchanged version as the cause
+ * of the release.
+ *
+ * The parameters are structural slices of the kit's `PlannedRelease`,
+ * `ReleasePlan` and `ChangesetConfig`, so any release-plan-shaped value fits.
  *
  * @public
  */
 export function deriveMaintenanceReason(
-	release: ComprehensiveRelease,
-	plan: ReleasePlan,
-	config: Config,
+	release: Pick<PlannedRelease, "name" | "changesets">,
+	plan: { readonly releases: ReadonlyArray<Pick<PlannedRelease, "name" | "type" | "newVersion" | "changesets">> },
+	config: Pick<KitChangesetConfig, "fixed" | "linked">,
 ): MaintenanceReason | undefined {
 	if (release.changesets.length > 0) return undefined;
 
@@ -96,7 +102,7 @@ export function deriveMaintenanceReason(
 			if (!group.some((pattern) => ChangesetConfig.matches(release.name, pattern))) continue;
 			const triggers = plan.releases
 				.filter(
-					(r): r is Exclude<ComprehensiveRelease, { type: "none" }> =>
+					(r) =>
 						r.name !== release.name &&
 						r.type !== "none" &&
 						r.changesets.length > 0 &&

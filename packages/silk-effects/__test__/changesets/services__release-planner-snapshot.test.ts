@@ -5,6 +5,7 @@ import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Cause, Effect, Exit } from "effect";
 import { Changesets } from "../../src/index.js";
+import { PlannerDeps } from "./support/planner-deps.js";
 import { makeReleaseFixture } from "./support/release-fixture.js";
 
 // Derive the monorepo node_modules from this test file's location so
@@ -31,6 +32,7 @@ function getPlanner(projectDir: string) {
 	return Changesets.ReleasePlanner.pipe(
 		Effect.provide(Changesets.ReleasePlanner.layer),
 		Effect.provide(InspectorStub),
+		Effect.provide(PlannerDeps),
 		Effect.provide(NodeServices.layer),
 	) as Effect.Effect<Changesets.ReleasePlannerShape>;
 }

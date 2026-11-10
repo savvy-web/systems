@@ -28,15 +28,16 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effected/changesets": "catalog:effected",
 		"@effected/commands": "catalog:effected",
 		"@effected/git": "catalog:effected",
+		"@effected/github": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/silk-effects": "workspace:^",
 		"effect": "catalog:effected"
 	},
 	"devDependencies": {
-		"@changesets/types": "^7.0.0",
 		"@types/node": "catalog:effected:build",
 		"tsx": "catalog:effected:build",
 		"typescript": "catalog:effected:build",

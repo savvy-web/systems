@@ -3,6 +3,7 @@ import { NodeServices } from "@effect/platform-node";
 import { afterEach, describe, expect, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { Changesets } from "../../src/index.js";
+import { PlannerDeps } from "./support/planner-deps.js";
 import { makeReleaseFixture } from "./support/release-fixture.js";
 
 const roots: string[] = [];
@@ -33,6 +34,7 @@ describe("ReleasePlanner.plan", () => {
 			const planner = yield* Changesets.ReleasePlanner.pipe(
 				Effect.provide(Changesets.ReleasePlanner.layer),
 				Effect.provide(InspectorStub),
+				Effect.provide(PlannerDeps),
 				Effect.provide(NodeServices.layer),
 			);
 			const plan = yield* planner.plan(root);

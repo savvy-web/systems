@@ -1,17 +1,15 @@
 /**
- * Effect wrapper around `\@changesets/get-github-info`.
+ * The commit-info lookup behind {@link GitHubService}, over
+ * `\@effected/github`'s `ChangelogInfo`.
  *
  * @remarks
- * Bridges the `\@changesets/get-github-info` package (which returns
- * promises) into the Effect ecosystem. The {@link getGitHubInfo}
- * function wraps the upstream `getCommitInfo()` call in `Effect.tryPromise`,
- * adapting its structured `CommitInfo | undefined` return back to the
- * legacy {@link GitHubCommitInfo} shape and mapping failures (including a
- * `not found` result) to {@link GitHubApiError}.
- *
- * The upstream v1 package added a `.env` fallback: it reads
- * `GITHUB_TOKEN` from `process.env` directly when no token is otherwise
- * configured, so the caller does not need to plumb one through.
+ * `ChangelogInfo.commit(sha)` is the kit's `\@changesets/get-github-info`: the
+ * same GraphQL query and the same markdown links, with the token and server
+ * taken from the `GitHubClient` its layer is built over and the repository
+ * from `Repo`. Nothing here reads the environment — the host that runs the
+ * engine supplies the client. {@link getGitHubInfo} provides the `Repo` per
+ * call from the changelog options' `owner/repo` and adapts the kit's
+ * `Option`-valued result to the legacy {@link GitHubCommitInfo} shape.
  *
  * The {@link GitHubCommitInfo} type is the only item from this module
  * that is part of the public API (re-exported from the package root).
@@ -22,8 +20,9 @@
  * @internal
  */
 
-import { getCommitInfo } from "@changesets/get-github-info";
-import { Effect } from "effect";
+import type { GitHubGraphQLError, InvalidChangelogRefError } from "@effected/github";
+import { ChangelogInfo, Repo, RepoRef } from "@effected/github";
+import { Effect, Option } from "effect";
 
 import { GitHubApiError } from "../errors.js";
 
@@ -31,7 +30,7 @@ import { GitHubApiError } from "../errors.js";
  * Structured result from the GitHub commit info API.
  *
  * @remarks
- * Represents the data returned by `\@changesets/get-github-info` for a
+ * Represents what `\@effected/github`'s `ChangelogInfo.commit` answers for a
  * single commit. Includes the commit author's GitHub username, the
  * associated pull request number (if any), and pre-formatted markdown
  * links for use in changelog entries.
@@ -69,20 +68,37 @@ export interface GitHubCommitInfo {
 	};
 }
 
+/** The `statusCode` a GraphQL failure kind stands for, where it names one. */
+const statusOf = (error: GitHubGraphQLError): number | undefined => {
+	switch (error.kind) {
+		case "rateLimited":
+			return 429;
+		case "unauthorized":
+			return 401;
+		case "notFound":
+			return 404;
+		default:
+			return undefined;
+	}
+};
+
+const apiError = (reason: string, statusCode?: number): GitHubApiError =>
+	new GitHubApiError({
+		operation: "getCommitInfo",
+		reason,
+		...(statusCode === undefined ? {} : { statusCode }),
+	});
+
 /**
- * Fetch GitHub info for a commit, wrapped in Effect.
+ * Fetch GitHub info for a commit.
  *
  * @remarks
- * Calls the upstream `getCommitInfo()` from `\@changesets/get-github-info`
- * within `Effect.tryPromise`, adapting its structured `CommitInfo`
- * return to the legacy {@link GitHubCommitInfo} shape. An `undefined`
- * result (commit or repo not found) is treated as a thrown error so it
- * is mapped to the same {@link GitHubApiError} failure channel. Any
- * thrown error is caught and mapped to a {@link GitHubApiError} with
- * the operation set to `"getCommitInfo"`.
- *
- * Requires a `GITHUB_TOKEN` environment variable to be set for
- * authenticated API access (the upstream library reads it directly).
+ * Looks the commit up through `ChangelogInfo.commit` against the `owner/repo`
+ * in `params.repo` and adapts the result to the legacy
+ * {@link GitHubCommitInfo} shape. A commit the repository does not have
+ * (`Option.none()`), a malformed repo slug or sha, and every API failure all
+ * land on the same {@link GitHubApiError} channel with `operation` set to
+ * `"getCommitInfo"`, so callers keep one recovery path.
  *
  * @param params - The commit hash and repo in `owner/repo` format
  * @returns An Effect that resolves to {@link GitHubCommitInfo} or fails
@@ -93,28 +109,28 @@ export interface GitHubCommitInfo {
 export function getGitHubInfo(params: {
 	commit: string;
 	repo: string;
-}): Effect.Effect<GitHubCommitInfo, GitHubApiError> {
-	return Effect.tryPromise({
-		try: async () => {
-			const info = await getCommitInfo({ commit: params.commit, repo: params.repo });
-			if (info === undefined) {
-				throw new Error(`commit ${params.commit} not found in ${params.repo}`);
-			}
-			return {
-				user: info.author?.login ?? null,
-				pull: info.pull?.number ?? null,
-				links: {
-					commit: info.commit.markdownLink,
-					pull: info.pull?.markdownLink ?? null,
-					user: info.author?.markdownLink ?? null,
-				},
-			};
-		},
-		/* v8 ignore next 5 -- error mapping tested via GitHubService test layer */
-		catch: (error) =>
-			new GitHubApiError({
-				operation: "getCommitInfo",
-				reason: error instanceof Error ? error.message : String(error),
-			}),
+}): Effect.Effect<GitHubCommitInfo, GitHubApiError, ChangelogInfo> {
+	return Effect.gen(function* () {
+		const ref = yield* RepoRef.parse(params.repo).pipe(Effect.mapError((error) => apiError(error.message)));
+		const info = yield* ChangelogInfo;
+		const found = yield* info.commit(params.commit).pipe(
+			Repo.provide(ref),
+			Effect.mapError((error: GitHubGraphQLError | InvalidChangelogRefError) =>
+				apiError(error.message, error._tag === "GitHubGraphQLError" ? statusOf(error) : undefined),
+			),
+		);
+		if (Option.isNone(found)) {
+			return yield* Effect.fail(apiError(`commit ${params.commit} not found in ${params.repo}`));
+		}
+		const { user, pull, links } = found.value;
+		return {
+			user: Option.getOrNull(user),
+			pull: Option.getOrNull(pull),
+			links: {
+				commit: links.commit,
+				pull: Option.getOrNull(links.pull),
+				user: Option.getOrNull(links.user),
+			},
+		};
 	});
 }
