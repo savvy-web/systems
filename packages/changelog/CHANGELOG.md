@@ -1,5 +1,32 @@
 # @savvy-web/changelog
 
+## 1.0.31
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.20.0 | ^0.21.0 |
+| @effected/git | dependency | updated | ^0.30.0 | ^0.32.0 |
+| @effected/templates | dependency | updated | ^0.18.0 | ^0.20.0 |
+| @effected/workspaces | dependency | updated | ^0.43.0 | ^0.45.0 |
+| @savvy-web/silk-effects | dependency | updated | 11.0.2 | 12.0.0 |
+| effect | dependency | updated | ~4.1.2 | 4.1.3 |
+| @effected/changesets | dependency | added | — | ^0.4.0 |
+| @effected/github | dependency | added | — | ^0.32.0 |
+
+[#871][#871]
+
+### Maintenance
+
+- The changelog generator now builds its `ChangelogInfo` from its own environment and runs on `@effected/changesets` and `@effected/github` instead of `@changesets/*`. Generated changelog output is unchanged. [#871][#871]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#871]: https://github.com/savvy-web/systems/pull/871
+
 ## 1.0.30
 
 ### Dependencies
