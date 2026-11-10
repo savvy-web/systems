@@ -83,4 +83,32 @@ layer(Layer.merge(WorkspaceRootTest, DiscoveryTest))("changesetValidate handler"
 			expect(data.ok).toBe(true);
 		}),
 	);
+
+	it.effect("re-discovers the workspace on every call, so a package added mid-session counts (CF004)", () =>
+		Effect.gen(function* () {
+			// A memoizing double: listPackagesIn keeps serving its first answer
+			// until refreshIn drops the memo, as the live layer does.
+			let onDisk = packagesNamed("@scope/other");
+			let memo: ReadonlyArray<WorkspacePackage> | undefined;
+			const discovery = WorkspaceDiscovery.layerTest({
+				refreshIn: () =>
+					Effect.sync(() => {
+						memo = undefined;
+					}),
+				listPackagesIn: () =>
+					Effect.sync(() => {
+						memo ??= onDisk;
+						return memo;
+					}),
+			});
+			const run = changesetValidate({ dir: "packages/mcp/__test__/fixtures/changeset-valid" }, process.cwd()).pipe(
+				Effect.provide(discovery),
+			);
+			const before = yield* run;
+			expect(before.messages.map((m) => m.rule)).toEqual(["changeset-known-package"]);
+			onDisk = packagesNamed("@scope/foo");
+			const after = yield* run;
+			expect(after.ok).toBe(true);
+		}),
+	);
 });

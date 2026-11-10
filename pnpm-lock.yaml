@@ -459,6 +459,12 @@ importers:
       '@effected/github':
         specifier: catalog:effected
         version: 0.32.0(effect@4.1.3)
+      '@effected/markdown':
+        specifier: catalog:effected
+        version: 0.29.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
+      '@effected/markdown-lint':
+        specifier: catalog:effected
+        version: 0.2.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
       '@effected/templates':
         specifier: catalog:effected
         version: 0.20.0(effect@4.1.3)
@@ -517,6 +523,12 @@ importers:
       '@effected/kit':
         specifier: catalog:effected
         version: 0.14.0(effect@4.1.3)
+      '@effected/markdown':
+        specifier: catalog:effected
+        version: 0.29.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
+      '@effected/markdown-lint':
+        specifier: catalog:effected
+        version: 0.2.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
       '@effected/templates':
         specifier: catalog:effected
         version: 0.20.0(effect@4.1.3)
@@ -587,6 +599,12 @@ importers:
       '@effected/kit':
         specifier: catalog:effected
         version: 0.14.0(effect@4.1.3)
+      '@effected/markdown':
+        specifier: catalog:effected
+        version: 0.29.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
+      '@effected/markdown-lint':
+        specifier: catalog:effected
+        version: 0.2.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3)
       '@effected/mcp-kit':
         specifier: catalog:effected
         version: 0.15.0(@effected/kit@0.14.0(effect@4.1.3))(effect@4.1.3)

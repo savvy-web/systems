@@ -51,7 +51,7 @@ export interface ChangesetValidateArgs {
 }
 
 /**
- * Effect handler: resolve the workspace root, discover its package names
+ * Effect handler: resolve the workspace root, re-discover its package names
  * (for the `changeset-known-package` rule; skipped when discovery fails),
  * then validate the changeset directory via the pure
  * {@link Changesets.ChangesetLinter.validate}. The
@@ -72,7 +72,11 @@ export const changesetValidate = (
 		const discovery = yield* WorkspaceDiscovery;
 		const root = yield* workspaceRoot.find(args.cwd ?? fallbackCwd);
 		const dir = resolve(root, args.dir ?? ".changeset");
-		const packages = yield* discovery.listPackagesIn(root).pipe(
+		// listPackagesIn memoizes per root for the layer's lifetime and the server
+		// holds one layer per process, so drop this root's memo first: a package
+		// added or renamed mid-session must not fail CF004 against a stale list.
+		const packages = yield* discovery.refreshIn(root).pipe(
+			Effect.andThen(discovery.listPackagesIn(root)),
 			Effect.map((found) => found.map((pkg) => pkg.name)),
 			Effect.orElseSucceed(() => undefined),
 		);

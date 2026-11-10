@@ -8,7 +8,7 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T21:25:56Z
+  at: 2026-11-10T21:34:34Z
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -28,7 +28,7 @@ sources:
     resource: ../../packages/silk/package.json
 integrity:
   generated:
-    body: a22def7e22b89e23
+    body: d109b42356c9ec1b
 ---
 
 # @savvy-web/silk
@@ -90,10 +90,15 @@ tool subpath (markdownlint, commitlint, lint-staged).
   `@effected/commands`, `@effected/git`, `@effected/workspaces` and
   `effect` satisfy `@savvy-web/silk-effects`' `peerDependencies`;
   `@effected/markdown` and `@effected/markdown-lint` satisfy
-  `@effected/changesets`' optional peers, so its `./lint` entry (behind
-  `ChangesetLinter`) resolves in a consumer install. No file under `src/`
-  imports any of them, and dropping one breaks installs rather than any
-  lint pass. `markdownlint` is a devDependency only: the markdownlint-host
+  `@effected/changesets`' optional peers. Importing silk-effects always
+  loads `@effected/changesets/lint` (behind `ChangesetLinter`), so under a
+  strict resolver (pnpm `hoist=false`, Yarn PnP) every package that hands
+  `@effected/changesets` to silk-effects must declare both. silk is not
+  the only one: [cli](cli.md), [mcp](mcp.md) and
+  [changelog](changelog.md) declare them too, so a cli-only, mcp-only or
+  changelog-only install does not fail with `ERR_MODULE_NOT_FOUND`. No
+  file under `src/` imports any of them, and dropping one breaks installs
+  rather than any lint pass. `markdownlint` is a devDependency only: the markdownlint-host
   tests of the changeset rules live in `__test__/changesets/`.[^silk-deps]
 - **The bins run from source in the workspace.** `bin` points at
   `src/bin/savvy.ts` and `src/bin/savvy-mcp.ts`; each registers tsx when

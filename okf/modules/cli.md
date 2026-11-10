@@ -9,6 +9,8 @@ tags: [architecture, tooling]
 sources:
   - id: arch
     resource: ../../packages/cli/src
+  - id: cli-manifest
+    resource: ../../packages/cli/package.json
   - id: repos-group
     resource: ../../packages/cli/src/commands/repos
   - id: main
@@ -35,10 +37,10 @@ sources:
     resource: ../../packages/cli/src/commands/clean.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-10T21:34:34Z
 integrity:
   generated:
-    body: 84087d5474206ef0
+    body: 9357b985d2fba538
 ---
 
 # cli
@@ -98,6 +100,7 @@ A handler test runs the handler as `main()` would and asserts on data, never on 
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk` or `@savvy-web/mcp`.** All logic comes from silk-effects; silk's package-layering test asserts the edge never exists.[^layering]
 - **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` — the same posture as mcp.[^arch]
+- **`@effected/markdown` and `@effected/markdown-lint` are load-bearing dependencies with no importer.** They satisfy `@effected/changesets`' optional peers: importing silk-effects always loads `@effected/changesets/lint`, so under a strict resolver (pnpm `hoist=false`, Yarn PnP) an install of this package alone would fail with `ERR_MODULE_NOT_FOUND` without them. silk, cli, mcp and changelog all declare both; see [silk](silk.md).[^cli-manifest]
 - **The engine takes its `cwd` from this package.** silk-effects' `ConfigDiscovery` and `BiomeSchemaSync` no longer default to `process.cwd()`; every call passes it explicitly, as the process owner.[^arch]
 - **Every hook-section id the CLI declares is spelled UPPERCASE** — a lowercase key does not error but silently grows a duplicate block. See [managed-hook-sections](../interfaces/managed-hook-sections.md).[^arch]
 - **`savvy commit hook pre-commit-message` gates its rule set on document kind** — commit-body rules apply only to a real commit message; `plan-leakage` and `closes-trailer` apply to both a commit message and a PR body. See [commit-and-pr-messages](../conventions/commit-and-pr-messages.md).[^arch]
@@ -124,3 +127,4 @@ A handler test runs the handler as `main()` would and asserts on data, never on 
 [^confirm]: `../../packages/cli/src/internal/confirm.ts`
 [^check-section]: `../../packages/cli/src/commands/check-section.ts`
 [^clean]: `../../packages/cli/src/commands/clean.ts`
+[^cli-manifest]: `../../packages/cli/package.json`

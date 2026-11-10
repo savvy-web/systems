@@ -21,10 +21,10 @@ sources:
     resource: ../../packages/mcp/src/tools
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T21:25:56Z
+  at: 2026-11-10T21:34:34Z
 integrity:
   generated:
-    body: 3027c760b1078d4d
+    body: 472f112df02f5528
 ---
 
 # savvy-mcp tool surface
@@ -88,7 +88,10 @@ Validates `.changeset/*.md` (or a given `dir`) against the changeset format
 rules: the front matter (CF001 a YAML block, CF002 package names, CF003
 release types, CF004 every key a workspace package) and the CSH001–CSH005
 body rules. A file with no front matter fails CF001. The tool passes the
-workspace's package names from `WorkspaceDiscovery`; when discovery fails,
+workspace's package names from `WorkspaceDiscovery`, re-discovered on
+every call (`refreshIn` before `listPackagesIn`, since the list is memoized
+per root for the server's lifetime), so a package added or renamed
+mid-session is checked against the current list. When discovery fails,
 CF004 is skipped and every other rule still runs. Returns typed diagnostics
 (`file`, `rule`, `line`, `column`, `message`) plus `ok` and `errorCount`.
 The structured counterpart to `savvy changeset lint`, running the same

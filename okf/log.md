@@ -26,6 +26,9 @@
 * Updated @savvy-web/silk export map
 * Updated savvy command tree
 * Updated savvy-mcp tool surface
+* Updated @savvy-web/changelog
+* Updated cli
+* Updated mcp
 
 ## 2026-11-09
 
