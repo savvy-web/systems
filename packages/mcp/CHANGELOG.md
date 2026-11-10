@@ -1,5 +1,20 @@
 # @savvy-web/mcp
 
+## 3.6.0
+
+### Features
+
+- `changeset_validate` now reports the changeset front-matter rules (CF001-CF003) in addition to CSH001-CSH005
+- `changeset_validate` checks front-matter package names against the workspace's packages (CF004)
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 12.0.0 | 12.1.0 |
+| @effected/markdown | dependency | added | — | ^0.29.0 |
+| @effected/markdown-lint | dependency | added | — | ^0.2.0 |
+
 ## 3.5.0
 
 ### Breaking Changes
