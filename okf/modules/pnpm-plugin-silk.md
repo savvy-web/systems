@@ -11,17 +11,19 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T16:02:50Z
+  at: 2026-11-10T17:22:40Z
 integrity:
   generated:
-    body: c0be15d59de3e8d7
+    body: 035b843e64227185
   verified:
     by: human:spencer
-    at: 2026-11-10T15:59:51Z
-    content: c0da0793e9770537
+    at: 2026-11-10T17:22:29Z
+    content: 958d7bd2c93f3c30
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:51Z
+  - by: human:spencer
+    at: 2026-11-10T17:22:29Z
 ---
 
 # pnpm-plugin-silk
@@ -36,7 +38,7 @@ The emitted plugin exports `{ hooks }` with a single `updateConfig(config)` that
 
 ## Load-bearing managed entries
 
-- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@tsdown/css` and `@types/bun`. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The `docs` and `silk` catalogs (and their `:peers`) carry no toolchain member either — typescript, tsx, `@types/node`, `@types/react`, `@types/react-dom`, react and react-dom left them — and neither `publicHoistPattern` nor `minimumReleaseAgeExclude` repeats what the kit already hoists or exempts (`effect`, `@effect/*`, `@effected/*`, `@oxc-project/*`, `@rolldown/*`, `@typescript/*`); the kit is upstream of `@savvy-web/silk` for the toolchain, which silk peers through `catalog:effected:build:peers`. The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
+- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@types/bun`; `@tsdown/css` left it and is catalogued nowhere (the kit's `effected:build` does not carry it either), so a consumer that needs it pins it directly. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The `silk` catalog (and `silk:peers`) holds only `@types/bun` and `ink`; `husky`, `lint-staged`, `markdownlint-cli2` and `markdownlint-cli2-formatter-codequality` left it and are served by the `lint` catalog alone. The `docs` and `silk` catalogs (and their `:peers`) carry no toolchain member either — typescript, tsx, `@types/node`, `@types/react`, `@types/react-dom`, react and react-dom left them — and neither `publicHoistPattern` nor `minimumReleaseAgeExclude` repeats what the kit already hoists or exempts (`effect`, `@effect/*`, `@effected/*`, `@oxc-project/*`, `@rolldown/*`, `@typescript/*`); the kit is upstream of `@savvy-web/silk` for the toolchain, which silk peers through `catalog:effected:build:peers`. The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
 - **Effect is exempt from release-age gating.** `minimumReleaseAgeExclude` lists `effect` and `@effect/*` alongside `@effected/*`, so a fresh Effect release installs without waiting out `minimumReleaseAge`. The two entries were once hand-added only to the root `pnpm-workspace.yaml`, and a `pnpm pnpm:export` dropped them, since the export rewrites the managed sections from the authored config. They now live in `lib/build/pnpm-config.plugin.ts` like every other managed key.[^arch]
 - **`@savvy-web/changelog` is hoisted; `@savvy-web/cli` and `@savvy-web/mcp` no longer are.** `publicHoistPattern` hoists `@savvy-web/changelog` because the changesets engine resolves the changelog id named in `.changeset/config.json` by name from the consumer root — a resolution need, not a bin. `@savvy-web/silk` now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so a consumer's `node_modules/.bin` is populated off the single silk dependency with no hoist needed for cli/mcp. `excludeByRepo` drops changelog for `savvy-web-systems` — this repo consumes it as a `workspace:*` link and a public hoist would shadow it. Release order is load-bearing here: a silk that carries the bins must ship before or with the pnpm-plugin-silk that stops hoisting, or a consumer on a bin-less silk loses `savvy` from PATH.[^arch]
 
@@ -46,7 +48,7 @@ A config dependency cannot run an install-time build step, because it installs b
 
 ## Self-consumption via export
 
-The monorepo that produces this package cannot install it as a config dependency of itself — the config dependency would need to install before the package that builds it exists. The root `pnpm-workspace.yaml` therefore lists only `@effected/pnpm-plugin-effected` under `configDependencies`, and the full managed config from `lib/build/pnpm-config.plugin.ts` is materialized inline via the `rolldown-pnpm-config export` CLI. The managed sections of the root `pnpm-workspace.yaml` are generated output, not hand-edited; hand-maintained keys (`configDependencies`, `autoInstallPeers`, `verifyDepsBeforeRun`) survive the export.[^arch]
+The monorepo that produces this package cannot install it as a config dependency of itself — the config dependency would need to install before the package that builds it exists. The root `pnpm-workspace.yaml` therefore lists only `@effected/pnpm-plugin-effected` under `configDependencies`, and the full managed config from `lib/build/pnpm-config.plugin.ts` is materialized inline via the `rolldown-pnpm-config export` CLI. The managed sections of the root `pnpm-workspace.yaml` are generated output, not hand-edited; hand-maintained keys (`configDependencies`, `autoInstallPeers`, `verifyDepsBeforeRun`) survive the export. The config's `local:` block adds entries only this repo's materialized copy carries, never the distributed config — among them a `minimumReleaseAgeExclude` entry for `@effected/pnpm-plugin-effected`, merged onto the managed list, which this repo consumes as its one installed config dependency.[^arch]
 
 ## Boundaries and invariants
 

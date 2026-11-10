@@ -11,17 +11,19 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T16:02:50Z
+  at: 2026-11-10T17:22:40Z
 integrity:
   generated:
-    body: 21f37553ef76f113
+    body: d5cbb02e0b7761ac
   verified:
     by: human:spencer
-    at: 2026-11-10T15:59:52Z
-    content: 5ede343bcfaf94f8
+    at: 2026-11-10T17:22:29Z
+    content: d6e61f9574ef8764
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:52Z
+  - by: human:spencer
+    at: 2026-11-10T17:22:29Z
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names
@@ -59,7 +61,7 @@ therefore versions independently of the Silk catalogs. The older
 
 **The build chain and toolchain are in none of these catalogs.**
 `catalog:build` (and `build:peers`) holds only the members the kit does
-not catalog — `@tsdown/css` and `@types/bun` today — and `catalog:docs`
+not catalog — `@types/bun` today — and `catalog:docs`
 and `catalog:silk` (and their `:peers`) carry no toolchain member either.
 tsdown, rolldown, rolldown-plugin-dts, API Extractor and tsdoc, typescript,
 tsx, `@types/node`, `@types/react`, `@types/react-dom`, react, react-dom,

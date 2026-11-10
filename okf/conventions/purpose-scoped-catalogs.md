@@ -10,17 +10,19 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T16:02:50Z
+  at: 2026-11-10T17:22:40Z
 integrity:
   generated:
-    body: 3ee21603c2fc25cc
+    body: 68c2dc66caea74e3
   verified:
     by: human:spencer
-    at: 2026-11-10T15:59:52Z
-    content: 5aed13521c9ec83f
+    at: 2026-11-10T17:22:29Z
+    content: 72f3b1c0f81c2076
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:52Z
+  - by: human:spencer
+    at: 2026-11-10T17:22:29Z
 ---
 
 # Spell dependency ranges through purpose-scoped catalogs
@@ -29,7 +31,7 @@ Spell every dependency range as `catalog:<name>` (or `catalog:<name>:peers` for 
 
 Spell `effect`, every `@effect/*` package and every `@effected/*` kit package as `catalog:effected` in `dependencies` and `devDependencies`, and as `catalog:effected:peers` in `peerDependencies`. Both catalogs come from the separate `@effected/pnpm-plugin-effected` config dependency. Never spell a peer `catalog:effected`: since plugin 0.26.0 that catalog names each Effect family member at its exact override version, so the peer would publish an exact pin. Do not write `catalog:effect` or `catalog:effect:peers`: they were retired with the move from `@effected/pnpm-plugin-effect` to `@effected/pnpm-plugin-effected` 0.20.0, and a manifest that still spells one fails the install with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. Do not hand-write overrides pinning Effect family members either; the plugin pins the whole family graph-wide itself, and its exact `effected` catalog covers the `catalog:` specs pnpm's overrides do not reach (pnpm/pnpm#17922). Never put Effect ranges into the five Silk-authored catalogs above, and never introduce an `effect3`-named catalog: it does not exist, was removed upstream, and no manifest in this repo resolves against it.
 
-Spell every build-chain and toolchain package — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — as `catalog:effected:build` in direct dependencies and `catalog:effected:build:peers` in peers; `@effected/pnpm-plugin-effected` supplies both. No Silk catalog — `docs` and `silk` included — carries a toolchain member. `catalog:build` keeps only the members the kit does not catalog (`@tsdown/css`, `@types/bun`); do not add a build-chain package back to it (see [kit-package-build](../decisions/kit-package-build.md)).
+Spell every build-chain and toolchain package — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — as `catalog:effected:build` in direct dependencies and `catalog:effected:build:peers` in peers; `@effected/pnpm-plugin-effected` supplies both. No Silk catalog — `docs` and `silk` included — carries a toolchain member. `catalog:build` keeps only the member the kit does not catalog (`@types/bun`); do not add a build-chain package back to it (see [kit-package-build](../decisions/kit-package-build.md)). `@tsdown/css` is the one exception to the no-literal-version rule: no catalog — Silk's or the kit's — carries it, so pin it directly where a package needs it.
 
 Author every catalog value in exactly one place: `packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`'s `PnpmConfigPlugin({...})` argument, as a `{ range, peer?, strategy? }` entry per package. `range` feeds the `<name>` catalog and `peer` feeds the `<name>:peers` catalog; the two deliberately diverge so a consumer's peer constraint stays satisfiable as the direct range advances. Do not hand-edit the root `pnpm-workspace.yaml`'s catalog blocks directly — they are generated output, rewritten from that file by `pnpm pnpm:export`, and a hand edit is overwritten on the next export.[^pnpm-plugin-silk-arch]
 

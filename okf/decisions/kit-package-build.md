@@ -7,7 +7,7 @@ tags: [build, architecture, deps]
 supersedes: per-package-prepare-builds.md
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:56:29Z
+  at: 2026-11-10T17:22:40Z
 sources:
   - id: root-manifest
     resource: ../../package.json
@@ -25,14 +25,16 @@ sources:
     resource: https://github.com/spencerbeggs/effected/blob/main/plugin/skills/effected-renovate/references/ledger/0038-adopt-runtime-subdir-override.md
 integrity:
   generated:
-    body: 9adae80882b1a02d
+    body: 641a601cce133896
   verified:
     by: human:spencer
-    at: 2026-11-10T15:52:01Z
-    content: de0d19fc7266f597
+    at: 2026-11-10T17:22:29Z
+    content: 3308013541a94f81
 verified:
   - by: human:spencer
     at: 2026-11-10T15:52:01Z
+  - by: human:spencer
+    at: 2026-11-10T17:22:29Z
 ---
 
 # Build every package with the kit's effected package build, linked to source
@@ -49,7 +51,7 @@ The repository used to carry its own build toolchain: `@savvy-web/bundler` (tsdo
 - pnpm scripts load that TypeScript through `nodeOptions: --import=tsx` in `pnpm-workspace.yaml`, with `tsx` a root devDependency from `catalog:effected:build`.[^workspace-config] The `savvy` and `savvy-mcp` bins register tsx themselves when they run as `.ts` (guarded by `import.meta.url.endsWith(".ts")`), so a git hook, the plugin's MCP launcher or a bare shell runs them from source without nodeOptions; a built `.js` bin never takes that branch.[^silk-bin]
 - The vitest global setup builds only `@savvy-web/silk...` and `@savvy-web/pnpm-plugin-silk` — the packages whose built artifacts the carrier-bin, cli/mcp bin, packed-install and pnpmfile-contract suites execute.[^vitest-setup]
 - `@savvy-web/bundler`, `@savvy-web/tsdown-plugins`, `@savvy-web/rspress-builder` and `@savvy-web/github-action-builder` are deleted from the repository with no final release; their published versions stay on the registry and consumers migrate to `@effected/plugin`. rspress-builder's `runtime: true` maps to a `[[package.build.overrides]]` block with `outSubdir = "runtime"`.[^kit-ledger-runtime-subdir]
-- Silk's own `build` catalog is trimmed to the members the kit does not supply (`@tsdown/css`, `@types/bun`); the rest of the build chain comes from `catalog:effected:build`, supplied by `@effected/pnpm-plugin-effected` (see [silk-catalogs](../interfaces/silk-catalogs.md)).
+- Silk's own `build` catalog is trimmed to the member the kit does not supply (`@types/bun`); `@tsdown/css` is catalogued nowhere, so a consumer that needs it pins it directly; the rest of the build chain comes from `catalog:effected:build`, supplied by `@effected/pnpm-plugin-effected` (see [silk-catalogs](../interfaces/silk-catalogs.md)).
 
 ## Alternatives rejected
 
