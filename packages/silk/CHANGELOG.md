@@ -1,5 +1,51 @@
 # @savvy-web/silk
 
+## 5.0.0
+
+### Breaking Changes
+
+#### Toolchain and React packages are now peer dependencies
+
+- `@savvy-web/silk` now declares `typescript`, `tsx`, `@types/node`, `@types/react`, `@types/react-dom`, `react` and `react-dom` as peer dependencies, with ranges from the effected build peers catalog. `react`, `react-dom`, `@types/react` and `@types/react-dom` are new required peers, so projects that do not already install them must add them.
+
+### Features
+
+- `@savvy-web/silk` now ships `@effected/changesets` and `@effected/github` as dependencies, so the changeset commands run on the effected engine. [#871][#871]
+
+### Bug Fixes
+
+- The `savvy` and `savvy-mcp` carrier bins now register `tsx` themselves when executed as `.ts` source, so a direct run resolves linked sibling source. The published `.js` bins never take that path. [#871][#871]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/commands | dependency | updated | ^0.20.0 | ^0.21.0 |
+| @effected/git | dependency | updated | ^0.30.0 | ^0.32.0 |
+| @effected/templates | dependency | updated | ^0.18.0 | ^0.20.0 |
+| @effected/workspaces | dependency | updated | ^0.43.0 | ^0.45.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.30 | 1.0.31 |
+| @savvy-web/cli | dependency | updated | 3.7.19 | 3.7.20 |
+| @savvy-web/mcp | dependency | updated | 3.4.22 | 3.5.0 |
+| @savvy-web/silk-effects | dependency | updated | 11.0.2 | 12.0.0 |
+| effect | dependency | updated | ~4.1.2 | 4.1.3 |
+| @biomejs/biome | peerDependency | updated | 2.6.4 | 2.6.6 |
+| @types/node | peerDependency | updated | ^26.6.6 | ^26.6.0 |
+| @effected/changesets | dependency | added | — | ^0.4.0 |
+| @effected/github | dependency | added | — | ^0.32.0 |
+| @types/react | peerDependency | added | — | ^19.3.0 |
+| @types/react-dom | peerDependency | added | — | ^19.3.0 |
+| react | peerDependency | added | — | ^19.3.0 |
+| react-dom | peerDependency | added | — | ^19.3.0 |
+
+[#871][#871]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#871]: https://github.com/savvy-web/systems/pull/871
+
 ## 4.5.7
 
 ### Dependencies

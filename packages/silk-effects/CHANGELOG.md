@@ -1,5 +1,66 @@
 # @savvy-web/silk-effects
 
+## 12.0.0
+
+### Breaking Changes
+
+#### The Changesets engine now runs on `@effected/changesets` and `@effected/github`
+
+- The `Changesets` namespace no longer depends on the eight `@changesets/*` packages or `@manypkg/get-packages`. It runs on `@effected/changesets` and `@effected/github`. Release output is byte-identical to `changeset version`.
+
+- `@effected/changesets` and `@effected/github` are now required peer dependencies. Install both next to `effect` and the other `@effected/*` peers.
+
+- The GitHub service layer now requires `ChangelogInfo` from `@effected/github`: `Layer<GitHubService, never, ChangelogInfo>`. Provide it when you build the layer.
+
+- The `ReleasePlanner` layer now requires `WorkspaceDiscovery` and `Git` in its environment.
+
+- Every peer range is now spelled through the effected peers catalog, so the published peers read `effect ~4.1.0` and a minor caret for each `@effected/*` package. Peer ranges moved up one minor with the Effect 4.1.3 kit. [#871][#871]
+
+* `TurboInspector` now defaults its task to `build` instead of `build:dev`. Callers that relied on the default to inspect the dev build must pass `build:dev` explicitly.
+
+### Bug Fixes
+
+- `Command.findSavvyLint`'s dogfood fallback now runs `packages/cli/src/bin.ts`. [#871][#871]
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @changesets/apply-release-plan | dependency | removed | ^8.1.1 | — |
+| @changesets/assemble-release-plan | dependency | removed | ^7.0.0 | — |
+| @changesets/config | dependency | removed | ^4.0.1 | — |
+| @changesets/get-github-info | dependency | removed | ^1.0.1 | — |
+| @changesets/get-release-plan | dependency | removed | ^5.0.2 | — |
+| @changesets/pre | dependency | removed | ^3.0.0 | — |
+| @changesets/read | dependency | removed | ^1.0.1 | — |
+| @manypkg/get-packages | dependency | removed | ^3.1.0 | — |
+| @effected/files | dependency | updated | ^0.1.0 | ^0.3.0 |
+| @effected/github-references | dependency | updated | ^0.14.0 | ^0.15.0 |
+| @effected/glob | dependency | updated | ^0.19.0 | ^0.21.0 |
+| @effected/jsonc | dependency | updated | ^0.24.0 | ^0.25.0 |
+| @effected/markdown | dependency | updated | ^0.27.0 | ^0.29.0 |
+| @effected/package-json | dependency | updated | ^0.30.0 | ^0.32.0 |
+| @effected/toml | dependency | updated | ^0.19.1 | ^0.20.0 |
+| @effected/walker | dependency | updated | ^0.25.1 | ^0.27.0 |
+| @effected/yaml | dependency | updated | ^0.29.0 | ^0.30.0 |
+| @savvy-web/silk-core | dependency | updated | 0.6.2 | 0.6.3 |
+| @effected/commands | peerDependency | updated | ^0.20.0 | ^0.21.0 |
+| @effected/git | peerDependency | updated | ^0.30.0 | ^0.32.0 |
+| @effected/templates | peerDependency | updated | ^0.18.0 | ^0.20.0 |
+| @effected/workspaces | peerDependency | updated | ^0.43.0 | ^0.45.0 |
+| effect | peerDependency | updated | ~4.1.2 | ~4.1.0 |
+| import-meta-resolve | dependency | added | — | ^4.2.0 |
+| @effected/changesets | peerDependency | added | — | ^0.4.0 |
+| @effected/github | peerDependency | added | — | ^0.32.0 |
+
+[#871][#871]
+
+### Thanks
+
+Thanks to [@spencerbeggs](https://github.com/spencerbeggs) for their contributions!
+
+[#871]: https://github.com/savvy-web/systems/pull/871
+
 ## 11.0.2
 
 ### Bug Fixes
