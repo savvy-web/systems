@@ -10,11 +10,6 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		// does not catalog stays. Its release-age excludes and root hoists for that chain are the kit's too.
 		build: {
 			packages: {
-				"@tsdown/css": {
-					range: "^0.23.4",
-					peer: "^0.23.0",
-					strategy: "lock-minor",
-				},
 				"@types/bun": {
 					range: "^1.4.4",
 					peer: "^1.4.4",
@@ -54,8 +49,8 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		lint: {
 			packages: {
 				"@biomejs/biome": {
-					range: "2.6.4",
-					peer: "2.6.4",
+					range: "2.6.6",
+					peer: "2.6.6",
 					strategy: "lock",
 				},
 				"@changesets/cli": {
@@ -107,30 +102,10 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 					peer: "^1.4.4",
 					strategy: "lock",
 				},
-				husky: {
-					range: "^9.1.7",
-					peer: "^9.1.7",
-					strategy: "lock",
-				},
 				ink: {
 					range: "^8.0.0",
 					peer: "^8.0.0",
 					strategy: "lock-minor",
-				},
-				"lint-staged": {
-					range: "^17.6.0",
-					peer: "^17.6.0",
-					strategy: "lock",
-				},
-				"markdownlint-cli2": {
-					range: "^0.24.0",
-					peer: "^0.24.0",
-					strategy: "lock",
-				},
-				"markdownlint-cli2-formatter-codequality": {
-					range: "^0.0.8",
-					peer: "^0.0.8",
-					strategy: "lock",
 				},
 			},
 		},
@@ -174,7 +149,6 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 	minimumReleaseAgeExclude: [
 		"@oxc-parser/*",
 		"@savvy-web/*",
-		"@spencerbeggs/*",
 		"@okfit/*",
 		"@pluginfinity/*",
 		"@pnpm/*",
@@ -196,6 +170,10 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		"yarn",
 	],
 	local: {
+		minimumReleaseAgeExclude: {
+			value: ["@effected/pnpm-plugin-effected"],
+			strategy: "merge",
+		},
 		peerDependencyRules: {
 			allowedVersions: {
 				"@typescript/vfs>typescript": "^5.5.0 || ^6.0.0 || ^7.0.0 || ^7.1.0-beta",

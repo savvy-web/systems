@@ -15,10 +15,8 @@ autoInstallPeers: true
 blockExoticSubdeps: true
 catalogs:
   build:
-    "@tsdown/css": ^0.23.4
     "@types/bun": ^1.4.4
   build:peers:
-    "@tsdown/css": ^0.23.0
     "@types/bun": ^1.4.4
   docs:
     "@rspress/core": ^2.0.23
@@ -33,7 +31,7 @@ catalogs:
     vite: ^8.3.0
     vitepress: ^2.0.0-alpha.21
   lint:
-    "@biomejs/biome": 2.6.4
+    "@biomejs/biome": 2.6.6
     "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.4
     "@commitlint/config-conventional": ^21.2.4
@@ -43,7 +41,7 @@ catalogs:
     markdownlint-cli2-formatter-codequality: ^0.0.8
     turbo: ^2.11.10
   lint:peers:
-    "@biomejs/biome": 2.6.4
+    "@biomejs/biome": 2.6.6
     "@changesets/cli": ^3.0.3
     "@commitlint/cli": ^21.2.4
     "@commitlint/config-conventional": ^21.2.4
@@ -54,18 +52,10 @@ catalogs:
     turbo: ^2.11.10
   silk:
     "@types/bun": ^1.4.4
-    husky: ^9.1.7
     ink: ^8.0.0
-    lint-staged: ^17.6.0
-    markdownlint-cli2: ^0.24.0
-    markdownlint-cli2-formatter-codequality: ^0.0.8
   silk:peers:
     "@types/bun": ^1.4.4
-    husky: ^9.1.7
     ink: ^8.0.0
-    lint-staged: ^17.6.0
-    markdownlint-cli2: ^0.24.0
-    markdownlint-cli2-formatter-codequality: ^0.0.8
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
@@ -92,7 +82,6 @@ minimumReleaseAgeExclude:
   - "@pluginfinity/*"
   - "@pnpm/*"
   - "@savvy-web/*"
-  - "@spencerbeggs/*"
   - "@tsdoctor/*"
   - "@vitest-agent/*"
   - "@vitest/*"
@@ -109,6 +98,7 @@ minimumReleaseAgeExclude:
   - vitest
   - vitest-bats
   - yarn
+  - "@effected/pnpm-plugin-effected"
 nodeOptions: --import=tsx
 packages:
   - e2e/*
