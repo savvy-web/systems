@@ -421,12 +421,18 @@ importers:
       '@effect/vitest':
         specifier: catalog:effected
         version: 4.1.3(effect@4.1.3)(vitest@5.1.0)
+      '@effected/changesets':
+        specifier: catalog:effected
+        version: 0.4.1(@effected/markdown-lint@0.2.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3))(@effected/markdown@0.29.0(@effected/jsonc@0.25.0(effect@4.1.3))(@effected/toml@0.20.0(effect@4.1.3))(@effected/yaml@0.30.0(effect@4.1.3))(effect@4.1.3))(effect@4.1.3)
       '@effected/commands':
         specifier: catalog:effected
         version: 0.21.0(effect@4.1.3)
       '@effected/git':
         specifier: catalog:effected
         version: 0.32.0(effect@4.1.3)
+      '@effected/github':
+        specifier: catalog:effected
+        version: 0.32.1(effect@4.1.3)
       '@effected/mcp-kit':
         specifier: catalog:effected
         version: 0.15.0(@effected/kit@0.14.0(effect@4.1.3))(effect@4.1.3)
