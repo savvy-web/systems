@@ -1,5 +1,13 @@
 # @savvy-web/templates
 
+## 2.0.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.32.0 | ^0.32.1 |
+
 ## 2.0.3
 
 ### Dependencies

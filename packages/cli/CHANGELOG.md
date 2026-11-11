@@ -1,5 +1,18 @@
 # @savvy-web/cli
 
+## 3.8.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | ^0.4.0 | ^0.4.1 |
+| @effected/cli-kit | dependency | updated | ^0.28.0 | ^0.28.1 |
+| @effected/github | dependency | updated | ^0.32.0 | ^0.32.1 |
+| @effected/walker | dependency | updated | ^0.27.0 | ^0.28.0 |
+| @effected/workspaces | dependency | updated | ^0.45.0 | ^0.46.0 |
+| @savvy-web/silk-effects | dependency | updated | 12.1.0 | 12.1.1 |
+
 ## 3.8.0
 
 ### Features

@@ -1,5 +1,20 @@
 # @savvy-web/silk-effects
 
+## 12.1.1
+
+### Bug Fixes
+
+- The `Lint` workspace helpers keep their best-effort fallback on `@effected/workspaces` 0.46. That release made the sync package discovery throw `WorkspaceDiscoveryError` or `WorkspacePatternError` for an unreadable, unparseable or unexpandable workspace manifest, where it used to return an empty list. The lint-staged handlers again treat such a workspace as having no leaf packages instead of crashing, and any other error still propagates.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | ^0.32.0 | ^0.32.1 |
+| @effected/walker | dependency | updated | ^0.27.0 | ^0.28.0 |
+| @savvy-web/silk-core | dependency | updated | 0.6.3 | 0.6.4 |
+| @effected/workspaces | peerDependency | updated | ^0.45.0 | ^0.46.0 |
+
 ## 12.1.0
 
 ### Features
