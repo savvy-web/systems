@@ -8,12 +8,18 @@ import {
 	resetWorkspaceCache,
 } from "../../src/lint/utils/Workspace.js";
 
-vi.mock("@effected/workspaces", () => ({
+vi.mock("@effected/workspaces", async (importOriginal) => ({
+	...(await importOriginal<typeof import("@effected/workspaces")>()),
 	findWorkspaceRootSync: vi.fn(),
 	getWorkspacePackagesSync: vi.fn(),
 }));
 
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
+import {
+	WorkspaceDiscoveryError,
+	WorkspacePatternError,
+	findWorkspaceRootSync,
+	getWorkspacePackagesSync,
+} from "@effected/workspaces";
 
 const mockFindWorkspaceRootSync = vi.mocked(findWorkspaceRootSync);
 const mockGetWorkspacePackagesSync = vi.mocked(getWorkspacePackagesSync);
@@ -112,6 +118,40 @@ describe("getWorkspacePackages()", () => {
 		const result = getWorkspacePackages();
 
 		expect(result).toEqual([]);
+	});
+
+	it("treats an unreadable workspace manifest as no leaf packages", () => {
+		mockGetWorkspacePackagesSync.mockImplementation(() => {
+			throw new WorkspaceDiscoveryError({
+				root: MOCK_ROOT,
+				path: `${MOCK_ROOT}/pnpm-workspace.yaml`,
+				kind: "invalidYaml",
+				cause: new Error("bad yaml"),
+			});
+		});
+
+		expect(getWorkspacePackages()).toEqual([]);
+	});
+
+	it("treats an uncompilable packages pattern as no leaf packages", () => {
+		mockGetWorkspacePackagesSync.mockImplementation(() => {
+			throw new WorkspacePatternError({
+				root: MOCK_ROOT,
+				pattern: "packages/[",
+				kind: "uncompilable",
+				detail: "unterminated class",
+			});
+		});
+
+		expect(getWorkspacePackages()).toEqual([]);
+	});
+
+	it("propagates an unrelated throw from discovery", () => {
+		mockGetWorkspacePackagesSync.mockImplementation(() => {
+			throw new TypeError("boom");
+		});
+
+		expect(() => getWorkspacePackages()).toThrow("boom");
 	});
 });
 

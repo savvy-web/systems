@@ -12,7 +12,12 @@
  */
 
 import { dirname } from "node:path";
-import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
+import {
+	WorkspaceDiscoveryError,
+	WorkspacePatternError,
+	findWorkspaceRootSync,
+	getWorkspacePackagesSync,
+} from "@effected/workspaces";
 import { nodeSyncOps } from "@effected/workspaces/node-sync";
 
 /**
@@ -59,9 +64,27 @@ export function getWorkspacePackages(): WorkspacePackageInfo[] | null {
 		return null;
 	}
 
-	const all = getWorkspacePackagesSync(root, nodeSyncOps);
-	cachedPackages = all.filter((pkg) => pkg.path !== root);
+	cachedPackages = readLeafPackages(root);
 	return cachedPackages;
+}
+
+/**
+ * Read the leaf packages under `root`, treating a workspace whose manifests
+ * cannot be read, parsed or expanded as one with no leaf packages.
+ *
+ * @remarks
+ * Since `@effected/workspaces` 0.46 the sync facade throws its typed discovery
+ * errors where it used to return an empty list. These helpers back lint-staged
+ * handlers and stay best-effort, so only those two error classes fall back to
+ * the old empty answer; any other throw propagates.
+ */
+function readLeafPackages(root: string): WorkspacePackageInfo[] {
+	try {
+		return getWorkspacePackagesSync(root, nodeSyncOps).filter((pkg) => pkg.path !== root);
+	} catch (error) {
+		if (error instanceof WorkspaceDiscoveryError || error instanceof WorkspacePatternError) return [];
+		throw error;
+	}
 }
 
 /**
