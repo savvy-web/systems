@@ -1,5 +1,23 @@
 # @savvy-web/silk
 
+## 5.1.1
+
+### Bug Fixes
+
+- `react`, `react-dom`, `@types/react` and `@types/react-dom` are now optional peer dependencies. Only the `./tsconfig/rspress/website.json` preset uses them, so a repository without an RSPress docs site no longer gets a missing-peer report for packages it never needs. A repository that extends the RSPress preset keeps installing them as before.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | ^0.4.0 | ^0.4.1 |
+| @effected/github | dependency | updated | ^0.32.0 | ^0.32.1 |
+| @effected/workspaces | dependency | updated | ^0.45.0 | ^0.46.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.32 | 1.0.33 |
+| @savvy-web/cli | dependency | updated | 3.8.0 | 3.8.1 |
+| @savvy-web/mcp | dependency | updated | 3.6.0 | 3.6.1 |
+| @savvy-web/silk-effects | dependency | updated | 12.1.0 | 12.1.1 |
+
 ## 5.1.0
 
 ### Features
