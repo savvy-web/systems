@@ -30,6 +30,8 @@ Load when implementing a new service, changing a result schema, moving code to s
 Load before changing any `@effected/*` dependency in this package's manifest, or when a consumer reports a duplicate kit copy:
 → `@../../okf/decisions/kit-effect-peers-via-catalog.md`
 Why `@effected/workspaces`, `@effected/git`, `@effected/commands`, `@effected/templates`, `@effected/changesets` and `@effected/github` are REQUIRED PEERS (`catalog:effected:peers`), the two-copies type-identity failure, and the `configDependencies` bump trap.
+→ `@../../okf/decisions/tool-closure-exact-pins.md`
+Why the REGULAR kit dependencies are `catalog:effected:exact` and the silk-core edge `workspace:*` while the peers stay ranges, and why every silk-core release patch-bumps this package (silk's `__test__/tool-closure.test.ts` enforces it).
 
 Load before touching `src/lint/utils/Command.ts` or turning a `Lint` handler into an Effect program:
 → `@../../okf/decisions/lint-staged-boundary.md`

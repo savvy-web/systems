@@ -8,7 +8,7 @@ resource: ../../packages/changelog
 tags: [release]
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T21:34:34Z
+  at: 2026-11-12T03:36:35Z
 sources:
   - id: changelog-index
     resource: ../../packages/changelog/src/index.ts
@@ -18,7 +18,7 @@ sources:
     resource: ../../packages/changelog/package.json
 integrity:
   generated:
-    body: c2b6b59b9968d5e6
+    body: 935c3865bb76a8c0
 ---
 
 # @savvy-web/changelog
@@ -50,15 +50,19 @@ without a consumer `node_modules`.
   `[package.build] meta = false` — no CJS twin, no `bundleNodeModules`, no
   resolver plugins — because `@changesets/cli` v3 is `"type": "module"`
   and `import()`s the changelog module, so no `require` condition is
-  needed.[^changelog-build] `@savvy-web/silk-effects`, `effect` and the
-  `@effected/{commands,git,markdown,markdown-lint,templates,workspaces}`
-  kit packages are the declared runtime `dependencies`, externalized by
-  the build, and resolved by the consumer at import time. Nothing here
-  imports `@effected/markdown` or `@effected/markdown-lint`: they satisfy
-  `@effected/changesets`' optional peers, because importing silk-effects
-  always loads `@effected/changesets/lint`, and a changelog-only install
-  under a strict resolver (pnpm `hoist=false`, Yarn PnP) would otherwise
-  fail with `ERR_MODULE_NOT_FOUND` (see [silk](silk.md)).[^changelog-manifest]
+  needed.[^changelog-build] `@savvy-web/silk-effects` (`workspace:*`),
+  `effect` and the
+  `@effected/{changesets,commands,git,github,jsonc,markdown,markdown-lint,templates,toml,workspaces,yaml}`
+  kit packages (each `catalog:effected:exact`) are the declared runtime
+  `dependencies`, externalized by the build, and resolved by the consumer
+  at import time. Nothing here imports the kit packages directly: they
+  satisfy silk-effects' peers, `@effected/changesets`' optional peers
+  (`markdown`, `markdown-lint`), loaded because importing silk-effects
+  always loads `@effected/changesets/lint`, and `@effected/markdown`'s
+  optional front-matter peers (`jsonc`, `toml`, `yaml`). A changelog-only
+  install under a strict resolver (pnpm `hoist=false`, Yarn PnP) would
+  otherwise fail with `ERR_MODULE_NOT_FOUND` (see [silk](silk.md) and
+  [tool-closure-exact-pins](../decisions/tool-closure-exact-pins.md)).[^changelog-manifest]
 - **The default export's shape is the contract**, not its type: the
   `@changesets/types` `ChangelogFunctions` object the changesets CLI loads,
   annotated with that nominal type on purpose so the dts bundler never

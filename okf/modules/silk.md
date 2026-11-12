@@ -8,7 +8,7 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T21:34:34Z
+  at: 2026-11-12T03:36:35Z
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -28,7 +28,7 @@ sources:
     resource: ../../packages/silk/package.json
 integrity:
   generated:
-    body: d109b42356c9ec1b
+    body: 15dafebd8875d335
 ---
 
 # @savvy-web/silk
@@ -86,11 +86,20 @@ tool subpath (markdownlint, commitlint, lint-staged).
   scan catches a future dependency that drags it back in (inlined, its
   circular CommonJS modules hit the `require_range is not a function`
   init-order hazard).[^silk-build][^silk-externals-test]
+- **The closure is pinned exactly.** Every `effect` and `@effected/*`
+  entry in `dependencies` is `catalog:effected:exact` and every
+  `@savvy-web/*` entry `workspace:*`, so a released silk names the exact
+  closure it runs; `__test__/tool-closure.test.ts` holds that for silk,
+  cli, mcp, changelog and the engine. The rule and its release cost are
+  [`decisions/tool-closure-exact-pins.md`](../decisions/tool-closure-exact-pins.md).[^silk-deps]
 - **Some dependencies are load-bearing without an importer.**
   `@effected/commands`, `@effected/git`, `@effected/workspaces` and
   `effect` satisfy `@savvy-web/silk-effects`' `peerDependencies`;
   `@effected/markdown` and `@effected/markdown-lint` satisfy
-  `@effected/changesets`' optional peers. Importing silk-effects always
+  `@effected/changesets`' optional peers, and `@effected/jsonc`,
+  `@effected/toml` and `@effected/yaml` satisfy `@effected/markdown`'s
+  optional peers, which its YAML, TOML and JSON front-matter modules
+  import for changeset front matter. Importing silk-effects always
   loads `@effected/changesets/lint` (behind `ChangesetLinter`), so under a
   strict resolver (pnpm `hoist=false`, Yarn PnP) every package that hands
   `@effected/changesets` to silk-effects must declare both. silk is not
@@ -141,6 +150,7 @@ tool subpath (markdownlint, commitlint, lint-staged).
 
 - [`decisions/carrier-pattern-package-graph.md`](../decisions/carrier-pattern-package-graph.md)
 - [`decisions/silk-pins-siblings-as-dependencies.md`](../decisions/silk-pins-siblings-as-dependencies.md)
+- [`decisions/tool-closure-exact-pins.md`](../decisions/tool-closure-exact-pins.md)
 - [`decisions/front-ends-adopt-effected-kit.md`](../decisions/front-ends-adopt-effected-kit.md)
 - [`interfaces/layers-json.md`](../interfaces/layers-json.md)
 - [`interfaces/silk-shim-exports.md`](../interfaces/silk-shim-exports.md)
