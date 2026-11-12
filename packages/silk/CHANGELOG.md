@@ -1,5 +1,34 @@
 # @savvy-web/silk
 
+## 5.1.2
+
+### Bug Fixes
+
+- The `savvy` and `savvy-mcp` tools now pin their whole dependency closure exactly. A fresh install runs the same `effect`, `@effected/*` and in-repo package versions they were tested with, so a later Effect or kit patch can no longer change their behaviour or break them at import without a new release. `@savvy-web/silk`, `@savvy-web/cli`, `@savvy-web/mcp` and `@savvy-web/changelog` publish plain versions for every kit dependency and for `@savvy-web/silk-effects`. `@savvy-web/silk-effects` does the same for `@savvy-web/silk-core` and its regular kit dependencies.
+
+- `@savvy-web/silk-effects` and `@savvy-web/silk-core` keep their `peerDependencies` as ranges, so code that imports them as libraries still shares one copy of `effect` and the kit with its host. `@savvy-web/mcp`, `@savvy-web/silk` and `@savvy-web/changelog` now also declare `@effected/jsonc`, `@effected/toml` and `@effected/yaml`, which `@effected/markdown` needs to read changeset front matter.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | ^0.4.1 | 0.5.0 |
+| @effected/commands | dependency | updated | ^0.21.0 | 0.21.0 |
+| @effected/git | dependency | updated | ^0.32.0 | 0.32.0 |
+| @effected/github | dependency | updated | ^0.32.1 | 0.32.1 |
+| @effected/markdown | dependency | updated | ^0.29.0 | 0.29.0 |
+| @effected/markdown-lint | dependency | updated | ^0.2.0 | 0.2.0 |
+| @effected/templates | dependency | updated | ^0.20.0 | 0.20.0 |
+| @effected/workspaces | dependency | updated | ^0.46.0 | 0.47.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.33 | 1.0.34 |
+| @savvy-web/cli | dependency | updated | 3.8.1 | 3.8.2 |
+| @savvy-web/mcp | dependency | updated | 3.6.1 | 3.6.2 |
+| @savvy-web/silk-effects | dependency | updated | 12.1.1 | 12.1.2 |
+| effect | dependency | updated | 4.1.3 | 4.1.4 |
+| @effected/jsonc | dependency | added | — | 0.25.0 |
+| @effected/toml | dependency | added | — | 0.20.0 |
+| @effected/yaml | dependency | added | — | 0.30.0 |
+
 ## 5.1.1
 
 ### Bug Fixes
