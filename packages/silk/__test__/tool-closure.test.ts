@@ -95,7 +95,12 @@ const unsealedPeers = (root: string): ReadonlyArray<string> => {
 		for (const dep of Object.keys(manifest.dependencies ?? {})) {
 			if (!KIT.test(dep) && !INTERNAL.test(dep)) continue;
 			const next = findInstalled(dir, dep);
-			if (next === undefined) continue;
+			// A declared regular dependency is always installed in a correct tree; a miss would
+			// otherwise let the declaration satisfy peers below a subtree that does not exist.
+			if (next === undefined) {
+				gaps.add(`${dep} not installed via ${[...chain.map((ancestor) => ancestor.name), manifest.name].join(" > ")}`);
+				continue;
+			}
 			const nextName = readManifest(next).name;
 			if (nextName === manifest.name || chain.some((ancestor) => ancestor.name === nextName)) continue;
 			visit(next, [...chain, manifest]);
