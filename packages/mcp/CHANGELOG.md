@@ -1,5 +1,15 @@
 # @savvy-web/mcp
 
+## 3.6.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | 0.5.0 | 0.5.1 |
+| @effected/workspaces | dependency | updated | 0.47.0 | 0.47.1 |
+| @savvy-web/silk-effects | dependency | updated | 12.1.2 | 12.1.3 |
+
 ## 3.6.2
 
 ### Bug Fixes
