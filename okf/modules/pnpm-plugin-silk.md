@@ -9,21 +9,25 @@ tags: [release, tooling]
 sources:
   - id: arch
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
+  - id: contract-test
+    resource: ../../packages/pnpm-plugin-silk/__test__/e2e/pnpmfile-contract.e2e.test.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T17:22:40Z
+  at: 2026-11-12T03:51:22Z
 integrity:
   generated:
-    body: 035b843e64227185
+    body: 237320316f871e8a
   verified:
     by: human:spencer
-    at: 2026-11-10T17:22:29Z
-    content: 958d7bd2c93f3c30
+    at: 2026-11-12T03:50:40Z
+    content: ef77756bd884e1c7
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:51Z
   - by: human:spencer
     at: 2026-11-10T17:22:29Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 ---
 
 # pnpm-plugin-silk
@@ -38,7 +42,7 @@ The emitted plugin exports `{ hooks }` with a single `updateConfig(config)` that
 
 ## Load-bearing managed entries
 
-- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@types/bun`; `@tsdown/css` left it and is catalogued nowhere (the kit's `effected:build` does not carry it either), so a consumer that needs it pins it directly. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The `silk` catalog (and `silk:peers`) holds only `@types/bun` and `ink`; `husky`, `lint-staged`, `markdownlint-cli2` and `markdownlint-cli2-formatter-codequality` left it and are served by the `lint` catalog alone. The `docs` and `silk` catalogs (and their `:peers`) carry no toolchain member either — typescript, tsx, `@types/node`, `@types/react`, `@types/react-dom`, react and react-dom left them — and neither `publicHoistPattern` nor `minimumReleaseAgeExclude` repeats what the kit already hoists or exempts (`effect`, `@effect/*`, `@effected/*`, `@oxc-project/*`, `@rolldown/*`, `@typescript/*`); the kit is upstream of `@savvy-web/silk` for the toolchain, which silk peers through `catalog:effected:build:peers`. The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
+- **The build catalog holds only what the kit does not.** `catalog:build` (and `build:peers`) carries just `@types/bun`; `@tsdown/css` left it and is catalogued nowhere (the kit's `effected:build` does not carry it either), so a consumer that needs it pins it directly. Every other build-chain and toolchain member — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — comes from `@effected/pnpm-plugin-effected`'s `catalog:effected:build`, so a manifest here declares those against `catalog:effected:build` (see [kit-package-build](../decisions/kit-package-build.md)). The `silk` catalog (and `silk:peers`) holds only `@types/bun`: `ink` left it for the kit's `effected:build` (and `effected:build:peers`), which cli already spells `catalog:effected:build`, so a manifest still writing `"ink": "catalog:silk"` fails install with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. The pnpmfile contract test lists `ink` among the kit toolchain members no Silk catalog and no `publicHoistPattern` entry may carry, so a reintroduction fails it.[^contract-test] `husky`, `lint-staged`, `markdownlint-cli2` and `markdownlint-cli2-formatter-codequality` left it and are served by the `lint` catalog alone. The `docs` and `silk` catalogs (and their `:peers`) carry no toolchain member either — typescript, tsx, `@types/node`, `@types/react`, `@types/react-dom`, react and react-dom left them — and neither `publicHoistPattern` nor `minimumReleaseAgeExclude` repeats what the kit already hoists or exempts (`effect`, `@effect/*`, `@effected/*`, `@oxc-project/*`, `@rolldown/*`, `@typescript/*`); the kit is upstream of `@savvy-web/silk` for the toolchain, which silk peers through `catalog:effected:build:peers`. The managed config carries no `overrides`: the former `tsdown>rolldown-plugin-dts: ^0.29.0` lift went once tsdown's own range admitted the line the kit resolves. Never take the registry's `@microsoft/api-extractor@8.0.0`, even though update tooling offers it as a major: it is a 2019 release on TypeScript ~3.1 and tsdoc 0.12.5, not a successor.[^arch]
 - **Effect is exempt from release-age gating.** `minimumReleaseAgeExclude` lists `effect` and `@effect/*` alongside `@effected/*`, so a fresh Effect release installs without waiting out `minimumReleaseAge`. The two entries were once hand-added only to the root `pnpm-workspace.yaml`, and a `pnpm pnpm:export` dropped them, since the export rewrites the managed sections from the authored config. They now live in `lib/build/pnpm-config.plugin.ts` like every other managed key.[^arch]
 - **`@savvy-web/changelog` is hoisted; `@savvy-web/cli` and `@savvy-web/mcp` no longer are.** `publicHoistPattern` hoists `@savvy-web/changelog` because the changesets engine resolves the changelog id named in `.changeset/config.json` by name from the consumer root — a resolution need, not a bin. `@savvy-web/silk` now owns the `savvy`/`savvy-mcp` bins itself as shims over the front ends' `./main`, so a consumer's `node_modules/.bin` is populated off the single silk dependency with no hoist needed for cli/mcp. `excludeByRepo` drops changelog for `savvy-web-systems` — this repo consumes it as a `workspace:*` link and a public hoist would shadow it. Release order is load-bearing here: a silk that carries the bins must ship before or with the pnpm-plugin-silk that stops hoisting, or a consumer on a bin-less silk loses `savvy` from PATH.[^arch]
 
@@ -58,3 +62,4 @@ The monorepo that produces this package cannot install it as a config dependency
 - **Versions independently** with `private: true` in source, `publishConfig.access: public`, an npm-only target, and the repo-wide `updateInternalDependencies: patch`. No `package.json` in the repo consumes it as a `workspace:` dependency. Its only e2e, `__test__/e2e/pnpmfile-contract.e2e.test.ts`, imports the built `index.js` and `pnpmfile.mjs` BY PATH, because a bare `@savvy-web/pnpm-plugin-silk` import inside the package would self-reference the source manifest's `exports`; it reads `dist/prod/npm/pkg`, and the root vitest setup builds this package for it (see [`modules/e2e.md`](e2e.md)). `vitest` is a devDependency for that suite.[^arch]
 
 [^arch]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`, loaded by `../../packages/pnpm-plugin-silk/effected.toml`
+[^contract-test]: `../../packages/pnpm-plugin-silk/__test__/e2e/pnpmfile-contract.e2e.test.ts`

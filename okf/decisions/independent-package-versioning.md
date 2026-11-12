@@ -11,7 +11,7 @@ sources:
     resource: ../../.changeset/config.json
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-12T03:36:35Z
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -23,13 +23,15 @@ verified:
     at: 2026-11-10T03:29:57Z
   - by: human:spencer
     at: 2026-11-10T15:51:59Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 integrity:
   generated:
-    body: 2e3bc0a3c0c2ad74
+    body: 783116bfe95b522d
   verified:
     by: human:spencer
-    at: 2026-11-10T15:51:59Z
-    content: cd7e15c02962b4c9
+    at: 2026-11-12T03:50:40Z
+    content: 2ea8dd547b2e02b0
 ---
 
 # Every package versions independently
@@ -42,7 +44,7 @@ Earlier in the repo's history, `bundler`, `rspress-builder`, and `tsdown-plugins
 
 `.changeset/config.json` has no `fixed` or `linked` arrays: every package in the repo versions independently. silk/cli/mcp/changelog are not a fixed group; silk stays exactly pinned to the other three through the mechanism described in [silk-pins-siblings-as-dependencies](silk-pins-siblings-as-dependencies.md) rather than through a changeset group.[^claude-md]
 
-With the repo-wide `updateInternalDependencies: patch` setting and no `updateInternalDependents: "always"`, changesets (`@changesets/assemble-release-plan`) bumps a dependent only when the dependency's new version falls outside the dependent's declared range. An exact `workspace:*` edge therefore auto-patch-bumps its dependent on every release — which is what keeps silk pinned to cli/mcp/changelog/silk-effects — while a caret `workspace:^` edge (changelog/cli/mcp→silk-effects, silk-effects→silk-core) propagates only a range-leaving release: any minor of a 0.x package such as silk-core, a major otherwise. Either way, siblings stay consistent without a `fixed`/`linked` declaration coupling their own independent release decisions. silk has no `versionFiles` entry: the glob that once bumped the `plugins/*` plugin manifests in lockstep with silk went with the deleted `plugins/silk/` copy, and the plugin source versions on its own as `@savvy-web/ai-plugins`.[^pnpm-plugin-silk-arch]
+With the repo-wide `updateInternalDependencies: patch` setting and no `updateInternalDependents: "always"`, changesets (`@changesets/assemble-release-plan`) bumps a dependent only when the dependency's new version falls outside the dependent's declared range. An exact `workspace:*` edge therefore auto-patch-bumps its dependent on every release, while a caret `workspace:^` edge would propagate only a range-leaving release. Every runtime internal edge in the repo is now exact: silk→cli/mcp/changelog/silk-effects, cli/mcp/changelog→silk-effects and silk-effects→silk-core are all `workspace:*`, because the tool closure is sealed (see [tool-closure-exact-pins](tool-closure-exact-pins.md)). A silk-core or silk-effects release therefore patch-bumps every package above it up to silk. Either way, siblings stay consistent without a `fixed`/`linked` declaration coupling their own independent release decisions. silk has no `versionFiles` entry: the glob that once bumped the `plugins/*` plugin manifests in lockstep with silk went with the deleted `plugins/silk/` copy, and the plugin source versions on its own as `@savvy-web/ai-plugins`.[^pnpm-plugin-silk-arch]
 
 `@savvy-web/pnpm-plugin-silk` versions independently like every other package and is additionally npm-registry-only — the one package in the repo not also published to GitHub Packages, because `private: true` in source with `publishConfig.access: public` and an npm-only `publishConfig.targets` target is what lets a config dependency install before any build tooling exists in a downstream repo.[^pnpm-plugin-silk-arch]
 
@@ -53,7 +55,7 @@ With the repo-wide `updateInternalDependencies: patch` setting and no `updateInt
 
 ## Consequences
 
-- A release of any one package never forces a version bump on an unrelated sibling; only a real internal edge whose range the new version leaves (every release across an exact `workspace:*` edge, a range-leaving one across a `workspace:^` edge) or a package's own explicit `versionFiles` (`@savvy-web/ai-plugins` bumping its built plugin manifests, see [ai-plugins-versions-independently](ai-plugins-versions-independently.md)) propagate a bump.
+- A release of any one package never forces a version bump on an unrelated sibling; only a real internal edge whose range the new version leaves (every release across an exact `workspace:*` edge, which is every runtime internal edge today) or a package's own explicit `versionFiles` (`@savvy-web/ai-plugins` bumping its built plugin manifests, see [ai-plugins-versions-independently](ai-plugins-versions-independently.md)) propagate a bump.
 - Release-order sequencing between related packages (for example, silk and pnpm-plugin-silk around a hoist change) is a manual coordination rule at release time, not something the changeset config enforces — see [carrier-pattern-package-graph](carrier-pattern-package-graph.md#consequences) for the case this bites.
 - `@savvy-web/pnpm-plugin-silk` cannot be reached via a `@savvy-web/pnpm-plugin-silk` GitHub Packages install; every consumer resolves it from npm only.
 

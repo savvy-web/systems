@@ -16,7 +16,7 @@
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/silk-core": "workspace:*",
 		"effect": "catalog:effected",
-		"pluginfinity": "^0.3.17",
+		"pluginfinity": "^0.3.18",
 		"vitest": "catalog:test"
 	}
 }

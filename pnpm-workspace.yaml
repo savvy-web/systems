@@ -52,10 +52,8 @@ catalogs:
     turbo: ^2.11.10
   silk:
     "@types/bun": ^1.4.4
-    ink: ^8.0.0
   silk:peers:
     "@types/bun": ^1.4.4
-    ink: ^8.0.0
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
@@ -71,7 +69,7 @@ catalogs:
     vite: ^8.3.0
     vitest: ^5.0.0
 configDependencies:
-  "@effected/pnpm-plugin-effected": 0.26.1
+  "@effected/pnpm-plugin-effected": 0.26.2
 includeWorkspaceRoot: true
 linkWorkspacePackages: deep
 loglevel: info
@@ -100,29 +98,6 @@ minimumReleaseAgeExclude:
   - yarn
   - "@effected/pnpm-plugin-effected"
 nodeOptions: --import=tsx
-overrides:
-  "@okfit/cli>@effected/walker": 0.28.0
-  "@okfit/core>@effected/walker": 0.28.0
-  "@okfit/engine>@effected/walker": 0.28.0
-  "@okfit/lsp>@effected/walker": 0.28.0
-  "@okfit/mcp>@effected/walker": 0.28.0
-  "@okfit/profiles>@effected/walker": 0.28.0
-  "@pluginfinity/cli>@effected/walker": 0.28.0
-  "@pluginfinity/engine>@effected/walker": 0.28.0
-  "@vitest-agent/cli>@effected/walker": 0.28.0
-  "@vitest-agent/cli>@effected/workspaces": 0.46.0
-  "@vitest-agent/engine>@effected/memfs": 0.26.0
-  "@vitest-agent/engine>@effected/walker": 0.28.0
-  "@vitest-agent/engine>@effected/workspaces": 0.46.0
-  "@vitest-agent/mcp>@effected/walker": 0.28.0
-  "@vitest-agent/plugin>@effected/walker": 0.28.0
-  "@vitest-agent/plugin>@effected/workspaces": 0.46.0
-  "@vitest-agent/reporter>@effected/walker": 0.28.0
-  "@vitest-agent/ui>@effected/walker": 0.28.0
-  pluginfinity>@effected/walker: 0.28.0
-  rolldown-pnpm-config>@effected/npm: 0.34.0
-  rolldown-pnpm-config>@effected/walker: 0.28.0
-  rolldown-pnpm-config>@effected/workspaces: 0.46.0
 packages:
   - e2e/*
   - packages/*

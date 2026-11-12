@@ -2,7 +2,7 @@
 type: Convention
 status: stable
 title: Spell dependency ranges through purpose-scoped catalogs
-description: "Declare a dependency against catalog:build / catalog:docs / catalog:lint / catalog:silk / catalog:test (each with a <name>:peers companion), catalog:effected (catalog:effected:peers in peerDependencies) for effect, @effect/* and @effected/*, or catalog:effected:build (catalog:effected:build:peers in peers) for the build chain — never a hand-pinned version, and never the retired camelCase <name>Peers spelling."
+description: "Declare a dependency against catalog:build / catalog:docs / catalog:lint / catalog:silk / catalog:test (each with a <name>:peers companion), catalog:effected (catalog:effected:exact in the dependencies of the savvy tool closure, catalog:effected:peers in peerDependencies) for effect, @effect/* and @effected/*, or catalog:effected:build (catalog:effected:build:peers in peers) for the build chain — never a hand-pinned version, and never the retired camelCase <name>Peers spelling."
 tags: [release, build]
 stale_after: 2026-12-11T00:00:00Z
 sources:
@@ -10,26 +10,28 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T17:22:40Z
+  at: 2026-11-12T03:36:35Z
 integrity:
   generated:
-    body: 68c2dc66caea74e3
+    body: 696a4f0ffaf56cb7
   verified:
     by: human:spencer
-    at: 2026-11-10T17:22:29Z
-    content: 72f3b1c0f81c2076
+    at: 2026-11-12T03:50:40Z
+    content: 8072dc3801737757
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:52Z
   - by: human:spencer
     at: 2026-11-10T17:22:29Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 ---
 
 # Spell dependency ranges through purpose-scoped catalogs
 
 Spell every dependency range as `catalog:<name>` (or `catalog:<name>:peers` for a peer range), never a literal version. Five purpose-scoped catalog pairs cover this repo's own tooling — `catalog:build`, `catalog:docs`, `catalog:lint`, `catalog:silk`, `catalog:test`, each with a `<name>:peers` companion carrying a looser peer range for the same packages. Do not use the retired camelCase `<name>Peers` spelling (e.g. `buildPeers`) — it is gone from the config; the only correct form is the colon-suffixed `<name>:peers`.[^pnpm-plugin-silk-arch]
 
-Spell `effect`, every `@effect/*` package and every `@effected/*` kit package as `catalog:effected` in `dependencies` and `devDependencies`, and as `catalog:effected:peers` in `peerDependencies`. Both catalogs come from the separate `@effected/pnpm-plugin-effected` config dependency. Never spell a peer `catalog:effected`: since plugin 0.26.0 that catalog names each Effect family member at its exact override version, so the peer would publish an exact pin. Do not write `catalog:effect` or `catalog:effect:peers`: they were retired with the move from `@effected/pnpm-plugin-effect` to `@effected/pnpm-plugin-effected` 0.20.0, and a manifest that still spells one fails the install with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. Do not hand-write overrides pinning Effect family members either; the plugin pins the whole family graph-wide itself, and its exact `effected` catalog covers the `catalog:` specs pnpm's overrides do not reach (pnpm/pnpm#17922). Never put Effect ranges into the five Silk-authored catalogs above, and never introduce an `effect3`-named catalog: it does not exist, was removed upstream, and no manifest in this repo resolves against it.
+Spell `effect`, every `@effect/*` package and every `@effected/*` kit package as `catalog:effected` in `dependencies` and `devDependencies`, and as `catalog:effected:peers` in `peerDependencies`. In the `dependencies` of the tool closure — silk, cli, mcp, changelog, silk-effects and silk-core — spell them `catalog:effected:exact` instead, which publishes a plain version rather than the catalog's caret; `packages/silk/__test__/tool-closure.test.ts` fails on any other spelling there (see [tool-closure-exact-pins](../decisions/tool-closure-exact-pins.md)). All three catalogs come from the separate `@effected/pnpm-plugin-effected` config dependency. Never spell a peer `catalog:effected`: since plugin 0.26.0 that catalog names each Effect family member at its exact override version, so the peer would publish an exact pin. Do not write `catalog:effect` or `catalog:effect:peers`: they were retired with the move from `@effected/pnpm-plugin-effect` to `@effected/pnpm-plugin-effected` 0.20.0, and a manifest that still spells one fails the install with `ERR_PNPM_CATALOG_ENTRY_NOT_FOUND_FOR_SPEC`. Do not hand-write overrides pinning Effect family members either; the plugin pins the whole family graph-wide itself, and its exact `effected` catalog covers the `catalog:` specs pnpm's overrides do not reach (pnpm/pnpm#17922). Never put Effect ranges into the five Silk-authored catalogs above, and never introduce an `effect3`-named catalog: it does not exist, was removed upstream, and no manifest in this repo resolves against it.
 
 Spell every build-chain and toolchain package — tsdown, rolldown, rolldown-plugin-dts, `@microsoft/api-extractor` and the tsdoc packages, typescript, `@types/node`, tsx, react, `@rsbuild/core`, `@tsdown/exe` — as `catalog:effected:build` in direct dependencies and `catalog:effected:build:peers` in peers; `@effected/pnpm-plugin-effected` supplies both. No Silk catalog — `docs` and `silk` included — carries a toolchain member. `catalog:build` keeps only the member the kit does not catalog (`@types/bun`); do not add a build-chain package back to it (see [kit-package-build](../decisions/kit-package-build.md)). `@tsdown/css` is the one exception to the no-literal-version rule: no catalog — Silk's or the kit's — carries it, so pin it directly where a package needs it.
 

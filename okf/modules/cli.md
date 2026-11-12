@@ -37,10 +37,10 @@ sources:
     resource: ../../packages/cli/src/commands/clean.ts
 generated:
   by: okfit/claude-code
-  at: 2026-11-10T21:34:34Z
+  at: 2026-11-12T03:36:35Z
 integrity:
   generated:
-    body: 9357b985d2fba538
+    body: 333b05c522c5087d
 ---
 
 # cli
@@ -99,8 +99,8 @@ A handler test runs the handler as `main()` would and asserts on data, never on 
 ## Boundaries and invariants
 
 - **`@savvy-web/cli` never imports `@savvy-web/silk` or `@savvy-web/mcp`.** All logic comes from silk-effects; silk's package-layering test asserts the edge never exists.[^layering]
-- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies` — the same posture as mcp.[^arch]
-- **`@effected/markdown` and `@effected/markdown-lint` are load-bearing dependencies with no importer.** They satisfy `@effected/changesets`' optional peers: importing silk-effects always loads `@effected/changesets/lint`, so under a strict resolver (pnpm `hoist=false`, Yarn PnP) an install of this package alone would fail with `ERR_MODULE_NOT_FOUND` without them. silk, cli, mcp and changelog all declare both; see [silk](silk.md).[^cli-manifest]
+- **No `peerDependencies` block.** The Effect closure is sealed as regular `dependencies`, every kit entry `catalog:effected:exact` and the silk-effects edge `workspace:*` — the same posture as mcp; see [tool-closure-exact-pins](../decisions/tool-closure-exact-pins.md).[^cli-manifest]
+- **`@effected/markdown` and `@effected/markdown-lint` are load-bearing dependencies with no importer.** They satisfy `@effected/changesets`' optional peers: importing silk-effects always loads `@effected/changesets/lint`, so under a strict resolver (pnpm `hoist=false`, Yarn PnP) an install of this package alone would fail with `ERR_MODULE_NOT_FOUND` without them. silk, cli, mcp and changelog all declare both, plus `@effected/jsonc`, `@effected/toml` and `@effected/yaml`, the optional peers of `@effected/markdown`'s front-matter modules; see [silk](silk.md).[^cli-manifest]
 - **The engine takes its `cwd` from this package.** silk-effects' `ConfigDiscovery` and `BiomeSchemaSync` no longer default to `process.cwd()`; every call passes it explicitly, as the process owner.[^arch]
 - **Every hook-section id the CLI declares is spelled UPPERCASE** — a lowercase key does not error but silently grows a duplicate block. See [managed-hook-sections](../interfaces/managed-hook-sections.md).[^arch]
 - **`savvy commit hook pre-commit-message` gates its rule set on document kind** — commit-body rules apply only to a real commit message; `plan-leakage` and `closes-trailer` apply to both a commit message and a PR body. See [commit-and-pr-messages](../conventions/commit-and-pr-messages.md).[^arch]

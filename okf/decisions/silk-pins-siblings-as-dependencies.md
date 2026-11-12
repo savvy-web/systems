@@ -11,17 +11,19 @@ sources:
     resource: ../../CLAUDE.md
 generated:
   by: okfit/claude-code
-  at: 2026-09-18T02:06:56Z
+  at: 2026-11-12T03:36:35Z
 integrity:
   generated:
-    body: 7c2bc44d4fcec70e
+    body: c89a3d09b0692bef
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: e95b743da2e87636
+    at: 2026-11-12T03:50:40Z
+    content: b0051c829f47d001
 verified:
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 ---
 
 # silk pins siblings as dependencies, never peers
@@ -38,7 +40,7 @@ Two rules decide where any dependency entry goes: a peer is a tool the consumer 
 
 Because changesets reads `workspace:*` as the exact current version, a cli/mcp/changelog release auto-PATCH-bumps silk (`updateInternalDependencies: patch`) and re-pins it, so silk stays exactly pinned to the other three automatically without silk/cli/mcp/changelog being a fixed changeset group. Plain `dependencies` — never source peerDependencies — also means silk is not force-major-bumped by a sibling's major release. The bins reach consumers through silk's own `bin` map, not through hoisting: `@savvy-web/pnpm-plugin-silk` no longer hoists cli/mcp, only `@savvy-web/changelog` (resolved by id, not by bin, from the consumer root).[^claude-md]
 
-`dependencies` blocks of silk, cli, and mcp additionally list `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect`, although few or no files under `src/` import them directly: they satisfy [silk-effects](../modules/silk-effects.md)'s required peers. Removing one silently breaks installs — a duplicated kit copy under pnpm's `autoInstallPeers`, or `ERR_MODULE_NOT_FOUND` under yarn — not any lint pass, so a "remove unused dependency" cleanup on these packages must check the peer graph first. silk's build has no manifest `transform` keep-list — the default transform publishes `dependencies` as-is — so the source manifest is the only place the edge lives.[^layering]
+`dependencies` blocks of silk, cli, mcp, and changelog additionally list `@effected/commands`, `@effected/git`, `@effected/workspaces`, and `effect`, although few or no files under `src/` import them directly: they satisfy [silk-effects](../modules/silk-effects.md)'s required peers. They also list `@effected/markdown` and `@effected/markdown-lint` (optional peers of `@effected/changesets`) and `@effected/jsonc`, `@effected/toml`, and `@effected/yaml` (optional peers of `@effected/markdown`, whose front-matter modules the changesets engine loads). Every one is written `catalog:effected:exact` and the edge to silk-effects is `workspace:*`, so the whole closure under silk publishes exact versions; see [tool-closure-exact-pins](tool-closure-exact-pins.md). Removing one silently breaks installs — a duplicated kit copy under pnpm's `autoInstallPeers`, or `ERR_MODULE_NOT_FOUND` under yarn — not any lint pass, so a "remove unused dependency" cleanup on these packages must check the peer graph first. silk's build has no manifest `transform` keep-list — the default transform publishes `dependencies` as-is — so the source manifest is the only place the edge lives.[^layering]
 
 ## Alternatives rejected
 
@@ -50,7 +52,7 @@ Because changesets reads `workspace:*` as the exact current version, a cli/mcp/c
 - Silk always ships with the exact cli/mcp/changelog versions it was tested against; a consumer cannot silently get a mismatched sibling version the way a peer range would allow.
 - A cli/mcp/changelog release auto-patch-bumps and re-pins silk without a fixed/linked changeset group, keeping [independent package versioning](independent-package-versioning.md) intact for the four packages individually.
 - Removing an apparently-unused entry from cli/mcp/silk's `dependencies` requires checking the [kit-effect-peers-via-catalog](kit-effect-peers-via-catalog.md) peer graph first, since the lint surface will not catch a peer-satisfying dependency going missing.
-- See [carrier-pattern-package-graph](carrier-pattern-package-graph.md) for the bin-ownership half of this decision.
+- See [carrier-pattern-package-graph](carrier-pattern-package-graph.md) for the bin-ownership half of this decision, and [tool-closure-exact-pins](tool-closure-exact-pins.md) for the same exact-pin rule applied to every kit dependency and in-repo edge of the closure.
 
 [^layering]: `../../packages/silk/package.json`
 [^claude-md]: ../../CLAUDE.md

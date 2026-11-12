@@ -28,7 +28,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@effected/github-references": "catalog:effected"
+		"@effected/github-references": "catalog:effected:exact"
 	},
 	"devDependencies": {
 		"@effect/vitest": "catalog:effected",

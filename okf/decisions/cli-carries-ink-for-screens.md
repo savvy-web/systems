@@ -6,7 +6,7 @@ status: stable
 tags: [deps, architecture, performance]
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T19:54:23Z
+  at: 2026-11-12T03:36:35Z
 sources:
   - id: cli-manifest
     resource: ../../packages/cli/package.json
@@ -14,8 +14,6 @@ sources:
     resource: ../../packages/cli/src/internal/confirm.ts
   - id: clean
     resource: ../../packages/cli/src/commands/clean.ts
-  - id: plugin-silk-build
-    resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 verified:
   - by: human:spencer
     at: 2026-10-07T16:50:25Z
@@ -27,13 +25,15 @@ verified:
     at: 2026-11-10T03:29:57Z
   - by: human:spencer
     at: 2026-11-10T15:51:59Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 integrity:
   generated:
-    body: a735b17892905480
+    body: d9db7daba787b28c
   verified:
     by: human:spencer
-    at: 2026-11-10T15:51:59Z
-    content: 4c5ba531606c9655
+    at: 2026-11-12T03:50:40Z
+    content: e4800f01d18d35d5
 ---
 
 # The savvy CLI carries ink and react as regular dependencies, loaded only to draw
@@ -46,7 +46,7 @@ The `feat/interactive-cli` work moved `savvy`'s prompts, confirmations and live 
 
 ## Decision
 
-Declare `ink` and `react` as regular `dependencies` of `@savvy-web/cli`, spelled `catalog:silk` (with `ink` added to the `silk` catalog in `@savvy-web/pnpm-plugin-silk`), and `@types/react` as a devDependency. Every install of cli, and therefore of silk, carries `ink`, `react` and ink's own `react-reconciler` and `yoga-layout`.[^cli-manifest][^plugin-silk-build]
+Declare `ink` and `react` as regular `dependencies` of `@savvy-web/cli`, spelled `catalog:effected:build`, the toolchain catalog `@effected/pnpm-plugin-effected` serves for both, and `@types/react` as a devDependency. Every install of cli, and therefore of silk, carries `ink`, `react` and ink's own `react-reconciler` and `yoga-layout`.[^cli-manifest]
 
 The weight is paid on disk, not at run time. JSX lives only in a screen's own `.tsx` module, reached only through a dynamic `import()` on the path that draws: a person at a terminal. No command module statically imports `ink` or `react`. The one screen today, `src/commands/clean/view.tsx`, exports `cleanView` by name and is loaded with `import("./clean/view.js")` only on `savvy clean`'s interactive branch; `CliUi.lazy(() => import(...))` is another acceptable way to defer the load, though nothing here uses it. The kit's own widgets (`Select`, `Confirm`, `MultiSelect`, `TextInput`, shown through `CliUi.prompt`/`CliUi.fallback`) load Ink themselves only when they mount. An agent, CI, or a pipe answers every prompt from its non-interactive fallback without loading React — `confirmDestructive` returns before any screen is built, and `savvy clean` takes its plain path.[^confirm][^clean]
 
@@ -60,10 +60,9 @@ The weight is paid on disk, not at run time. JSX lives only in a screen's own `.
 
 - Every silk and cli install is heavier by ink, react, react-reconciler and yoga-layout, even where no one ever draws a screen.
 - Process start-up does not grow: nothing on a non-interactive path imports the screen modules.
-- An `ink` or `react` major bump is now a cli dependency bump, managed through the `silk` catalog like any other.
+- An `ink` or `react` major bump is now a cli dependency bump, managed through the kit's `effected:build` catalog like any other.
 - A new screen must stay behind a dynamic import on its drawing path (a plain `import()` or `CliUi.lazy`). A static `ink`/`react` import in a command module would load React on every run.
 
 [^cli-manifest]: `../../packages/cli/package.json`
 [^confirm]: `../../packages/cli/src/internal/confirm.ts`
 [^clean]: `../../packages/cli/src/commands/clean.ts`
-[^plugin-silk-build]: `../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts`

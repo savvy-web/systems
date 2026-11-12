@@ -1,5 +1,21 @@
 # Log
 
+## 2026-11-12
+
+* Updated @savvy-web/changelog
+* Updated @savvy-web/silk
+* Updated Every package versions independently
+* Updated Kit Effect peers supplied via the effected catalog
+* Updated Spell dependency ranges through purpose-scoped catalogs
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Added The savvy tool closure pins its kit and in-repo edges exactly
+* Updated cli
+* Updated mcp
+* Updated silk pins siblings as dependencies, never peers
+* Updated silk-core
+* Updated silk-effects
+* Updated pnpm-plugin-silk
+
 ## 2026-11-10
 
 * Updated @savvy-web/pnpm-plugin-silk catalog names

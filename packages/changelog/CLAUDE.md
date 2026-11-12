@@ -6,9 +6,9 @@
 
 - The entire source is `src/index.ts`: a default export of `@savvy-web/silk-effects`' `Changesets.changelogFunctions`, typed against that surface so the two cannot drift. No business logic lives here — changing changelog behavior never touches this package.
 - ESM-only: `effected.toml` sets only `[package.build] meta = false` — no CJS twin, no `bundleNodeModules`, no resolver plugins — because `@changesets/cli` v3 is `"type": "module"` and `import()`s the changelog module.
-- `@savvy-web/silk-effects`, `effect`, and `@effected/{commands,git,workspaces}` are declared runtime `dependencies`, externalized by the build and resolved by the consumer at import time. Nothing is inlined, and nothing else is declared — `jju`/`semver` were only needed while silk-effects' `@changesets/*` tree was bundled here.
+- `@savvy-web/silk-effects` (`workspace:*`), `effect`, and `@effected/{changesets,commands,git,github,jsonc,markdown,markdown-lint,templates,toml,workspaces,yaml}` (each `catalog:effected:exact`) are declared runtime `dependencies`, externalized by the build and resolved by the consumer at import time; none is imported here — they satisfy silk-effects' peers and the optional peers of `@effected/changesets` and `@effected/markdown` (see `okf/decisions/tool-closure-exact-pins.md`). Nothing is inlined, and nothing else is declared — `jju`/`semver` were only needed while silk-effects' `@changesets/*` tree was bundled here.
 - Distribution: `@savvy-web/silk` ships it as an EXACT-pinned regular `dependency` (a pure carrier edge — nothing in silk imports it), `@savvy-web/pnpm-plugin-silk` public-hoists it in consumer repos (excluded inside this repo, where the root `workspace:*` devDependency links it — to source, through `exports` — so the changesets engine resolves the id from the repo root; see `okf/conventions/workspace-source-links.md`), and `savvy init` writes it as the canonical changelog id.
-- Versions independently; a release auto-PATCH-bumps `@savvy-web/silk`, which re-pins the exact dependency.
+- Versions independently; a release auto-PATCH-bumps `@savvy-web/silk`, which re-pins the exact dependency, and every silk-effects release auto-PATCH-bumps this package through its exact `workspace:*` edge.
 
 ## Design
 

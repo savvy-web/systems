@@ -102,11 +102,6 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 					peer: "^1.4.4",
 					strategy: "lock",
 				},
-				ink: {
-					range: "^8.0.0",
-					peer: "^8.0.0",
-					strategy: "lock-minor",
-				},
 			},
 		},
 		test: {
