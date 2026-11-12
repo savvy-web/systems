@@ -34,10 +34,10 @@ sources:
     title: the effected tool pins its kit closure exactly; pin your own tool packages the same way
 generated:
   by: okfit/claude-code
-  at: 2026-11-12T03:36:35Z
+  at: 2026-11-12T03:51:22Z
 integrity:
   generated:
-    body: 2579acf44d354516
+    body: 897cb6cd2cf7dee4
 ---
 
 # The savvy tool closure pins its kit and in-repo edges exactly
@@ -70,7 +70,7 @@ Treat the tool closure as sealed:
 
 - **More releases, by design.** `updateInternalDependencies: patch` bumps a dependent whenever a dependency's new version leaves the dependent's range, and an exact `workspace:*` range is left by every release. Every silk-core or silk-effects release therefore auto-patch-bumps silk-effects (for silk-core), cli, mcp, changelog and silk, and every kit bump that moves the closure ripples a patch down to silk. The carrier's version names exactly what runs.[^changeset-config]
 - A tool released on an older kit release keeps working beside a repository that has moved to a newer one, until the tool next releases. Duplicate kit copies under a tool in a consumer's tree are expected and harmless; do not override them onto the host's versions.[^ledger-0011]
-- **Not sealed:** a kit library's own regular `dependencies` still float within their carets, since only its peers come from the tool, and `effect` itself is held graph-wide by the catalog plugin's own overrides in whatever repository installs the tool. Those two gaps are why a much older tool can still need a bridge somewhere.[^carrier-closure]
+- **Not sealed:** the pins cover the closure's direct kit and in-repo dependencies and, through them, every kit peer, not a kit library's own regular `dependencies`, which still float within their carets: `@effected/markdown@0.29.0` declares `@effected/source: ^0.5.0`, so a later install can take a newer `0.5.x` with no savvy release.[^carrier-closure] Nor is `effect` held graph-wide everywhere: that pin comes from `@effected/pnpm-plugin-effected`'s overrides, so it holds only in a consumer repository that runs that pnpm config dependency. An npm, Yarn or bun consumer of silk, all supported, gets no such override, and there `effect` resolves from the tools' own exact `effect` pins plus the engine's `~4.1.0` peer.[^engine-deps] Those two gaps are why a much older tool can still need a bridge somewhere.
 - Removing an apparently unused kit dependency from a tool package can break installs; check the installed peer closure first.
 
 ## Enforcement

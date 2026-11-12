@@ -19,13 +19,23 @@ describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 	 * Toolchain members the kit's `effected:build` catalog owns. Silk serves none of them: a copy
 	 * here drifts from the kit on the first upgrade either side runs alone.
 	 */
-	const KIT_TOOLCHAIN = ["typescript", "tsx", "@types/node", "@types/react", "@types/react-dom", "react", "react-dom"];
+	const KIT_TOOLCHAIN = [
+		"typescript",
+		"tsx",
+		"@types/node",
+		"@types/react",
+		"@types/react-dom",
+		"react",
+		"react-dom",
+		"ink",
+	];
 
-	// Probes `ink`, a member silk owns: the Effect closure and the build toolchain both come
-	// from `@effected/pnpm-plugin-effected`, so either would assert absence, not shape.
+	// Probes `@types/bun`, the member silk owns: the Effect closure and the build toolchain
+	// (ink included) both come from `@effected/pnpm-plugin-effected`, so either would assert
+	// absence, not shape.
 	it("main export exposes the silk and silk:peers catalogs", () => {
-		expect(catalogs.get("silk")?.get("ink")).toMatch(/^[~^]?\d/);
-		expect(catalogs.get("silk:peers")?.get("ink")).toMatch(/^[~^]?\d/);
+		expect(catalogs.get("silk")?.get("@types/bun")).toMatch(/^[~^]?\d/);
+		expect(catalogs.get("silk:peers")?.get("@types/bun")).toMatch(/^[~^]?\d/);
 	});
 
 	it("serves none of the kit's effected:build toolchain from any catalog", () => {
@@ -48,8 +58,8 @@ describe("e2e: built @savvy-web/pnpm-plugin-silk artifact", () => {
 	it("built pnpmfile updateConfig injects catalogs, overrides, hoist pattern, and security defaults", async () => {
 		const mod = await import(pathToFileURL(join(pkgRoot, "pnpmfile.mjs")).href);
 		const result = mod.hooks.updateConfig({});
-		expect(result.catalogs.silk.ink).toMatch(/^[~^]?\d/);
-		expect(result.catalogs["silk:peers"].ink).toMatch(/^[~^]?\d/);
+		expect(result.catalogs.silk["@types/bun"]).toMatch(/^[~^]?\d/);
+		expect(result.catalogs["silk:peers"]["@types/bun"]).toMatch(/^[~^]?\d/);
 		for (const name of REMOVED_PEER_CATALOGS) {
 			expect(result.catalogs[name]).toBeUndefined();
 		}

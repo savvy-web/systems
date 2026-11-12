@@ -20,7 +20,8 @@
  * See the effected `design-patterns` skill's carrier-closure reference.
  */
 
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -145,5 +146,29 @@ describe("tool closure", () => {
 		expect(checkSpecs([fake], KIT, EXACT, "dependencies").offenders).toHaveLength(1);
 		expect(checkSpecs([fake], INTERNAL, "workspace:*", "dependencies").offenders).toHaveLength(1);
 		expect(checkSpecs([fake], KIT, PEERS, "peerDependencies").offenders).toHaveLength(1);
+	});
+
+	it("positive control: the closure walk reports an uninstalled declared dependency and an undeclared kit peer", () => {
+		const root = mkdtempSync(join(tmpdir(), "tool-closure-"));
+		try {
+			const write = (dir: string, manifest: Manifest) => {
+				mkdirSync(dir, { recursive: true });
+				writeFileSync(join(dir, "package.json"), JSON.stringify(manifest));
+			};
+			write(root, {
+				name: "@savvy-web/fake-tool",
+				dependencies: { "@effected/present": EXACT, "@effected/absent": EXACT },
+			});
+			write(join(root, "node_modules", "@effected", "present"), {
+				name: "@effected/present",
+				peerDependencies: { "@effected/peer": "^1.0.0" },
+			});
+			expect(unsealedPeers(root)).toEqual([
+				"@effected/absent not installed via @savvy-web/fake-tool",
+				"@effected/peer via @savvy-web/fake-tool > @effected/present",
+			]);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

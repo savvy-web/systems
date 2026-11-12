@@ -16,13 +16,15 @@ integrity:
     body: 696a4f0ffaf56cb7
   verified:
     by: human:spencer
-    at: 2026-11-10T17:22:29Z
-    content: 72f3b1c0f81c2076
+    at: 2026-11-12T03:50:40Z
+    content: 8072dc3801737757
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:52Z
   - by: human:spencer
     at: 2026-11-10T17:22:29Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 ---
 
 # Spell dependency ranges through purpose-scoped catalogs

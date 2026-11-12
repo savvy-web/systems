@@ -14,6 +14,7 @@
 * Updated silk pins siblings as dependencies, never peers
 * Updated silk-core
 * Updated silk-effects
+* Updated pnpm-plugin-silk
 
 ## 2026-11-10
 

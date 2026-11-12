@@ -17,11 +17,13 @@ integrity:
     body: c89a3d09b0692bef
   verified:
     by: human:spencer
-    at: 2026-10-13T17:19:17Z
-    content: e95b743da2e87636
+    at: 2026-11-12T03:50:40Z
+    content: b0051c829f47d001
 verified:
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
+  - by: human:spencer
+    at: 2026-11-12T03:50:40Z
 ---
 
 # silk pins siblings as dependencies, never peers

@@ -8,7 +8,7 @@ resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
   by: okfit/claude-code
-  at: 2026-11-12T03:36:35Z
+  at: 2026-11-12T03:51:22Z
 sources:
   - id: silk-bins
     resource: ../../packages/silk/src/bin
@@ -28,7 +28,7 @@ sources:
     resource: ../../packages/silk/package.json
 integrity:
   generated:
-    body: 15dafebd8875d335
+    body: 53f5c32fae5edc8b
 ---
 
 # @savvy-web/silk
@@ -88,8 +88,12 @@ tool subpath (markdownlint, commitlint, lint-staged).
   init-order hazard).[^silk-build][^silk-externals-test]
 - **The closure is pinned exactly.** Every `effect` and `@effected/*`
   entry in `dependencies` is `catalog:effected:exact` and every
-  `@savvy-web/*` entry `workspace:*`, so a released silk names the exact
-  closure it runs; `__test__/tool-closure.test.ts` holds that for silk,
+  `@savvy-web/*` entry `workspace:*`, so a released silk names its exact
+  direct closure and, through it, every kit peer it runs. A kit library's
+  own regular `dependencies` still float within their carets
+  (`@effected/markdown@0.29.0` declares `@effected/source: ^0.5.0`, so a
+  later install can take a newer `0.5.x` with no silk release);
+  `__test__/tool-closure.test.ts` holds the pins for silk,
   cli, mcp, changelog and the engine. The rule and its release cost are
   [`decisions/tool-closure-exact-pins.md`](../decisions/tool-closure-exact-pins.md).[^silk-deps]
 - **Some dependencies are load-bearing without an importer.**

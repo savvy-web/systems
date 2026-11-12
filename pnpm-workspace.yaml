@@ -52,10 +52,8 @@ catalogs:
     turbo: ^2.11.10
   silk:
     "@types/bun": ^1.4.4
-    ink: ^8.0.0
   silk:peers:
     "@types/bun": ^1.4.4
-    ink: ^8.0.0
   test:
     "@vitest/coverage-istanbul": ^5.0.5
     "@vitest/coverage-v8": ^5.0.5
