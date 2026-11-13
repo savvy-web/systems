@@ -2,7 +2,7 @@
  * Proves the carrier pattern from OUTSIDE the workspace: a scratch project
  * whose only direct dependency is a packed `@savvy-web/silk` tarball ends up
  * with `node_modules/.bin/savvy` and `node_modules/.bin/savvy-mcp`, and both
- * run — under every package manager available (pnpm, npm, Yarn, bun), with no
+ * run — under every package manager available (pnpm, npm, bun), with no
  * hoisting help of any kind (no `publicHoistPattern`, no `.npmrc`, no pnpm
  * config dependency).
  *
@@ -33,7 +33,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { delimiter, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { assert, describe, it } from "@effect/vitest";
 import { McpProbe } from "@effected/mcp-kit/testing";
@@ -68,14 +68,6 @@ const SLOT_OWNERS: Record<string, ReadonlyArray<string>> = {
 
 const BIN_TIMEOUT = "30 seconds";
 
-/**
- * This harness's own `.bin`, put first on the managers' PATH so `yarn` is the
- * Berry this package declares. The suite runs from the root, whose PATH has no
- * `yarn` of its own, so it would otherwise fall through to whatever the host
- * provides: a GitHub runner ships Yarn Classic, which the suite does not support.
- */
-const HARNESS_BIN = resolve(import.meta.dirname, "..", "..", "node_modules", ".bin");
-
 // PackedInstall is POSIX-only (it fails UnsupportedPlatform elsewhere).
 const RUNNABLE = process.platform !== "win32";
 
@@ -85,12 +77,12 @@ const Live = Workspaces.layer({ cwd: REPO_ROOT }).pipe(Layer.provideMerge(NodeSe
 const RUN: PackedInstallOptions = {
 	carrier: CARRIER,
 	closure: "auto",
-	managers: ["pnpm", "npm", "yarn", "bun"],
+	managers: ["pnpm", "npm", "bun"],
 	bins: ["savvy", "savvy-mcp"],
 	allowSharedBins: true,
-	env: { ...process.env, PATH: `${HARNESS_BIN}${delimiter}${process.env.PATH ?? ""}` },
+	env: process.env,
 	// A manager missing from PATH is skipped and logged, never a failure: CI
-	// provisions pnpm and npm, not necessarily Yarn or bun.
+	// provisions pnpm and npm, not necessarily bun.
 	require: "any",
 	installTimeout: "4 minutes",
 	packTimeout: "1 minute",
@@ -162,7 +154,7 @@ describe.skipIf(!RUNNABLE)("silk packed install outside the workspace", () => {
 					const entries = yield* fs.readDirectory(consumer.directory);
 					assert.notInclude(entries, ".npmrc", `${pm}: no .npmrc`);
 					const config: Array<string> = [];
-					for (const file of ["package.json", "pnpm-workspace.yaml", ".yarnrc.yml"]) {
+					for (const file of ["package.json", "pnpm-workspace.yaml"]) {
 						if (entries.includes(file)) config.push(yield* fs.readFileString(join(consumer.directory, file)));
 					}
 					for (const forbidden of [

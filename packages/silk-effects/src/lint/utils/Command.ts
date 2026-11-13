@@ -17,7 +17,7 @@
  *
  * // Detect package manager from package.json
  * const pm = Command.detectPackageManager();
- * console.log(pm); // 'pnpm', 'npm', 'yarn', or 'bun'
+ * console.log(pm); // 'pnpm', 'npm', or 'bun'
  * ```
  */
 
@@ -35,7 +35,7 @@ import { Option, Result } from "effect";
 /**
  * Supported package managers.
  */
-export type PackageManager = "npm" | "pnpm" | "yarn" | "bun";
+export type PackageManager = "npm" | "pnpm" | "bun";
 
 /**
  * Result of a tool search.
@@ -133,7 +133,7 @@ export class Command {
 	 * @example
 	 * ```typescript
 	 * const pm = Command.detectPackageManager();
-	 * console.log(pm); // 'pnpm', 'npm', 'yarn', or 'bun'
+	 * console.log(pm); // 'pnpm', 'npm', or 'bun'
 	 * ```
 	 */
 	static detectPackageManager(cwd: string = Command.findRoot()): PackageManager {
@@ -157,7 +157,6 @@ export class Command {
 	 * ```typescript
 	 * Command.getExecPrefix('pnpm'); // ['pnpm', 'exec']
 	 * Command.getExecPrefix('npm');  // ['npx', '--no', '--']
-	 * Command.getExecPrefix('yarn'); // ['yarn', 'exec']
 	 * Command.getExecPrefix('bun');  // ['bun', 'x', "--no-install"]
 	 * ```
 	 */

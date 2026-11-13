@@ -853,7 +853,6 @@ describe("Utility classes", () => {
 		it("should return correct exec prefix for each package manager", () => {
 			expect(Command.getExecPrefix("npm")).toEqual(["npx", "--no", "--"]);
 			expect(Command.getExecPrefix("pnpm")).toEqual(["pnpm", "exec"]);
-			expect(Command.getExecPrefix("yarn")).toEqual(["yarn", "exec"]);
 			expect(Command.getExecPrefix("bun")).toEqual(["bun", "x", "--no-install"]);
 		});
 
