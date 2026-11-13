@@ -47,7 +47,7 @@
 		"@okfit/plugin": "^0.5.36",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^6.0.13",
+		"@vitest-agent/plugin": "^6.0.14",
 		"tsx": "catalog:effected:build"
 	},
 	"engines": {
@@ -62,7 +62,7 @@
 		"runtime": [
 			{
 				"name": "node",
-				"version": "26.13.0",
+				"version": "26.13.1",
 				"onFail": "ignore"
 			}
 		]
