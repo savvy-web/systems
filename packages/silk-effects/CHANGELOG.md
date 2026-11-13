@@ -1,5 +1,23 @@
 # @savvy-web/silk-effects
 
+## 13.0.0
+
+### Breaking Changes
+
+- `@effected/npm` is now a required peer dependency. `@effected/changesets` 0.6.0 requires it, and silk-effects takes `@effected/changesets` as a peer, so install `@effected/npm` next to it.
+- `Lint.PackageManager` no longer includes `"yarn"`, and `Command.getExecPrefix` no longer accepts it. The `@effected` kit dropped yarn as a package manager it runs tools through. In a yarn repository, `Command.detectPackageManager` now returns `"npm"`, so the lint-staged handlers look for their tools through `npx --no --`. The commit hooks are unaffected: `Commitlint.detectPackageManager` still reports `"yarn"` for a yarn repository.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/package-json | dependency | updated | 0.32.1 | 0.32.2 |
+| @savvy-web/silk-core | dependency | updated | 0.6.5 | 0.6.6 |
+| @effected/changesets | peerDependency | updated | ^0.5.0 | ^0.6.0 |
+| @effected/commands | peerDependency | updated | ^0.21.0 | ^0.22.0 |
+| @effected/workspaces | peerDependency | updated | ^0.47.0 | ^0.48.0 |
+| @effected/npm | peerDependency | added | — | ^0.35.0 |
+
 ## 12.1.3
 
 ### Dependencies
