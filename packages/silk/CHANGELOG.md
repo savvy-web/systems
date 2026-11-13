@@ -1,5 +1,22 @@
 # @savvy-web/silk
 
+## 5.1.4
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | 0.5.1 | 0.6.0 |
+| @effected/commands | dependency | updated | 0.21.0 | 0.22.0 |
+| @effected/workspaces | dependency | updated | 0.47.1 | 0.48.0 |
+| @savvy-web/changelog | dependency | updated | 1.0.35 | 1.0.36 |
+| @savvy-web/cli | dependency | updated | 3.8.3 | 3.8.4 |
+| @savvy-web/mcp | dependency | updated | 3.6.3 | 3.6.4 |
+| @savvy-web/silk-effects | dependency | updated | 12.1.3 | 13.0.0 |
+| @effect/platform-node | dependency | added | — | 4.1.4 |
+| @effected/npm | dependency | added | — | 0.35.0 |
+| @effected/semver | dependency | added | — | 0.24.0 |
+
 ## 5.1.3
 
 ### Dependencies

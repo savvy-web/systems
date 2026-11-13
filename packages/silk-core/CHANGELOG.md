@@ -1,5 +1,13 @@
 # @savvy-web/silk-core
 
+## 0.6.6
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/workspaces | peerDependency | updated | ^0.47.0 | ^0.48.0 |
+
 ## 0.6.5
 
 ### Bug Fixes
