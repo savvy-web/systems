@@ -28,6 +28,7 @@
 		"types:check": "tsc --noEmit"
 	},
 	"dependencies": {
+		"@effect/platform-node": "catalog:effected:exact",
 		"@effected/changesets": "catalog:effected:exact",
 		"@effected/commands": "catalog:effected:exact",
 		"@effected/git": "catalog:effected:exact",
@@ -35,6 +36,8 @@
 		"@effected/jsonc": "catalog:effected:exact",
 		"@effected/markdown": "catalog:effected:exact",
 		"@effected/markdown-lint": "catalog:effected:exact",
+		"@effected/npm": "catalog:effected:exact",
+		"@effected/semver": "catalog:effected:exact",
 		"@effected/templates": "catalog:effected:exact",
 		"@effected/toml": "catalog:effected:exact",
 		"@effected/workspaces": "catalog:effected:exact",

@@ -52,6 +52,7 @@
 		"@effected/git": "catalog:effected",
 		"@effected/github": "catalog:effected",
 		"@effected/memfs": "catalog:effected",
+		"@effected/npm": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@types/node": "catalog:effected:build",
@@ -67,6 +68,7 @@
 		"@effected/commands": "catalog:effected:peers",
 		"@effected/git": "catalog:effected:peers",
 		"@effected/github": "catalog:effected:peers",
+		"@effected/npm": "catalog:effected:peers",
 		"@effected/templates": "catalog:effected:peers",
 		"@effected/workspaces": "catalog:effected:peers",
 		"effect": "catalog:effected:peers"

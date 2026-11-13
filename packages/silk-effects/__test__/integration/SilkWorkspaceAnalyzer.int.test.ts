@@ -33,10 +33,9 @@ const MOCK_EVIDENCE = {
 	bun: "bun.lock",
 	npm: "package.json#workspaces",
 	pnpm: "pnpm-workspace.yaml",
-	yarn: "yarn.lock",
 } as const;
 
-const mockPM = (type: "npm" | "pnpm" | "yarn" | "bun" = "npm", runtime: "node" | "bun" = "node") =>
+const mockPM = (type: "npm" | "pnpm" | "bun" = "npm", runtime: "node" | "bun" = "node") =>
 	Layer.succeed(PackageManagerDetector, {
 		detect: () =>
 			Effect.succeed(
@@ -636,46 +635,6 @@ describe("SilkWorkspaceAnalyzer integration", () => {
 				}),
 			);
 		});
-	});
-
-	// -----------------------------------------------------------------------
-	// node/yarn
-	// -----------------------------------------------------------------------
-	describe("node/yarn", () => {
-		it.effect("basic: packageManager.type='yarn', runtime='node'", () =>
-			Effect.gen(function* () {
-				const root = fixtureRoot("node/yarn/default/basic");
-				// No yarn.lock → real detector falls back to npm; use mockPM
-				const result = yield* analyze(root, mockPM("yarn"));
-
-				expect(result.runtime).toBe("node");
-				expect(result.packageManager.type).toBe("yarn");
-				expect(result.changesetConfig).toBeNull();
-
-				// root + lib-a = 2
-				expect(result.workspaces).toHaveLength(2);
-
-				const libA = Option.getOrThrow(result.findWorkspace("@scope/yarn-lib-a"));
-				expect(libA.publishable).toBe(true);
-			}),
-		);
-
-		it.effect("silk: has changeset config, isSilk=true", () =>
-			Effect.gen(function* () {
-				const root = fixtureRoot("node/yarn/silk/basic");
-				const result = yield* analyze(root, mockPM("yarn"));
-
-				expect(result.packageManager.type).toBe("yarn");
-				expect(result.hasChangesets).toBe(true);
-				expect(result.isSilk).toBe(true);
-
-				// root + lib-a = 2
-				expect(result.workspaces).toHaveLength(2);
-
-				const libA = Option.getOrThrow(result.findWorkspace("@scope/yarn-silk-a"));
-				expect(libA.publishable).toBe(true);
-			}),
-		);
 	});
 
 	// -----------------------------------------------------------------------

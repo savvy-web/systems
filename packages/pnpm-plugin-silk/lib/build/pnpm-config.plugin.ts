@@ -139,7 +139,6 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 			},
 		},
 	},
-	confirmModulesPurge: false,
 	minimumReleaseAge: 1440,
 	minimumReleaseAgeExclude: [
 		"@oxc-parser/*",
