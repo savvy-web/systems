@@ -1,5 +1,11 @@
 # @savvy-web/cli
 
+## 3.8.6
+
+### Maintenance
+
+- Bump Biome to v 2.6.8
+
 ## 3.8.5
 
 ### Dependencies
