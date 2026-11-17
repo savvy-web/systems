@@ -20,22 +20,22 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		docs: {
 			packages: {
 				"@rspress/core": {
-					range: "^2.0.23",
-					peer: "^2.0.0",
+					range: "^2.1.3",
+					peer: "^2.1.0",
 					strategy: "lock-minor",
 				},
 				"@rspress/plugin-sitemap": {
-					range: "^2.0.23",
-					peer: "^2.0.23",
+					range: "^2.1.3",
+					peer: "^2.1.3",
 					strategy: "lock",
 				},
 				"rspress-plugin-mermaid": {
-					range: "^1.0.3",
-					peer: "^1.0.3",
+					range: "^2.0.0",
+					peer: "^2.0.0",
 					strategy: "lock",
 				},
 				vite: {
-					range: "^8.3.5",
+					range: "^8.3.8",
 					peer: "^8.3.0",
 					strategy: "lock-minor",
 				},
@@ -49,8 +49,8 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		lint: {
 			packages: {
 				"@biomejs/biome": {
-					range: "2.6.6",
-					peer: "2.6.6",
+					range: "2.6.8",
+					peer: "2.6.8",
 					strategy: "lock",
 				},
 				"@changesets/cli": {
@@ -74,13 +74,13 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 					strategy: "lock",
 				},
 				"lint-staged": {
-					range: "^17.6.0",
-					peer: "^17.6.0",
+					range: "^17.6.1",
+					peer: "^17.6.1",
 					strategy: "lock",
 				},
 				"markdownlint-cli2": {
-					range: "^0.24.0",
-					peer: "^0.24.0",
+					range: "^0.24.1",
+					peer: "^0.24.1",
 					strategy: "lock",
 				},
 				"markdownlint-cli2-formatter-codequality": {
@@ -89,8 +89,8 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 					strategy: "lock",
 				},
 				turbo: {
-					range: "^2.11.10",
-					peer: "^2.11.10",
+					range: "^2.11.11",
+					peer: "^2.11.11",
 					strategy: "lock",
 				},
 			},
@@ -107,27 +107,27 @@ const plugin: ReturnType<typeof PnpmConfigPlugin> = PnpmConfigPlugin({
 		test: {
 			packages: {
 				"@vitest/expect": {
-					range: "^5.0.5",
-					peer: "^5.0.0",
+					range: "^5.1.0",
+					peer: "^5.1.0",
 					strategy: "lock-minor",
 				},
 				"@vitest/coverage-istanbul": {
-					range: "^5.0.5",
-					peer: "^5.0.0",
+					range: "^5.1.0",
+					peer: "^5.1.0",
 					strategy: "lock-minor",
 				},
 				"@vitest/coverage-v8": {
-					range: "^5.0.5",
-					peer: "^5.0.0",
+					range: "^5.1.0",
+					peer: "^5.1.0",
 					strategy: "lock-minor",
 				},
 				vitest: {
-					range: "^5.0.5",
-					peer: "^5.0.0",
+					range: "^5.1.0",
+					peer: "^5.1.0",
 					strategy: "lock-minor",
 				},
 				vite: {
-					range: "^8.3.5",
+					range: "^8.3.8",
 					peer: "^8.3.0",
 					strategy: "lock-minor",
 				},
