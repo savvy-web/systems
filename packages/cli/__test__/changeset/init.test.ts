@@ -442,6 +442,26 @@ describe("handleConfig", () => {
 		}),
 	);
 
+	it.effect("patches only the changelog leaves, keeping nested short arrays inline (#888)", () =>
+		Effect.gen(function* () {
+			const options =
+				'{\n\t\t\t"repo": "old/repo",\n\t\t\t"versionFiles": [{ "glob": "plugin.json", "paths": ["$.version"] }]\n\t\t}';
+			const text = `{\n\t"changelog": [\n\t\t"@savvy-web/changesets/changelog",\n\t\t${options}\n\t]\n}\n`;
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
+
+			const result = yield* handleConfig(changesetDir, "org/repo", false);
+
+			expect(result).toBe("Patched changelog in .changeset/config.json");
+			const written = getWritten(vi.mocked(writeFileSync).mock.calls, 0);
+			// Exactly the two leaves change; every other byte is the original's.
+			expect(written).toBe(
+				text.replace('"@savvy-web/changesets/changelog"', '"@savvy-web/changelog"').replace("old/repo", "org/repo"),
+			);
+		}),
+	);
+
 	it.effect.each(["null", "[]", "42"])("fails as the config step when the root is %s", (text) =>
 		Effect.gen(function* () {
 			vi.mocked(existsSync).mockReturnValue(true);

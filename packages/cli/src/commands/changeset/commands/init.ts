@@ -40,7 +40,7 @@ import { isDeepStrictEqual } from "node:util";
 import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli-kit";
 import { TerminalEnv } from "@effected/env";
 import { Git, GitRemote } from "@effected/git";
-import type { JsoncFormattingOptions } from "@effected/jsonc";
+import type { JsoncFormattingOptions, JsoncPath } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
@@ -278,11 +278,34 @@ export function handleConfig(changesetDir: string, repoSlug: string, force: bool
 		const desired = [CHANGELOG_ENTRY, { ...currentOptions, repo: repoSlug }];
 		// Already what init would write: leave the file's bytes alone (#888).
 		if (isDeepStrictEqual(existing.changelog, desired)) return ".changeset/config.json is up to date";
-		// Edit only the changelog key, so every other value keeps its layout.
-		const edits = yield* JsoncModifier.modify(text, ["changelog"], desired, {
-			formattingOptions: JSONC_FORMAT,
-		}).pipe(Effect.mapError(fail));
-		const patched = JsoncEdit.applyAll(text, edits);
+		// An existing [formatter, options] tuple gets only its two string leaves
+		// patched: replacing the whole value would re-print nested short arrays
+		// (`"paths": ["$.version"]`) expanded, which Biome collapses again (#888).
+		// Anything else is replaced whole; a fresh `[entry, { repo }]` carries no
+		// such array, so its generated layout is already one Biome keeps.
+		const changelog = existing.changelog;
+		const tuple =
+			Array.isArray(changelog) &&
+			changelog.length === 2 &&
+			typeof changelog[1] === "object" &&
+			changelog[1] !== null &&
+			!Array.isArray(changelog[1])
+				? (changelog as unknown as readonly [unknown, Record<string, unknown>])
+				: null;
+		const leaves: ReadonlyArray<readonly [JsoncPath, unknown]> =
+			tuple === null
+				? [[["changelog"], desired]]
+				: [
+						...(tuple[0] !== CHANGELOG_ENTRY ? [[["changelog", 0], CHANGELOG_ENTRY] as const] : []),
+						...(tuple[1].repo !== repoSlug ? [[["changelog", 1, "repo"], repoSlug] as const] : []),
+					];
+		let patched = text;
+		for (const [path, value] of leaves) {
+			const edits = yield* JsoncModifier.modify(patched, path, value, {
+				formattingOptions: JSONC_FORMAT,
+			}).pipe(Effect.mapError(fail));
+			patched = JsoncEdit.applyAll(patched, edits);
+		}
 		yield* Effect.try({ try: () => writeFileSync(configPath, patched), catch: fail });
 		return "Patched changelog in .changeset/config.json";
 	});
