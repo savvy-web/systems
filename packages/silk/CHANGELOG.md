@@ -1,5 +1,13 @@
 # @savvy-web/silk
 
+## 5.1.7
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/cli | dependency | updated | 3.8.6 | 3.8.7 |
+
 ## 5.1.6
 
 ### Dependencies
