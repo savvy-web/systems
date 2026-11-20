@@ -265,7 +265,12 @@ export function handleConfig(changesetDir: string, repoSlug: string, force: bool
 			return force ? "Overwrote .changeset/config.json" : "Created .changeset/config.json";
 		}
 		const text = yield* Effect.try({ try: () => readFileSync(configPath, "utf-8"), catch: fail });
-		const existing = (yield* Jsonc.parse(text).pipe(Effect.mapError(fail))) as Record<string, unknown>;
+		const parsed = yield* Jsonc.parse(text).pipe(Effect.mapError(fail));
+		// A non-object root must fail as this step, not die reading `.changelog`.
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			return yield* Effect.fail(fail("config.json is not a JSON object"));
+		}
+		const existing = parsed as Record<string, unknown>;
 		const currentOptions =
 			Array.isArray(existing.changelog) && typeof existing.changelog[1] === "object" && existing.changelog[1] !== null
 				? (existing.changelog[1] as Record<string, unknown>)

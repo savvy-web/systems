@@ -442,6 +442,20 @@ describe("handleConfig", () => {
 		}),
 	);
 
+	it.effect.each(["null", "[]", "42"])("fails as the config step when the root is %s", (text) =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+
+			const error = yield* Effect.flip(handleConfig(changesetDir, "org/repo", false));
+
+			expect(error).toBeInstanceOf(InitError);
+			expect(error.step).toBe(".changeset/config.json");
+			expect(error.reason).toBe("config.json is not a JSON object");
+			expect(writeFileSync).not.toHaveBeenCalled();
+		}),
+	);
+
 	it.effect("returns InitError when writeFileSync throws", () =>
 		Effect.gen(function* () {
 			vi.mocked(existsSync).mockReturnValue(false);
