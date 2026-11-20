@@ -410,6 +410,72 @@ describe("handleConfig", () => {
 		}),
 	);
 
+	it.effect("leaves an up-to-date config.json unwritten (#888)", () =>
+		Effect.gen(function* () {
+			const text =
+				'{\n\t"changelog": ["@savvy-web/changelog", { "repo": "org/repo" }],\n\t"ignore": ["playground", "docs"]\n}\n';
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+
+			const result = yield* handleConfig(changesetDir, "org/repo", false);
+
+			expect(result).toBe(".changeset/config.json is up to date");
+			expect(writeFileSync).not.toHaveBeenCalled();
+		}),
+	);
+
+	it.effect("keeps the layout of keys it does not patch (#888)", () =>
+		Effect.gen(function* () {
+			const text =
+				'{\n\t"changelog": ["@savvy-web/changelog", { "repo": "old/repo" }],\n\t"ignore": ["playground", "docs"]\n}\n';
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
+
+			const result = yield* handleConfig(changesetDir, "org/repo", false);
+
+			expect(result).toBe("Patched changelog in .changeset/config.json");
+			const written = getWritten(vi.mocked(writeFileSync).mock.calls, 0);
+			expect(written).toContain('"ignore": ["playground", "docs"]');
+			expect(written.endsWith("}\n")).toBe(true);
+			expect(JSON.parse(written).changelog).toEqual(["@savvy-web/changelog", { repo: "org/repo" }]);
+		}),
+	);
+
+	it.effect("patches only the changelog leaves, keeping nested short arrays inline (#888)", () =>
+		Effect.gen(function* () {
+			const options =
+				'{\n\t\t\t"repo": "old/repo",\n\t\t\t"versionFiles": [{ "glob": "plugin.json", "paths": ["$.version"] }]\n\t\t}';
+			const text = `{\n\t"changelog": [\n\t\t"@savvy-web/changesets/changelog",\n\t\t${options}\n\t]\n}\n`;
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+			vi.mocked(writeFileSync).mockReturnValue(undefined);
+
+			const result = yield* handleConfig(changesetDir, "org/repo", false);
+
+			expect(result).toBe("Patched changelog in .changeset/config.json");
+			const written = getWritten(vi.mocked(writeFileSync).mock.calls, 0);
+			// Exactly the two leaves change; every other byte is the original's.
+			expect(written).toBe(
+				text.replace('"@savvy-web/changesets/changelog"', '"@savvy-web/changelog"').replace("old/repo", "org/repo"),
+			);
+		}),
+	);
+
+	it.effect.each(["null", "[]", "42"])("fails as the config step when the root is %s", (text) =>
+		Effect.gen(function* () {
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(text);
+
+			const error = yield* Effect.flip(handleConfig(changesetDir, "org/repo", false));
+
+			expect(error).toBeInstanceOf(InitError);
+			expect(error.step).toBe(".changeset/config.json");
+			expect(error.reason).toBe("config.json is not a JSON object");
+			expect(writeFileSync).not.toHaveBeenCalled();
+		}),
+	);
+
 	it.effect("returns InitError when writeFileSync throws", () =>
 		Effect.gen(function* () {
 			vi.mocked(existsSync).mockReturnValue(false);
@@ -456,6 +522,28 @@ describe("handleBaseMarkdownlint", () => {
 
 			expect(result).toContain("Warning:");
 			expect(result).toContain("no markdownlint config found");
+			expect(writeFileSync).not.toHaveBeenCalled();
+		}),
+	);
+
+	it.effect("leaves a fully registered config unwritten (#888)", () =>
+		Effect.gen(function* () {
+			const baseConfig = {
+				customRules: ["@savvy-web/silk/changesets/markdownlint"],
+				config: {
+					"changeset-heading-hierarchy": false,
+					"changeset-required-sections": false,
+					"changeset-content-structure": false,
+					"changeset-uncategorized-content": false,
+					"changeset-dependency-table-format": false,
+				},
+			};
+			vi.mocked(existsSync).mockReturnValue(true);
+			vi.mocked(readFileSync).mockReturnValue(JSON.stringify(baseConfig));
+
+			const result = yield* handleBaseMarkdownlint(root);
+
+			expect(result).toBe("lib/configs/.markdownlint-cli2.jsonc is up to date");
 			expect(writeFileSync).not.toHaveBeenCalled();
 		}),
 	);
@@ -794,6 +882,27 @@ describe("handleChangesetMarkdownlint", () => {
 			expect(mdlint["changeset-required-sections"]).toBe(true);
 			expect(mdlint["changeset-content-structure"]).toBe(true);
 			expect(mdlint["changeset-uncategorized-content"]).toBe(true);
+		}),
+	);
+
+	it.effect("leaves an up-to-date .markdownlint.json unwritten (#888)", () =>
+		Effect.gen(function* () {
+			const text = `{\n\t"default": false,\n${[
+				"changeset-heading-hierarchy",
+				"changeset-required-sections",
+				"changeset-content-structure",
+				"changeset-uncategorized-content",
+				"changeset-dependency-table-format",
+			]
+				.map((rule) => `\t"${rule}": true`)
+				.join(",\n")}\n}\n`;
+			vi.mocked(existsSync).mockImplementation((p) => String(p) === mdlintPath);
+			vi.mocked(readFileSync).mockReturnValue(text);
+
+			const result = yield* handleChangesetMarkdownlint(changesetDir, root, false);
+
+			expect(result).toBe(".changeset/.markdownlint.json is up to date");
+			expect(writeFileSync).not.toHaveBeenCalled();
 		}),
 	);
 

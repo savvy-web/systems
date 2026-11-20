@@ -36,10 +36,11 @@
 
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { CliDoc, CliExit, Doc, Fmt } from "@effected/cli-kit";
 import { TerminalEnv } from "@effected/env";
 import { Git, GitRemote } from "@effected/git";
-import type { JsoncFormattingOptions } from "@effected/jsonc";
+import type { JsoncFormattingOptions, JsoncPath } from "@effected/jsonc";
 import { Jsonc, JsoncEdit, JsoncModifier } from "@effected/jsonc";
 import { WorkspaceRoot } from "@effected/workspaces";
 import { Changesets } from "@savvy-web/silk-effects";
@@ -235,7 +236,10 @@ export function ensureChangesetDir(root: string): Effect.Effect<string, InitErro
  *
  * When `force` is `true` or the file does not exist, writes a fresh config
  * with the default schema. Otherwise, patches only the `changelog` field to
- * point at `\@savvy-web/changelog` with the detected `repoSlug`.
+ * point at `\@savvy-web/changelog` with the detected `repoSlug`, editing that
+ * key in place so the rest of the file keeps its layout. When the changelog
+ * already holds that value the file is not written at all, so a repeat
+ * `savvy init` leaves no whitespace-only diff (savvy-web/systems#888).
  *
  * @param changesetDir - Absolute path to the `.changeset/` directory
  * @param repoSlug - The `owner/repo` GitHub slug to embed in the config
@@ -246,31 +250,64 @@ export function ensureChangesetDir(root: string): Effect.Effect<string, InitErro
  * @internal
  */
 export function handleConfig(changesetDir: string, repoSlug: string, force: boolean): Effect.Effect<string, InitError> {
-	return Effect.try({
-		try: () => {
-			const configPath = join(changesetDir, "config.json");
-			if (force || !existsSync(configPath)) {
-				const config = {
-					...DEFAULT_CONFIG,
-					changelog: [CHANGELOG_ENTRY, { repo: repoSlug }],
-				};
-				writeFileSync(configPath, `${JSON.stringify(config, null, "\t")}\n`);
-				return force ? "Overwrote .changeset/config.json" : "Created .changeset/config.json";
-			}
-			const existing = JSON.parse(readFileSync(configPath, "utf-8"));
-			const currentOptions =
-				Array.isArray(existing.changelog) && typeof existing.changelog[1] === "object" && existing.changelog[1] !== null
-					? (existing.changelog[1] as Record<string, unknown>)
-					: {};
-			existing.changelog = [CHANGELOG_ENTRY, { ...currentOptions, repo: repoSlug }];
-			writeFileSync(configPath, `${JSON.stringify(existing, null, "\t")}\n`);
-			return "Patched changelog in .changeset/config.json";
-		},
-		catch: (error) =>
-			new InitError({
-				step: ".changeset/config.json",
-				reason: Fmt.describe(error),
-			}),
+	const configPath = join(changesetDir, "config.json");
+	const fail = (error: unknown) => new InitError({ step: ".changeset/config.json", reason: Fmt.describe(error) });
+	return Effect.gen(function* () {
+		if (force || !existsSync(configPath)) {
+			const config = {
+				...DEFAULT_CONFIG,
+				changelog: [CHANGELOG_ENTRY, { repo: repoSlug }],
+			};
+			yield* Effect.try({
+				try: () => writeFileSync(configPath, `${JSON.stringify(config, null, "\t")}\n`),
+				catch: fail,
+			});
+			return force ? "Overwrote .changeset/config.json" : "Created .changeset/config.json";
+		}
+		const text = yield* Effect.try({ try: () => readFileSync(configPath, "utf-8"), catch: fail });
+		const parsed = yield* Jsonc.parse(text).pipe(Effect.mapError(fail));
+		// A non-object root must fail as this step, not die reading `.changelog`.
+		if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+			return yield* Effect.fail(fail("config.json is not a JSON object"));
+		}
+		const existing = parsed as Record<string, unknown>;
+		const currentOptions =
+			Array.isArray(existing.changelog) && typeof existing.changelog[1] === "object" && existing.changelog[1] !== null
+				? (existing.changelog[1] as Record<string, unknown>)
+				: {};
+		const desired = [CHANGELOG_ENTRY, { ...currentOptions, repo: repoSlug }];
+		// Already what init would write: leave the file's bytes alone (#888).
+		if (isDeepStrictEqual(existing.changelog, desired)) return ".changeset/config.json is up to date";
+		// An existing [formatter, options] tuple gets only its two string leaves
+		// patched: replacing the whole value would re-print nested short arrays
+		// (`"paths": ["$.version"]`) expanded, which Biome collapses again (#888).
+		// Anything else is replaced whole; a fresh `[entry, { repo }]` carries no
+		// such array, so its generated layout is already one Biome keeps.
+		const changelog = existing.changelog;
+		const tuple =
+			Array.isArray(changelog) &&
+			changelog.length === 2 &&
+			typeof changelog[1] === "object" &&
+			changelog[1] !== null &&
+			!Array.isArray(changelog[1])
+				? (changelog as unknown as readonly [unknown, Record<string, unknown>])
+				: null;
+		const leaves: ReadonlyArray<readonly [JsoncPath, unknown]> =
+			tuple === null
+				? [[["changelog"], desired]]
+				: [
+						...(tuple[0] !== CHANGELOG_ENTRY ? [[["changelog", 0], CHANGELOG_ENTRY] as const] : []),
+						...(tuple[1].repo !== repoSlug ? [[["changelog", 1, "repo"], repoSlug] as const] : []),
+					];
+		let patched = text;
+		for (const [path, value] of leaves) {
+			const edits = yield* JsoncModifier.modify(patched, path, value, {
+				formattingOptions: JSONC_FORMAT,
+			}).pipe(Effect.mapError(fail));
+			patched = JsoncEdit.applyAll(patched, edits);
+		}
+		yield* Effect.try({ try: () => writeFileSync(configPath, patched), catch: fail });
+		return "Patched changelog in .changeset/config.json";
 	});
 }
 
@@ -370,8 +407,10 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 	return Effect.gen(function* () {
 		const fullPath = join(root, foundPath);
 		let text: string;
+		let original: string;
 		try {
 			text = readFileSync(fullPath, "utf-8");
+			original = text;
 		} catch (error) {
 			return yield* Effect.fail(
 				new InitError({
@@ -427,6 +466,8 @@ export function handleBaseMarkdownlint(root: string): Effect.Effect<string, Init
 			}
 		}
 
+		// Nothing to register: leave the file's bytes alone (#888).
+		if (text === original) return `${foundPath} is up to date`;
 		try {
 			writeFileSync(fullPath, text);
 		} catch (error) {
@@ -490,11 +531,17 @@ export function handleChangesetMarkdownlint(
 				return force ? "Overwrote .changeset/.markdownlint.json" : "Created .changeset/.markdownlint.json";
 			}
 
-			const existing = JSON.parse(readFileSync(mdlintPath, "utf-8"));
-			for (const rule of RULE_NAMES) {
-				existing[rule] = true;
+			let text = readFileSync(mdlintPath, "utf-8");
+			const existing = Effect.runSync(Jsonc.parse(text)) as Record<string, unknown>;
+			const missing = RULE_NAMES.filter((rule) => existing[rule] !== true);
+			// Every rule already enabled: leave the file's bytes alone (#888).
+			if (missing.length === 0) return ".changeset/.markdownlint.json is up to date";
+			// Edit only the rule keys, so every other value keeps its layout.
+			for (const rule of missing) {
+				const edits = Effect.runSync(JsoncModifier.modify(text, [rule], true, { formattingOptions: JSONC_FORMAT }));
+				text = JsoncEdit.applyAll(text, edits);
 			}
-			writeFileSync(mdlintPath, `${JSON.stringify(existing, null, "\t")}\n`);
+			writeFileSync(mdlintPath, text);
 			return "Patched rules in .changeset/.markdownlint.json";
 		},
 		catch: (error) =>
