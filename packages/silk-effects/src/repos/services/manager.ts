@@ -263,13 +263,43 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 				});
 
 			/**
+			 * Fetches `commit` shallow from the vendored repo's own `origin` when
+			 * its object store lacks it — a pulled repin routinely records a
+			 * commit the depth-1 clone has never seen, and neither `checkout` nor
+			 * `reset --hard` can reach a missing object. The `^{commit}` peel is
+			 * load-bearing: a bare full sha passes `rev-parse --verify` whether or
+			 * not the object exists. Git reports a missing object as an
+			 * unclassified failure (`GitCommandError`), so both ref-shaped
+			 * failures read as "absent"; a wrongly-absent answer only costs a
+			 * fetch, and the caller's checkout or reset is the real verification.
+			 *
+			 * Fetching through the repo's own remote rather than `git submodule
+			 * update` keeps this working for a populated repo with no
+			 * `.gitmodules` section, which `submodule update` has no URL for.
+			 */
+			const ensureCommit = (repoPath: string, commit: string): Effect.Effect<void, GitSubmoduleError> =>
+				Effect.gen(function* () {
+					const present = yield* git.revParse(repoPath, `${commit}^{commit}`).pipe(
+						Effect.as(true),
+						Effect.catchTag(["UnknownRefError", "GitCommandError"], () => Effect.succeed(false)),
+						Effect.mapError(asSubmoduleError(`git rev-parse --verify ${commit}^{commit}`, repoPath)),
+					);
+					if (!present) {
+						yield* git
+							.fetch(repoPath, { ref: commit, depth: 1 })
+							.pipe(Effect.mapError(asSubmoduleError(`git fetch --depth 1 origin ${commit}`, repoPath)));
+					}
+				});
+
+			/**
 			 * Moves a POPULATED vendored worktree onto the gitlink the superproject
 			 * records, when the two differ — the repin-then-sync case. A clean
-			 * worktree is checked out with `git submodule update --checkout`
-			 * (git's command-line override of the `update = none` boundary marker;
-			 * git fetches the commit itself when the shallow clone lacks it) and
-			 * the result is verified, never assumed. A dirty worktree is left
-			 * exactly as it is and reported instead of clobbered.
+			 * worktree fetches the commit when the shallow clone lacks it
+			 * (`ensureCommit`), is checked out onto it detached inside the
+			 * vendored repo itself — so the `update = none` boundary marker is
+			 * never in play and a repo with no `.gitmodules` section advances
+			 * too — and the result is verified, never assumed. A dirty worktree
+			 * is left exactly as it is and reported instead of clobbered.
 			 */
 			const advanceToGitlink = (
 				root: string,
@@ -294,19 +324,18 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					if (porcelain.length > 0) {
 						return "skippedDirty" as const;
 					}
+					yield* ensureCommit(repoPath, recorded);
 					yield* git
-						.submoduleUpdate(root, { checkout: true, depth: 1, paths: [repoPathRel] })
-						.pipe(
-							Effect.mapError(asSubmoduleError(`git submodule update --checkout --depth 1 -- ${repoPathRel}`, root)),
-						);
+						.checkout(repoPath, recorded, { detach: true })
+						.pipe(Effect.mapError(asSubmoduleError(`git checkout --detach ${recorded}`, repoPath)));
 					const after = yield* git
 						.revParse(repoPath, "HEAD")
 						.pipe(Effect.mapError(asSubmoduleError("git rev-parse HEAD", repoPath)));
 					if (after !== recorded) {
 						return yield* Effect.fail(
 							new GitSubmoduleError({
-								command: `git submodule update --checkout --depth 1 -- ${repoPathRel}`,
-								cwd: root,
+								command: `git checkout --detach ${recorded}`,
+								cwd: repoPath,
 								reason: `worktree HEAD is ${after} after the update, not the recorded gitlink ${recorded}`,
 							}),
 						);
@@ -1613,6 +1642,11 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										.submoduleDeinit(subPath, { all: true, force: true })
 										.pipe(Effect.mapError(asSubmoduleError("git submodule deinit --all --force", subPath)));
 								}
+
+								// `sync` leaves a DIRTY checkout on a moved gitlink
+								// (`skippedDirty`, with a hint pointing here), and that
+								// commit may be absent from the depth-1 clone.
+								yield* ensureCommit(subPath, targetCommit);
 
 								yield* git
 									.reset(subPath, { mode: "hard", ref: targetCommit })

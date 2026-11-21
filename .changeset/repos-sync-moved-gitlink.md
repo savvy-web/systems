@@ -9,3 +9,4 @@
 ## Bug Fixes
 
 - `sync`, `pin` and the other lockdown-bracketed operations work inside a linked git worktree. The module gitdir is resolved through the worktree's `.git` file, so its fallback lands under the worktree's own git dir rather than running through the file. A pointer under that git dir passes the containment guard, and a module-gitdir probe that fails because the path runs through a file is skipped instead of aborting the command. `ReposDrift` and `deregister` resolve the modules root the same way.
+- `ReposManager.restore` fetches the recorded gitlink from the vendored repo's `origin` when the shallow clone lacks it, so the `restore` that `skippedDirty` points to works after a pulled repin. `sync` advances a checkout the same way, fetching and checking out inside the vendored repo, so a present repo with no `.gitmodules` section advances instead of failing in `git submodule update`.

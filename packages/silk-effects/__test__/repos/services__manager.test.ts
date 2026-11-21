@@ -1829,8 +1829,13 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 		}
 	});
 
-	/** Upstream fixture with two tags so `pin` has somewhere to move to. */
-	function makeUpstream(): string {
+	/**
+	 * Upstream fixture with two tags so `pin` has somewhere to move to. Pass
+	 * `withTag2: false` for an upstream that stops at `tag1`, then
+	 * {@link addTag2} once the host has cloned it, so `tag2` is genuinely
+	 * absent from the host's shallow clone.
+	 */
+	function makeUpstream(options: { readonly withTag2?: boolean } = {}): string {
 		const up = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-upstream-"));
 		createdRoots.push(up);
 		git(up, "init", "--quiet", "-b", "main");
@@ -1840,11 +1845,18 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 		git(up, "add", "-A");
 		git(up, "commit", "--quiet", "-m", "initial");
 		git(up, "tag", "tag1");
+		if (options.withTag2 !== false) {
+			addTag2(up);
+		}
+		return up;
+	}
+
+	/** Commit a second revision upstream and tag it `tag2`. */
+	function addTag2(up: string): void {
 		writeFileSync(join(up, "src", "keep.ts"), "export const keep = false;\n");
 		git(up, "add", "-A");
 		git(up, "commit", "--quiet", "-m", "second");
 		git(up, "tag", "tag2");
-		return up;
 	}
 
 	function makeHost(): string {
@@ -2092,6 +2104,104 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 			expect(report.upToDate).toEqual([]);
 			expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag1);
 			expect(readFileSync(file, "utf8")).toBe("export const keep = 'local edit';\n");
+		}),
+	);
+
+	it.effect(
+		"restore fetches a moved gitlink absent from the shallow clone, discarding the dirty edit sync skipped",
+		() =>
+			Effect.gen(function* () {
+				const name = "spec";
+				// Upstream stops at tag1 when the host clones it, so tag2 cannot
+				// already be in the vendored object store.
+				const up = makeUpstream({ withTag2: false });
+				const host = makeHost();
+				const upstreamUrl = `file://${up}`;
+				mkdirSync(join(host, ".repos"), { recursive: true });
+				writeFileSync(
+					join(host, ".repos", "config.json"),
+					JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+				);
+				simulatePriorAdd(host, upstreamUrl, name, "tag1");
+				const first = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.sync(host);
+					}),
+				);
+				expect(first.initialized).toEqual([name]);
+
+				addTag2(up);
+				const tag1 = git(up, "rev-parse", "tag1").trim();
+				const tag2 = git(up, "rev-parse", "tag2").trim();
+				const subPath = join(host, ".repos", name);
+				// Control: the moved-to commit really is missing locally.
+				expect(() => git(subPath, "cat-file", "-e", `${tag2}^{commit}`)).toThrow();
+
+				const file = join(subPath, "src", "keep.ts");
+				chmodSync(file, 0o644);
+				writeFileSync(file, "export const keep = 'local edit';\n");
+				moveGitlink(host, name, tag2);
+
+				const report = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.sync(host);
+					}),
+				);
+				expect(report.skippedDirty).toEqual([name]);
+				expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag1);
+
+				const restored = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.restore(host, [name]);
+					}),
+				);
+				expect(restored.restored).toEqual([{ name, commit: tag2 }]);
+				expect(restored.stillDirty).toEqual([]);
+				expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag2);
+				expect(readFileSync(file, "utf8")).toBe("export const keep = false;\n");
+				expect(git(subPath, "status", "--porcelain").trim()).toBe("");
+			}),
+	);
+
+	it.effect("sync advances a moved gitlink for a present repo whose .gitmodules section is gone", () =>
+		Effect.gen(function* () {
+			const name = "spec";
+			const up = makeUpstream({ withTag2: false });
+			const host = makeHost();
+			const upstreamUrl = `file://${up}`;
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+			);
+			simulatePriorAdd(host, upstreamUrl, name, "tag1");
+			const first = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+			expect(first.initialized).toEqual([name]);
+
+			addTag2(up);
+			const tag2 = git(up, "rev-parse", "tag2").trim();
+			const subPath = join(host, ".repos", name);
+			// No URL mapping left for `git submodule update` to use.
+			git(host, "config", "-f", ".gitmodules", "--remove-section", `submodule..repos/${name}`);
+			moveGitlink(host, name, tag2);
+
+			const report = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+			expect(report.advanced).toEqual([name]);
+			expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag2);
+			expect(readFileSync(join(subPath, "src", "keep.ts"), "utf8")).toBe("export const keep = false;\n");
 		}),
 	);
 
