@@ -15,7 +15,7 @@
 			"name": "silk",
 			"source": {
 				"path": "plugin/builds/claude",
-				"sha": "d241af64f3b1b8ab67fb431590ce34cfbfd0278a",
+				"sha": "0a3718d975dfd7e99856fb0613cf9d29c0a58cff",
 				"source": "git-subdir",
 				"url": "https://github.com/savvy-web/systems.git"
 			},
