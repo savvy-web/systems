@@ -18,6 +18,8 @@ set -euo pipefail
 #   - a script (shell/Python/Node/...) invoked by path that writes into
 #     .repos/** internally, without the literal path ever appearing in
 #     $COMMAND
+# A `cd`/`pushd`/`popd` INSIDE the same command is not a miss: it makes every
+# relative token unresolvable, so those keep the literal `.repos/` test.
 #
 # SCAN derivation (every leg below, including the early-out, matches
 # against SCAN -- never the raw $COMMAND):
@@ -126,6 +128,17 @@ SCAN=$(printf '%s' "$SCAN" | sed -E "s/\"[^\"]*[[:space:]][^\"]*\"//g; s/${sq}[^
 # (the envelope's absolute `cwd`, else the project dir), then fold `.`, `..`
 # and `//`. A token carrying `$` or a backtick cannot be resolved without
 # running the shell, so it keeps the literal `*.repos/*` test (fail-safe).
+#
+# A directory change INSIDE this command (`cd ../.. && rm -rf .repos/x`,
+# `pushd`, `popd`) moves the base the later relative tokens resolve against,
+# and this guard does not track the shell's directory clause by clause. Any
+# such word therefore makes every RELATIVE token unresolvable, so it falls
+# back to the literal test. Absolute and `~` tokens still resolve. The match
+# is deliberately loose: a stray `cd` word only costs the #757 allowance.
+_REPOS_CD_SEEN=0
+if [[ "$SCAN" =~ (^|[^[:alnum:]_./-])(cd|pushd|popd)([[:space:]]|$) ]]; then
+	_REPOS_CD_SEEN=1
+fi
 _REPOS_PROJECT=$(hook_project_dir)
 _REPOS_BASE=$(hook_input cwd)
 [[ "$_REPOS_BASE" == /* ]] || _REPOS_BASE="$_REPOS_PROJECT"
@@ -169,9 +182,20 @@ _repos_resolve() {
 			t="${HOME}${t#\~}"
 			;;
 	esac
-	[[ "$t" == /* ]] || t="$_REPOS_BASE/$t"
+	if [[ "$t" != /* ]]; then
+		[ "$_REPOS_CD_SEEN" -eq 0 ] || return 1
+		t="$_REPOS_BASE/$t"
+	fi
 	_repos_normalize "$t"
 	_RESOLVED="$_NORM"
+}
+
+# _repos_strip_dot <tok> -- drop leading "./" segments; sets _STRIPPED. The
+# literal fallback compares an unresolved token, and `./.repos/config.json`
+# is still the manifest.
+_repos_strip_dot() {
+	_STRIPPED="$1"
+	while [[ "$_STRIPPED" == ./* ]]; do _STRIPPED="${_STRIPPED#./}"; done
 }
 
 # _repos_exempt <tok> -- the token names the project's hand-editable
@@ -181,7 +205,8 @@ _repos_exempt() {
 	if _repos_resolve "$1"; then
 		[ "$_RESOLVED" = "$_REPOS_MANIFEST" ]
 	else
-		[ "$_RESOLVED" = ".repos/config.json" ]
+		_repos_strip_dot "$_RESOLVED"
+		[ "$_STRIPPED" = ".repos/config.json" ]
 	fi
 }
 
@@ -193,7 +218,8 @@ _repos_vendored_target() {
 		[ "$_RESOLVED" = "$_REPOS_MANIFEST" ] && return 1
 		[ "$_RESOLVED" = "$_REPOS_ROOT" ] || [[ "$_RESOLVED" == "$_REPOS_ROOT"/* ]]
 	else
-		[[ "$_RESOLVED" == *.repos/* ]] && [ "$_RESOLVED" != ".repos/config.json" ]
+		_repos_strip_dot "$_RESOLVED"
+		[[ "$_STRIPPED" == *.repos/* ]] && [ "$_STRIPPED" != ".repos/config.json" ]
 	fi
 }
 
@@ -488,17 +514,20 @@ fi
 #     LATER pipeline command's own .repos/ read (`tee /tmp/out | cat
 #     .repos/effect/README.md`) is never mistaken for a still-open tee
 #     operand.
-#   - sed with an -i flag, rm, patch, dd of=: these mutate their operands,
-#     so any vendored ".repos/" token in the MUTATOR'S OWN CLAUSE denies.
-#     SCAN is split into clauses on ; & | && || and each clause is judged
-#     by its own command word: a `grep -i` in one clause plus a `sed -n`
-#     read of a vendored file in another, or a `grep -n rm` next to a
-#     vendored `cat`, used to deny because the whole-command scan let one
-#     clause's flag or word arm another clause's tokens (#594, #853). sed
-#     -i detection still looks for an -i-shaped flag (-i, -ni, -i.bak,
-#     --in-place, --in-place=SUF) ANYWHERE in sed's own clause, so a
-#     reordered flag (`sed -e 's/a/b/' -i .repos/x`) is still caught
-#     within that clause.
+#   - sed with an -i flag, rm, unlink, patch, dd of=, and a find that
+#     deletes or -execs one of them: these mutate their operands, so any
+#     vendored ".repos/" token in the MUTATOR'S OWN SEGMENT denies. SCAN is
+#     split into segments on ; & | && || and each is judged by its own
+#     command word: a `grep -i` in one clause plus a `sed -n` read of a
+#     vendored file in another, or a `grep -n rm` next to a vendored `cat`,
+#     used to deny because the whole-command scan let one clause's flag or
+#     word arm another clause's tokens (#594, #853). The scope widens to the
+#     whole pipeline for an xargs-fed mutator and to the whole loop for a
+#     mutator inside for/while/until ... done, where the shell really does
+#     hand it another segment's words. sed -i detection still looks for an
+#     -i-shaped flag (-i, -ni, -i.bak, --in-place, --in-place=SUF) ANYWHERE
+#     in sed's own segment, so a reordered flag (`sed -e 's/a/b/' -i
+#     .repos/x`) is still caught.
 #     Best-effort: a flag value that merely looks like `-i` inside a quoted
 #     script argument can false-positive -- accepted; over-denial only
 #     costs a re-pin, and the permissions layer is the actual backstop.
@@ -592,24 +621,59 @@ _repos_is_sed_script() {
 	return 1
 }
 
+# _repos_wrapper_takes_value <wrapper> <flag> -- the wrapper flag consumes
+# the NEXT token as its value (`sudo -u root rm`, `nice -n 5 rm`, `xargs -I {}
+# rm`), so the command word sits one token later. Per wrapper, because the
+# same letter differs between them (`sudo -s` takes none, `xargs -s` does).
+_repos_wrapper_takes_value() {
+	case "$1:$2" in
+		sudo:-u | sudo:-g | sudo:-C | sudo:-D | sudo:-h | sudo:-p | sudo:-r | sudo:-t | sudo:-U | sudo:-T) return 0 ;;
+		doas:-u | doas:-C) return 0 ;;
+		env:-u | env:-C | env:-S | env:--unset | env:--chdir | env:--split-string) return 0 ;;
+		nice:-n | nice:--adjustment) return 0 ;;
+		ionice:-c | ionice:-n | ionice:-p) return 0 ;;
+		timeout:-s | timeout:-k | timeout:--signal | timeout:--kill-after) return 0 ;;
+		stdbuf:-i | stdbuf:-o | stdbuf:-e) return 0 ;;
+		time:-o | time:-f) return 0 ;;
+		exec:-a) return 0 ;;
+		xargs:-I | xargs:-n | xargs:-P | xargs:-L | xargs:-s | xargs:-d | xargs:-E | xargs:-a) return 0 ;;
+		xargs:--max-args | xargs:--max-procs | xargs:--max-lines | xargs:--max-chars | xargs:--delimiter | xargs:--arg-file | xargs:--eof) return 0 ;;
+	esac
+	return 1
+}
+
 # _repos_command_word <tokens...> -- the clause's command word, in _CMD:
 # the first token after any leading `(`/`{`/`!`, VAR=value assignments and
-# wrapper commands (sudo, env, xargs, ...) with their flags, stripped of a
-# leading path and backslash (`/bin/rm`, `\rm`). Best-effort, like the rest:
-# a wrapper flag that takes a value (`sudo -u root rm`) is a documented miss.
+# wrapper commands (sudo, env, nice, xargs, ...) with their flags and flag
+# values, stripped of a leading path and backslash (`/bin/rm`, `\rm`).
+# _VIA_XARGS is 1 when an xargs wrapper fed the command: its operands then
+# arrive on stdin from the pipeline's other segments. Best-effort: an
+# unlisted value-taking wrapper flag is a miss, and the permissions layer
+# stays the backstop.
 _repos_command_word() {
-	local tok wrapped=0
+	local tok wrapper="" skip=0
 	_CMD=""
+	_VIA_XARGS=0
 	for tok in "$@"; do
+		if [ "$skip" -eq 1 ]; then
+			skip=0
+			continue
+		fi
 		while [[ "$tok" == [\(\{\!]* ]]; do tok="${tok:1}"; done
 		[ -z "$tok" ] && continue
 		[[ "$tok" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
-		if [ "$wrapped" -eq 1 ] && [[ "$tok" == -* ]]; then
+		if [ -n "$wrapper" ] && [[ "$tok" == -* ]]; then
+			if _repos_wrapper_takes_value "$wrapper" "$tok"; then skip=1; fi
+			continue
+		fi
+		# timeout's positional DURATION precedes the command.
+		if [ "$wrapper" = "timeout" ] && [[ "$tok" =~ ^[0-9.]+[smhd]?$ ]]; then
 			continue
 		fi
 		case "$tok" in
-			sudo | doas | env | command | builtin | exec | nohup | time | nice | xargs | then | do | else | if | while | until)
-				wrapped=1
+			sudo | doas | env | command | builtin | exec | nohup | time | nice | ionice | timeout | stdbuf | xargs | then | do | else | if | while | until)
+				wrapper="$tok"
+				[ "$tok" = "xargs" ] && _VIA_XARGS=1
 				continue
 				;;
 		esac
@@ -621,16 +685,73 @@ _repos_command_word() {
 	return 0
 }
 
-# sed -i / rm / patch / dd of=: a vendored ".repos/" token in the mutator's
-# OWN clause denies (#594, #853). The split is on the same separators as the
-# git leg and cp/mv, but QUOTE-AWARE: a sed script routinely uses `|` as its
-# delimiter (`sed -i 's|.repos/a|.repos/b|' .repos/x`), and a plain split
-# would cut sed's own clause apart and lose the operand. `\047` is `'`. An
+# _repos_tokens_mutate <tokens...> -- the tokens form a command that mutates
+# its operands: sed with an -i-shaped flag (-i, -ni, -i.bak, -i'',
+# --in-place[=SUF], anywhere in its tokens, so a reordered flag is caught),
+# rm, unlink, patch, dd with of=, or a `find` that deletes (`-delete`) or
+# runs one of these through -exec/-execdir/-ok/-okdir. Sets _MUT_SED when
+# the mutator is sed, whose script operand is not a path. Returns 0/1.
+_repos_tokens_mutate() {
+	_MUT_SED=0
+	_repos_command_word "$@"
+	local tok i n
+	case "$_CMD" in
+		sed)
+			for tok in "$@"; do
+				if [[ "$tok" =~ ^-[A-Za-z]*i ]] || [[ "$tok" =~ ^--in-place(=.*)?$ ]]; then
+					_MUT_SED=1
+					return 0
+				fi
+			done
+			;;
+		rm | unlink | patch)
+			return 0
+			;;
+		dd)
+			for tok in "$@"; do
+				[[ "$tok" == of=* ]] && return 0
+			done
+			;;
+		find)
+			local args=("$@")
+			n=${#args[@]}
+			for ((i = 0; i < n; i++)); do
+				case "${args[$i]}" in
+					-delete) return 0 ;;
+					-exec | -execdir | -ok | -okdir)
+						if _repos_tokens_mutate "${args[@]:i+1}"; then return 0; fi
+						;;
+				esac
+			done
+			;;
+	esac
+	return 1
+}
+
+# Mutators (#594, #853): a vendored ".repos/" token in the mutator's OWN
+# segment denies, judged by that segment's command word, so a `grep -i` or a
+# `grep rm` in one clause no longer arms a read in another. The scope widens
+# only where the shell really hands the mutator another segment's words:
+#
+#   - xargs: `find .repos/x | xargs rm` -- the operands come from the
+#     pipeline's earlier segments, so every segment of that PIPELINE counts.
+#   - loops: `for d in .repos/x; do rm -rf $d; done`, `ls .repos/x | while
+#     read f; do rm $f; done` -- a loop runs its body over words named
+#     elsewhere in the loop, so a mutator anywhere inside a for/while/until/
+#     select ... done group makes every segment of that GROUP count.
+#   - `find ... -exec rm {} +` / `-delete` is one segment whose command word
+#     is find; _repos_tokens_mutate looks inside it.
+#
+# The split is QUOTE-AWARE (a sed script routinely uses `|` as its delimiter:
+# `sed -i 's|.repos/a|.repos/b|' .repos/x`), honours a backslash escape
+# (find's `\;`), keeps `>&`/`&>` redirects whole, and tags each segment S (a
+# new statement) or P (continues the pipeline before it). `\047` is `'`. An
 # unbalanced quote only suppresses splitting (the stricter direction).
-MUTATOR_CLAUSES="$(printf '%s' "$SCAN" | awk '
+MUTATOR_SEGMENTS="$(printf '%s' "$SCAN" | awk '
 	BEGIN { q = "" }
 	{
 		out = ""
+		kind = "S"
 		n = length($0)
 		for (i = 1; i <= n; i++) {
 			c = substr($0, i, 1)
@@ -639,58 +760,101 @@ MUTATOR_CLAUSES="$(printf '%s' "$SCAN" | awk '
 				out = out c
 				continue
 			}
+			if (c == "\\" && i < n) { out = out c substr($0, i + 1, 1); i++; continue }
 			if (c == "\047" || c == "\"") { q = c; out = out c; continue }
-			if (c == ";" || c == "&" || c == "|") { out = out "\n"; continue }
+			if (c == "|") {
+				nx = substr($0, i + 1, 1)
+				if (nx == "|") { print kind "\t" out; out = ""; kind = "S"; i++; continue }
+				if (nx == "&") i++
+				print kind "\t" out; out = ""; kind = "P"; continue
+			}
+			if (c == "&") {
+				pv = substr($0, i - 1, 1)
+				nx = substr($0, i + 1, 1)
+				if (pv == ">" || nx == ">") { out = out c; continue }
+				if (nx == "&") i++
+				print kind "\t" out; out = ""; kind = "S"; continue
+			}
+			if (c == ";") { print kind "\t" out; out = ""; kind = "S"; continue }
 			out = out c
 		}
-		print out
+		print kind "\t" out
 	}
 ')"
-while IFS= read -r clause; do
-	[[ "$clause" == *.repos/* ]] || continue
+
+SEG_TEXT=()
+SEG_PID=()
+SEG_GID=()
+pid=0
+gid=0
+depth=0
+GID_LOOP=()
+while IFS= read -r line; do
+	kind="${line%%$'\t'*}"
+	seg="${line#*$'\t'}"
+	if [ "$kind" = "S" ]; then
+		pid=$((pid + 1))
+		[ "$depth" -gt 0 ] || gid=$((gid + 1))
+	fi
 	# shellcheck disable=SC2206 # best-effort word split is the intent
-	MUT_TOKENS=($clause)
-	[ "${#MUT_TOKENS[@]}" -gt 0 ] || continue
-	_repos_command_word "${MUT_TOKENS[@]}"
-	mutator=0
-	sed_clause=0
-	case "$_CMD" in
-		sed)
-			# -i, -ni, -i.bak, -i'' and --in-place[=SUF], anywhere in sed's
-			# own clause, so a reordered flag is still caught.
-			for tok in "${MUT_TOKENS[@]}"; do
-				if [[ "$tok" =~ ^-[A-Za-z]*i ]] || [[ "$tok" =~ ^--in-place(=.*)?$ ]]; then
-					mutator=1
-					sed_clause=1
-					break
-				fi
-			done
+	words=($seg)
+	first="${words[0]:-}"
+	while [[ "$first" == [\(\{\!]* ]]; do first="${first:1}"; done
+	case "$first" in
+		for | while | until | select)
+			depth=$((depth + 1))
+			GID_LOOP[gid]=1
 			;;
-		rm | patch)
-			mutator=1
-			;;
-		dd)
-			for tok in "${MUT_TOKENS[@]}"; do
-				if [[ "$tok" == of=* ]]; then
-					mutator=1
-					break
-				fi
-			done
+		done)
+			[ "$depth" -gt 0 ] && depth=$((depth - 1))
 			;;
 	esac
-	[ "$mutator" -eq 1 ] || continue
-	for tok in "${MUT_TOKENS[@]}"; do
+	SEG_TEXT+=("$seg")
+	SEG_PID+=("$pid")
+	SEG_GID+=("$gid")
+done <<< "$MUTATOR_SEGMENTS"
+
+SEG_MUT=()
+SEG_SED=()
+PID_HOT=()
+GID_HOT=()
+for k in "${!SEG_TEXT[@]}"; do
+	# shellcheck disable=SC2206 # best-effort word split is the intent
+	words=(${SEG_TEXT[$k]})
+	SEG_MUT+=(0)
+	SEG_SED+=(0)
+	[ "${#words[@]}" -gt 0 ] || continue
+	_repos_command_word "${words[@]}"
+	via_xargs=$_VIA_XARGS
+	if _repos_tokens_mutate "${words[@]}"; then
+		SEG_MUT[k]=1
+		SEG_SED[k]=$_MUT_SED
+		[ "$via_xargs" -eq 1 ] && PID_HOT[${SEG_PID[$k]}]=1
+		[ -n "${GID_LOOP[${SEG_GID[$k]}]:-}" ] && GID_HOT[${SEG_GID[$k]}]=1
+	fi
+done
+
+for k in "${!SEG_TEXT[@]}"; do
+	[[ "${SEG_TEXT[$k]}" == *.repos/* ]] || continue
+	if [ "${SEG_MUT[$k]}" -eq 0 ] \
+		&& [ -z "${PID_HOT[${SEG_PID[$k]}]:-}" ] \
+		&& [ -z "${GID_HOT[${SEG_GID[$k]}]:-}" ]; then
+		continue
+	fi
+	# shellcheck disable=SC2206 # best-effort word split is the intent
+	words=(${SEG_TEXT[$k]})
+	for tok in "${words[@]}"; do
 		[[ "$tok" == *.repos/* ]] || continue
-		# Scoped to the sed case: only a sed invocation has a non-path operand
-		# to skip, so rm/patch/dd keep their any-token strictness.
-		if [ "$sed_clause" -eq 1 ] && _repos_is_sed_script "$tok"; then
+		# Only a sed segment has a non-path operand to skip, so every other
+		# mutator keeps its any-token strictness.
+		if [ "${SEG_SED[$k]}" -eq 1 ] && _repos_is_sed_script "$tok"; then
 			continue
 		fi
 		if _repos_vendored_target "$tok"; then
 			deny=1
 		fi
 	done
-done <<< "$MUTATOR_CLAUSES"
+done
 
 # cp / mv: only the final non-flag token (the destination operand) --
 # clause-scoped, same "don't cross a clause boundary" principle as the git

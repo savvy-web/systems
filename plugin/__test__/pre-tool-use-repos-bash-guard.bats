@@ -1164,3 +1164,194 @@ _make_proj() {
 	assert_allow
 	done
 }
+
+# --- an in-command cd makes relative tokens unresolvable -------------------
+# The guard does not track the shell directory clause by clause, so a cd,
+# pushd or popd anywhere in the command sends relative tokens back to the
+# literal .repos/ test.
+
+@test "cd to the project root then rm -rf .repos/effect, from a subdirectory: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj
+	run_guard_in_cwd "$SILK_TMP/proj/sub" "cd $SILK_TMP/proj && rm -rf .repos/effect"
+	assert_deny
+	done
+}
+
+@test "cd .. then rm -rf .repos/effect, from a subdirectory: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj
+	run_guard_in_cwd "$SILK_TMP/proj/sub" "cd .. && rm -rf .repos/effect"
+	assert_deny
+	done
+}
+
+@test "pushd to the project root then rm -rf .repos/effect: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj
+	run_guard_in_cwd "$SILK_TMP/proj/sub" "pushd $SILK_TMP/proj; rm -rf .repos/effect"
+	assert_deny
+	done
+}
+
+@test "cd elsewhere then write the manifest spelled ./.repos/config.json: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj
+	run_guard_in_cwd "$SILK_TMP/proj/sub" "cd .. && echo x > ./.repos/config.json"
+	assert_allow
+	done
+}
+
+@test "cd elsewhere then a vendored read: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj
+	run_guard_in_cwd "$SILK_TMP/proj" "cd /tmp && cat .repos/effect/README.md"
+	assert_allow
+	done
+}
+
+# --- mutators that receive their operands from elsewhere -------------------
+# Judging a segment by its command word must not drop deletes where rm is an
+# argument (find -exec, xargs), sits behind a value-taking wrapper flag, or
+# runs in a loop body over words named in the loop header.
+
+@test "find .repos/<repo> -exec rm {} ;: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -name x -exec rm {} \;'
+	assert_deny
+	done
+}
+
+@test "find .repos/<repo> -exec rm -rf {} +: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -exec rm -rf {} +'
+	assert_deny
+	done
+}
+
+@test "find .repos/<repo> -execdir sed -i: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command "find .repos/effect -name x -execdir sed -i s/a/b/ {} +"
+	assert_deny
+	done
+}
+
+@test "find .repos/<repo> -delete: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -name x -delete'
+	assert_deny
+	done
+}
+
+@test "find .repos/<repo> piped to xargs rm: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -name "*.ts" | xargs rm'
+	assert_deny
+	done
+}
+
+@test "ls .repos/<repo> piped to xargs rm -f: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'ls .repos/effect/a | xargs rm -f'
+	assert_deny
+	done
+}
+
+@test "printf .repos/<repo> piped to xargs -I{} rm: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'printf "%s\n" .repos/effect/a | xargs -I{} rm {}'
+	assert_deny
+	done
+}
+
+@test "nice -n 5 rm -rf .repos/<repo>: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'nice -n 5 rm -rf .repos/effect'
+	assert_deny
+	done
+}
+
+@test "sudo -u root rm -rf .repos/<repo>: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'sudo -u root rm -rf .repos/effect'
+	assert_deny
+	done
+}
+
+@test "timeout 5 rm -rf .repos/<repo>: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'timeout 5 rm -rf .repos/effect'
+	assert_deny
+	done
+}
+
+@test "for loop over .repos/<repo> with rm in the body: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'for d in .repos/effect; do rm -rf $d; done'
+	assert_deny
+	done
+}
+
+@test "ls .repos/<repo> piped to a while loop that rms: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'ls .repos/effect | while read f; do rm $f; done'
+	assert_deny
+	done
+}
+
+@test "find .repos/<repo> piped to xargs grep: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -name "*.ts" | xargs grep foo'
+	assert_allow
+	done
+}
+
+@test "find .repos/<repo> -exec grep: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'find .repos/effect -exec grep foo {} +'
+	assert_allow
+	done
+}
+
+@test "for loop that only cats .repos/<repo> files: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'for f in .repos/effect/*; do cat $f; done'
+	assert_allow
+	done
+}
+
+@test "an rm after the loop ends does not arm the loop's reads: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'for f in .repos/effect/*; do cat $f; done; rm -f /tmp/x'
+	assert_allow
+	done
+}
+
+@test "xargs rm in a later pipeline does not arm an earlier one: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'ls .repos/effect; echo /tmp/x | xargs rm'
+	assert_allow
+	done
+}
