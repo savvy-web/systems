@@ -73,6 +73,21 @@ describe("savvy bin (dist/prod)", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stdout).toContain("USAGE\n  savvy lint");
 			expect(result.stderr).toBe("");
+			// Every SUBCOMMANDS row carries a description (systems#854).
+			expect(result.stdout).toMatch(/^ {2}fmt {2,}\S/m);
+			expect(result.stdout).toMatch(/^ {2}text {2,}\S/m);
+		}),
+	);
+
+	it.effect("lint fmt --help describes every formatting subcommand", () =>
+		Effect.gen(function* () {
+			const result = yield* run(["lint", "fmt", "--help"]);
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr).toBe("");
+			expect(result.stdout).toContain("DESCRIPTION\n  ");
+			expect(result.stdout).toMatch(/^ {2}package-json {2,}\S/m);
+			expect(result.stdout).toMatch(/^ {2}pnpm-workspace {2,}\S/m);
+			expect(result.stdout).toMatch(/^ {2}yaml {2,}\S/m);
 		}),
 	);
 
