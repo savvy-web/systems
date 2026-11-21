@@ -1,3 +1,4 @@
+import type { GitmodulesEntry } from "@effected/git";
 import { Git, Gitmodules } from "@effected/git";
 import { Context, Effect, FileSystem, Layer, Option, Path, Result } from "effect";
 import { REPOS_DIR } from "../constants.js";
@@ -31,6 +32,68 @@ export const submoduleNameFromKey = (key: string): string | undefined => {
 	const rest = key.slice("submodule.".length);
 	const lastDot = rest.lastIndexOf(".");
 	return lastDot <= 0 ? undefined : rest.slice(0, lastDot);
+};
+
+/**
+ * One manifest entry's `.gitmodules` section, and whether it was paired by
+ * the section's `path` field (a diverged, re-slugged section name) rather than
+ * by its canonical name.
+ *
+ * @internal
+ */
+export interface PairedSection {
+	readonly section: GitmodulesEntry;
+	readonly viaPath: boolean;
+}
+
+/**
+ * Pairs each manifest entry with at most one `.gitmodules` section, keyed by
+ * manifest entry name. Sections absent from the result's values are orphans.
+ *
+ * @remarks
+ * Pairing is arbitrated in TWO PASSES over every manifest entry, not one entry
+ * at a time — entry order used to decide the outcome: with a section named
+ * ".repos/A" whose `path` field reads ".repos/B", pairing B first stole that
+ * section via the path fallback, leaving A's own correctly-named section
+ * unclaimed. Pass 1 claims every exact-NAME match (`git submodule add` derives
+ * a section's name from its path, so the canonical name is the repo path);
+ * pass 2 lets each still-unpaired entry fall back to the first unclaimed
+ * section whose `path` matches, in `.gitmodules` order. A section is claimed
+ * at most once, so when two sections share an entry's path only the first
+ * pairs and the other stays an orphan.
+ *
+ * Shared by `ReposDrift.check` and `ReposManager.deregister`: the report and
+ * the refusal must agree on which section an entry owns, or the refusal names
+ * a remedy for a section the report calls an orphan.
+ *
+ * @internal
+ */
+export const pairManifestSections = (
+	manifestNames: ReadonlyArray<string>,
+	sections: ReadonlyArray<GitmodulesEntry>,
+): ReadonlyMap<string, PairedSection> => {
+	const claimed = new Set<string>();
+	const paired = new Map<string, PairedSection>();
+	for (const name of manifestNames) {
+		const expectedPath = `${REPOS_DIR}/${name}`;
+		const nameMatch = sections.find((candidate) => candidate.name === expectedPath && !claimed.has(candidate.name));
+		if (nameMatch) {
+			claimed.add(nameMatch.name);
+			paired.set(name, { section: nameMatch, viaPath: false });
+		}
+	}
+	for (const name of manifestNames) {
+		if (paired.has(name)) {
+			continue;
+		}
+		const expectedPath = `${REPOS_DIR}/${name}`;
+		const pathMatch = sections.find((candidate) => candidate.path === expectedPath && !claimed.has(candidate.name));
+		if (pathMatch) {
+			claimed.add(pathMatch.name);
+			paired.set(name, { section: pathMatch, viaPath: true });
+		}
+	}
+	return paired;
 };
 
 /**
@@ -90,7 +153,16 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 				 * `submodule.<name>.*` section reported clean while `git submodule
 				 * status` still listed the phantom entry.
 				 */
-				const localRegistrationDrifts = (root: string, manifestEntries: ReadonlyArray<readonly [string, unknown]>) =>
+				const localRegistrationDrifts = (
+					root: string,
+					manifestEntries: ReadonlyArray<readonly [string, unknown]>,
+					sections: {
+						/** `.gitmodules` sections no manifest entry claims — exactly the ones reported `orphanGitmodulesEntry`. */
+						readonly orphans: ReadonlySet<string>;
+						/** Sections a manifest entry claims by PATH under a diverged name, keyed section name → manifest entry name. */
+						readonly claimedByPath: ReadonlyMap<string, string>;
+					},
+				) =>
 					Effect.gen(function* () {
 						const found: RepoDrift[] = [];
 						// --- Fifth authority: the superproject's LOCAL git config ------
@@ -166,16 +238,65 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						// A stale local registration whose gitdir no longer backs any
-						// manifest entry: nothing above can attribute it to an entry, but
-						// leaving it unreported means `git submodule status` keeps
-						// listing a name the manifest has never heard of.
+						// A local registration that matches no manifest entry's canonical
+						// name. Three different states land here, told apart by
+						// `.gitmodules`:
+						//
+						// - The section is CLAIMED BY PATH: a manifest entry re-slugged
+						//   after vendoring still pairs with it through its `path` field
+						//   (the `pathMismatch` above reports the name divergence). The
+						//   registration backs that live entry — it is neither stale nor an
+						//   orphan, and deregister refuses it — so it is reported as the
+						//   ENTRY's divergence (named for the entry, carrying its
+						//   canonical path as `manifestValue`, like the per-entry branch
+						//   above) with the same re-vendor remedy: `remove` finds the
+						//   section by path and `add` re-creates it canonically. This is
+						//   the branch for an UNCLONED worktree; a cloned one is already
+						//   `explained` by its gitdir above.
+						// - The section is STILL DECLARED and unclaimed: the manifest
+						//   and `.gitmodules` disagree (the `orphanGitmodulesEntry` above
+						//   reports that), which is a mid-add/remove transition. The
+						//   registration is backing a live section — it is NOT stale, and
+						//   deregistering it would break the checkout. The finding stays
+						//   (it is real local state) but names the transition and a
+						//   non-destructive fix.
+						// - The section is ABSENT from `.gitmodules` too: nothing in this
+						//   branch declares it, so the registration is stale for THIS
+						//   checkout. Local git config is unversioned and shared across
+						//   branches, though, so another branch may still vendor the path —
+						//   switching back is then the cheap fix, and deregister is right
+						//   only when no branch vendors it.
 						for (const registeredName of registeredNames) {
 							if (
 								!registeredName.startsWith(`${REPOS_DIR}/`) ||
 								canonicalNames.has(registeredName) ||
 								explained.has(registeredName)
 							) {
+								continue;
+							}
+							const claimant = sections.claimedByPath.get(registeredName);
+							if (claimant !== undefined) {
+								const claimantPath = `${REPOS_DIR}/${claimant}`;
+								found.push(
+									RepoDrift.make({
+										name: claimant,
+										kind: "localRegistrationDivergence",
+										detail: `local git config registers submodule "${registeredName}", the .gitmodules section manifest entry "${claimant}" claims by its path "${claimantPath}" under a diverged name (see pathMismatch) — it backs that live entry rather than a leftover, so do not deregister it; re-vendor the entry to canonicalize both: \`savvy repos remove ${claimant}\`, then \`savvy repos add\` with the orientation the remove result hands back`,
+										manifestValue: claimantPath,
+										observedValue: registeredName,
+									}),
+								);
+								continue;
+							}
+							if (sections.orphans.has(registeredName)) {
+								found.push(
+									RepoDrift.make({
+										name: registeredName,
+										kind: "localRegistrationDivergence",
+										detail: `local git config registers submodule "${registeredName}", which backs a .gitmodules section that is still declared but matches no manifest entry — the manifest and .gitmodules disagree (see orphanGitmodulesEntry), a mid-add/remove transition rather than a leftover registration; finish or revert the add/remove that left them disagreeing, and do not remove this registration`,
+										observedValue: registeredName,
+									}),
+								);
 								continue;
 							}
 							found.push(
@@ -187,7 +308,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 									// manifest entry left to re-register, so the only fix is to
 									// drop the section outright. Say that, or the report names a
 									// problem whose stated remedy is for a different one.
-									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`savvy repos deregister ${registeredName}\``,
+									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry or .gitmodules section — a stale registration left behind by a rename, an unvendoring, or a branch switch (local git config is shared across branches, so if another branch still vendors this path, switching back to it is the cheap fix); only when no branch vendors it, clear it with \`savvy repos deregister ${registeredName}\``,
 									observedValue: registeredName,
 								}),
 							);
@@ -235,7 +356,12 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							// nested-submodule probe is deliberately not run: with nothing
 							// registered, every entry is already reported unregistered
 							// above, which is the dominant signal.
-							drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
+							drifts.push(
+								...(yield* localRegistrationDrifts(root, manifestEntries, {
+									orphans: new Set<string>(),
+									claimedByPath: new Map<string, string>(),
+								})),
+							);
 							return ReposDriftReport.make({ drifts, clean: drifts.length === 0 });
 						}
 
@@ -263,68 +389,15 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						const statusByPath = new Map(statuses.map((status) => [status.path, status]));
 
 						const drifts: RepoDrift[] = [];
-						const matchedSectionNames = new Set<string>();
 
-						// Pairing is arbitrated in TWO PASSES over every manifest entry,
-						// not one entry at a time -- entry order used to decide the
-						// outcome: with a section named ".repos/A" but whose `path` field
-						// reads ".repos/B", pairing B FIRST (in `Object.entries` order)
-						// stole that section via the path fallback below, leaving A's own
-						// correctly-named section unclaimed and A wrongly reported
-						// `unregisteredManifestEntry` despite its exact-name section
-						// existing. Claiming every exact-NAME match first, across ALL
-						// entries, before any entry is allowed to fall back to a PATH
-						// match closes that: a section already claimed by its rightful
-						// name-matched entry can never be stolen by another entry's path
-						// fallback, regardless of manifest iteration order.
-						interface Paired {
-							readonly section: (typeof gitmodules.entries)[number];
-							readonly viaPath: boolean;
-						}
-						const pairedByName = new Map<string, Paired>();
-
-						// Pass 1: exact-name claims, across every entry.
-						for (const [name] of manifestEntries) {
-							const expectedPath = `${REPOS_DIR}/${name}`;
-							// `git submodule add` derives the section's NAME (the
-							// `[submodule "<name>"]` subsection) from its path at
-							// creation time, so under normal use `section.name` already
-							// equals `expectedPath` -- matching sections is done against
-							// that canonical name, never the section's own `path` field,
-							// because a differing `path` field is itself the
-							// `pathMismatch` drift this loop needs to be able to report;
-							// matching on `path` would hide it.
-							const nameMatch = gitmodules.entries.find(
-								(candidate) => candidate.name === expectedPath && !matchedSectionNames.has(candidate.name),
-							);
-							if (nameMatch) {
-								matchedSectionNames.add(nameMatch.name);
-								pairedByName.set(name, { section: nameMatch, viaPath: false });
-							}
-						}
-
-						// Pass 2: path-fallback for entries STILL unmatched after pass 1,
-						// against sections pass 1 (or an earlier pass-2 iteration) hasn't
-						// already claimed. A diverged section name (e.g. a manifest entry
-						// re-slugged after the `.gitmodules` section was created under an
-						// older name) would otherwise degrade straight to an
-						// unregistered/orphan pair and mask the url/shallow comparisons
-						// below; pairing by the section's own `path` field is the one
-						// other identifier that still ties a section to this manifest
-						// entry.
-						for (const [name] of manifestEntries) {
-							if (pairedByName.has(name)) {
-								continue;
-							}
-							const expectedPath = `${REPOS_DIR}/${name}`;
-							const pathMatch = gitmodules.entries.find(
-								(candidate) => candidate.path === expectedPath && !matchedSectionNames.has(candidate.name),
-							);
-							if (pathMatch) {
-								matchedSectionNames.add(pathMatch.name);
-								pairedByName.set(name, { section: pathMatch, viaPath: true });
-							}
-						}
+						// The pairing is the shared pure `pairManifestSections`, so
+						// `ReposManager.deregister` classifies a section exactly as this
+						// report does.
+						const pairedByName = pairManifestSections(
+							manifestEntries.map(([name]) => name),
+							gitmodules.entries,
+						);
+						const matchedSectionNames = new Set([...pairedByName.values()].map((paired) => paired.section.name));
 
 						for (const [name, entry] of manifestEntries) {
 							const expectedPath = `${REPOS_DIR}/${name}`;
@@ -431,10 +504,22 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 
 						// Any `.gitmodules` section not claimed by a manifest entry above
 						// is an orphan -- registered with git but unknown to the manifest.
+						// The local-registration check below keys its transition finding
+						// on this SAME set (and its path-claimed finding on the pass-2
+						// pairings), so a detail that says "see orphanGitmodulesEntry"
+						// always has one to see.
+						const orphanSectionNames = new Set<string>();
+						const claimedByPath = new Map<string, string>();
+						for (const [name, paired] of pairedByName) {
+							if (paired.viaPath) {
+								claimedByPath.set(paired.section.name, name);
+							}
+						}
 						for (const section of gitmodules.entries) {
 							if (matchedSectionNames.has(section.name)) {
 								continue;
 							}
+							orphanSectionNames.add(section.name);
 							drifts.push(
 								RepoDrift.make({
 									name: section.name,
@@ -445,7 +530,12 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
+						drifts.push(
+							...(yield* localRegistrationDrifts(root, manifestEntries, {
+								orphans: orphanSectionNames,
+								claimedByPath,
+							})),
+						);
 
 						// --- One level down: a vendored repo's OWN submodules ----------
 						// Sparse-checkout governs only the parent's TRACKED files; an

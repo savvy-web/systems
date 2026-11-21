@@ -7,7 +7,7 @@ import { Capture } from "../../utils/capture.js";
 import { Interactive } from "../../utils/interactive.js";
 import { ReposStub } from "./fixtures.js";
 
-/** A drift report with one stale registration, one per-entry divergence (not stale), and an unrelated drift. */
+/** A drift report with one stale registration, two per-entry divergences (not stale, one via a path-claimed section), a mid-transition registration (not stale), and an unrelated drift. */
 const driftReport: Repos.ReposDriftReport = {
 	clean: false,
 	drifts: [
@@ -25,6 +25,29 @@ const driftReport: Repos.ReposDriftReport = {
 			observedValue: ".repos/spec-old",
 		},
 		{ name: "foo", kind: "urlMismatch", detail: "url drift", manifestValue: "a", observedValue: "b" },
+		// A mid-add/remove transition (#563): .gitmodules still declares the
+		// section, so drift pairs the registration with an orphanGitmodulesEntry.
+		{
+			name: ".repos/transitional",
+			kind: "orphanGitmodulesEntry",
+			detail: ".gitmodules section has no manifest entry",
+			observedValue: ".repos/transitional",
+		},
+		{
+			name: ".repos/transitional",
+			kind: "localRegistrationDivergence",
+			detail: "local git config registers .repos/transitional, which backs a still-declared .gitmodules section",
+			observedValue: ".repos/transitional",
+		},
+		// A registration under a re-slugged section a manifest entry claims by
+		// path: drift reports it as that entry's divergence, with its manifest value.
+		{
+			name: "reslug",
+			kind: "localRegistrationDivergence",
+			detail: "local git config registers .repos/old-reslug, the section manifest entry reslug claims by its path",
+			manifestValue: ".repos/reslug",
+			observedValue: ".repos/old-reslug",
+		},
 	],
 };
 
@@ -72,6 +95,10 @@ describe("repos deregister", () => {
 			// A live entry's divergence is not deregister's to clear, nor is a url drift.
 			expect(frame).not.toContain("spec");
 			expect(frame).not.toContain("foo");
+			// Nor is a registration backing a still-declared .gitmodules section.
+			expect(frame).not.toContain("transitional");
+			// Nor one backing a section a manifest entry claims by path.
+			expect(frame).not.toContain("reslug");
 			yield* picker.press("enter");
 			yield* Fiber.join(fiber);
 			expect(calls).toEqual([".repos/old"]);

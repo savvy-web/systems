@@ -245,8 +245,15 @@ read them via the tools below rather than trusting recall for field names.
   would leave the check failing identically forever; keyed on an orphaned
   config section with no manifest entry, it is cleared by
   `savvy repos deregister <name>` — or the `repos_manage` `deregister`
-  action, which refuses a section still backing a live manifest entry and
-  stages nothing, since local config is unversioned), and
+  action, which refuses a section still backing a live manifest entry or
+  still declared in `.gitmodules`, and stages nothing, since local config is
+  unversioned. Two cautions before running EITHER remedy: a
+  `localRegistrationDivergence` paired with an `orphanGitmodulesEntry` for
+  the same path is a mid-add/remove transition, not a stale registration —
+  finish or revert the add/remove instead; and one seen right after a branch
+  switch belongs to the checkout, not the branch — local git config is shared
+  across branches, so switch back first rather than deregister or
+  re-vendor), and
   `nestedSubmoduleDivergence` (a vendored repo's OWN submodule is
   materialized and off its recorded commit — see below). `status --drift`
   runs the plain status report first and the drift check after; either
@@ -346,7 +353,8 @@ read them via the tools below rather than trusting recall for field names.
     The PREFERRED route is `savvy repos deregister <name>` (or the
     `repos_manage` `deregister` action), which performs the removal typed and
     refuses a section still backing a live manifest entry — canonically named
-    or gitdir-diverged — as well as any section outside `.repos/`; the raw
+    or gitdir-diverged — a section `.gitmodules` still declares (a
+    mid-add/remove transition), and any section outside `.repos/`; the raw
     Bash allowance remains as a fallback. Narrow on purpose: removal verbs only, local config
     only (an `-f .gitmodules` write denies — that file is tracked host
     content), and every `.repos/`-mentioning token must be a `submodule.<name>`

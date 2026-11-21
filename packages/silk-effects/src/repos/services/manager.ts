@@ -19,7 +19,7 @@ import type {
 	ReposSyncReport,
 } from "../schemas/reports.js";
 import { ReposConfigStore } from "./config-store.js";
-import { submoduleNameFromKey } from "./drift.js";
+import { pairManifestSections, submoduleNameFromKey } from "./drift.js";
 import { ReposLockdown, resolveModuleDir, resolveSuperprojectGitDir } from "./lockdown.js";
 
 /**
@@ -228,7 +228,15 @@ export interface ReposManagerShape {
 	 * state's remedy is a re-vendor, not a deregister) — UNLESS that entry's
 	 * canonical section is also registered, in which case the old-named twin
 	 * is a genuine orphan and removing it is a crashed-rename recovery's own
-	 * final step. Reconciling a LIVE
+	 * final step. Also refuses a section `.gitmodules` still declares: the
+	 * manifest and `.gitmodules` disagree mid-add/remove, the registration
+	 * backs a live section rather than a leftover, and the fix is to finish or
+	 * revert that add/remove (an unparsable `.gitmodules` refuses too, rather
+	 * than guessing); a declared section a manifest entry claims by its `path`
+	 * under a diverged name is that entry's own, and the refusal names a
+	 * re-vendor instead. Local git config is shared across branches, so a
+	 * registration another branch still vendors is only stale for this
+	 * checkout — switching back is the cheaper fix there. Reconciling a LIVE
 	 * registration is `sync`'s job and unvendoring is `remove`'s, so
 	 * deregistration only ever touches state nothing else owns. Touches only
 	 * the superproject's local config — no vendored worktree — so unlike the
@@ -1819,6 +1827,70 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								new ReposConfigError({
 									path: MANIFEST_PATH,
 									reason: `"${section}" is the canonical registration of manifest entry "${name}" — deregister clears STALE registrations only; use remove to unvendor, or sync to reconcile`,
+									kind: "invalid",
+								}),
+							);
+						}
+					}
+
+					// Refuse a section `.gitmodules` still DECLARES: the manifest and
+					// `.gitmodules` disagree (a mid-add/remove transition), and the
+					// registration is backing a live section rather than a leftover.
+					// The manifest check above is blind to it, so this is the
+					// backstop for the drift report's transition finding. Only a
+					// `NotFound` read means "no sections"; any other read failure is
+					// a real I/O problem, and an unparsable `.gitmodules` refuses
+					// rather than guesses.
+					const gitmodulesPath = path.join(root, ".gitmodules");
+					const gitmodulesText = yield* fs.readFileString(gitmodulesPath).pipe(
+						Effect.map(Option.some),
+						Effect.catchTag("PlatformError", (error) =>
+							error.reason._tag === "NotFound"
+								? Effect.succeed(Option.none<string>())
+								: Effect.fail(asSubmoduleError("read .gitmodules", gitmodulesPath)(error)),
+						),
+					);
+					if (Option.isSome(gitmodulesText)) {
+						const parsedGitmodules = yield* Gitmodules.parse(gitmodulesText.value).pipe(
+							Effect.mapError(
+								(error) =>
+									new ReposConfigError({
+										path: gitmodulesPath,
+										reason: `.gitmodules failed to parse (${error.message}) — refusing to deregister "${section}" without knowing whether a .gitmodules section still declares it`,
+										kind: "invalid",
+									}),
+							),
+						);
+						const declared = parsedGitmodules.entries.find((entry) => entry.name === section);
+						// A declared section whose `path` pairs it with a manifest entry
+						// is that entry's own section under a diverged (re-slugged) name —
+						// the same path-fallback pairing `ReposDrift` makes — so the
+						// remedy is a re-vendor, not finishing an add/remove that never
+						// happened. The claimant comes from the SAME pairing drift uses,
+						// so only the section an entry actually pairs with is refused as
+						// a re-vendor; any other section declaring that path (a second
+						// re-slugged section, or one beside the entry's exact-name
+						// section) is an orphan and keeps the transition refusal.
+						const claimant =
+							declared === undefined
+								? undefined
+								: [...pairManifestSections(Object.keys(manifest.repos), parsedGitmodules.entries)].find(
+										([, paired]) => paired.viaPath && paired.section.name === section,
+									)?.[0];
+						if (claimant !== undefined) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: gitmodulesPath,
+									reason: `"${section}" is the .gitmodules section manifest entry "${claimant}" claims by its path ${REPOS_DIR}/${claimant} under a diverged name — deregister clears STALE registrations only; re-vendor the entry instead (remove, then add with the orientation the remove result hands back)`,
+									kind: "invalid",
+								}),
+							);
+						}
+						if (declared !== undefined) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: gitmodulesPath,
+									reason: `"${section}" is still declared in .gitmodules — deregister clears STALE registrations only; finish or revert the add/remove that left the manifest and .gitmodules disagreeing`,
 									kind: "invalid",
 								}),
 							);
