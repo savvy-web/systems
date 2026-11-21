@@ -4,8 +4,8 @@ import { join } from "node:path";
 import { NodeServices } from "@effect/platform-node";
 import { afterAll, beforeAll, describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
-import { Effect, Layer, Path, PlatformError } from "effect";
-import { ReposLockdown } from "../../src/repos/services/lockdown.js";
+import { Effect, FileSystem, Layer, Path, PlatformError } from "effect";
+import { ReposLockdown, resolveModuleDir } from "../../src/repos/services/lockdown.js";
 
 const layer = ReposLockdown.layer.pipe(Layer.provide(NodeServices.layer));
 const mode = (p: string) => statSync(p).mode & 0o777;
@@ -210,6 +210,89 @@ describe("ReposLockdown — gitdir pointer containment", () => {
 			expect(mode(outside)).toBe(before);
 			expect(mode(join(outside, "sentinel.txt"))).toBe(0o644);
 		}).pipe(Effect.provide(layer)),
+	);
+});
+
+describe("ReposLockdown — linked git worktree layout", () => {
+	// In a linked worktree `<root>/.git` is a FILE pointing at the per-worktree
+	// git dir `<common>/worktrees/<id>`, and git keeps that worktree's submodule
+	// gitdirs under it — outside `<root>` entirely.
+	let root: string;
+	let worktreeGitDir: string;
+	const resolve = (name: string) =>
+		Effect.gen(function* () {
+			const fs = yield* FileSystem.FileSystem;
+			const path = yield* Path.Path;
+			return yield* resolveModuleDir(fs, path, root, name);
+		}).pipe(Effect.provide(NodeServices.layer));
+
+	beforeAll(() => {
+		root = mkdtempSync(join(tmpdir(), "lockdown-linked-wt-"));
+		worktreeGitDir = join(mkdtempSync(join(tmpdir(), "lockdown-linked-common-")), "worktrees", "wt");
+		mkdirSync(worktreeGitDir, { recursive: true });
+		writeFileSync(join(root, ".git"), `gitdir: ${worktreeGitDir}\n`);
+		// Uninitialized: git leaves an empty directory at the submodule path.
+		mkdirSync(join(root, ".repos/fresh"), { recursive: true });
+		// Initialized: the pointer lands under the worktree git dir.
+		mkdirSync(join(root, ".repos/live/src"), { recursive: true });
+		writeFileSync(join(root, ".repos/live/src/a.ts"), "export {}\n");
+		mkdirSync(join(worktreeGitDir, "modules/.repos/live"), { recursive: true });
+		writeFileSync(join(worktreeGitDir, "modules/.repos/live/config"), "[core]\n");
+		writeFileSync(join(root, ".repos/live/.git"), `gitdir: ${join(worktreeGitDir, "modules/.repos/live")}\n`);
+	});
+	afterAll(() =>
+		Effect.runPromise(
+			ReposLockdown.pipe(
+				Effect.flatMap((l) => Effect.all([l.unlock(root, "fresh"), l.unlock(root, "live")])),
+				Effect.provide(layer),
+				Effect.ignore,
+			),
+		).then(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(join(worktreeGitDir, "..", ".."), { recursive: true, force: true });
+		}),
+	);
+
+	it.effect("an uninitialized repo falls back under the worktree git dir, not through the .git file", () =>
+		Effect.gen(function* () {
+			expect(yield* resolve("fresh")).toBe(join(worktreeGitDir, "modules/.repos/fresh"));
+		}),
+	);
+
+	it.effect("accepts a pointer outside root that lies under the worktree git dir", () =>
+		Effect.gen(function* () {
+			expect(yield* resolve("live")).toBe(join(worktreeGitDir, "modules/.repos/live"));
+		}),
+	);
+
+	it.effect("lock and unlock on an uninitialized repo succeed", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			yield* lockdown.unlock(root, "fresh");
+			yield* lockdown.lock(root, "fresh");
+			yield* lockdown.withUnlocked(root, "fresh", Effect.void);
+		}).pipe(Effect.provide(layer)),
+	);
+
+	it.effect("unlock reaches the initialized repo's module gitdir under the worktree git dir", () =>
+		Effect.gen(function* () {
+			const lockdown = yield* ReposLockdown;
+			chmodSync(join(worktreeGitDir, "modules/.repos/live/config"), 0o444);
+			yield* lockdown.unlock(root, "live");
+			expect(mode(join(worktreeGitDir, "modules/.repos/live/config"))).toBe(0o644);
+			yield* lockdown.lock(root, "live");
+			expect(mode(join(root, ".repos/live/src/a.ts"))).toBe(0o444);
+		}).pipe(Effect.provide(layer)),
+	);
+
+	it.effect("a module-gitdir probe through a file folds to absent instead of failing", () =>
+		Effect.gen(function* () {
+			// A primary-style `.git/modules/...` path running through the `.git`
+			// FILE is exactly the BadResource shape the old fallback hit.
+			const fs = yield* FileSystem.FileSystem;
+			const exit = yield* fs.exists(join(root, ".git/modules/.repos/fresh")).pipe(Effect.exit);
+			expect(exit._tag).toBe("Failure");
+		}).pipe(Effect.provide(NodeServices.layer)),
 	);
 });
 

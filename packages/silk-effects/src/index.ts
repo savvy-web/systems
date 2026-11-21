@@ -17,6 +17,7 @@
 // ── Errors (domain core, re-exported from @savvy-web/silk-core) ──
 export {
 	BiomeSyncError,
+	BiomeSyncErrorCode,
 	ChangesetConfigError,
 	ConfigNotFoundError,
 	PublishTargetBindingError,

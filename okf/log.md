@@ -1,5 +1,9 @@
 # Log
 
+## 2026-11-21
+
+* Updated silk-effects
+
 ## 2026-11-12
 
 * Updated @savvy-web/changelog

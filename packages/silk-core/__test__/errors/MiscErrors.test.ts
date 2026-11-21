@@ -1,7 +1,27 @@
 import { describe, expect, it } from "vitest";
+import { BiomeSyncError, BiomeSyncErrorCode } from "../../src/errors/BiomeSyncError.js";
 import { ConfigNotFoundError } from "../../src/errors/ConfigNotFoundError.js";
 import { ReleaseChannelError } from "../../src/errors/ReleaseChannelError.js";
 import { WorkspaceAnalysisError } from "../../src/errors/WorkspaceAnalysisError.js";
+
+describe("BiomeSyncError", () => {
+	it.each([
+		["read-failed", "could not read"],
+		["parse-failed", "is not valid JSONC"],
+		["edit-failed", "could not update $schema"],
+		["write-failed", "could not write"],
+	] as const)("derives the %s message from path and code", (code, phrase) => {
+		const cause = new Error("underlying detail");
+		const err = new BiomeSyncError({ path: "/repo/biome.json", code, cause });
+		expect(err._tag).toBe("BiomeSyncError");
+		expect(err.cause).toBe(cause);
+		expect(err.message).toBe(`Failed to sync biome schema in /repo/biome.json: ${phrase}`);
+	});
+
+	it("lists exactly the four failure codes", () => {
+		expect(BiomeSyncErrorCode.literals).toEqual(["read-failed", "parse-failed", "edit-failed", "write-failed"]);
+	});
+});
 
 describe("WorkspaceAnalysisError", () => {
 	it("has correct tag", () => {

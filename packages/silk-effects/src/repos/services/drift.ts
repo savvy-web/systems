@@ -5,7 +5,7 @@ import type { ReposConfigError } from "../errors.js";
 import { GitSubmoduleError } from "../errors.js";
 import { RepoDrift, ReposDriftReport } from "../schemas/drift.js";
 import { ReposConfigStore } from "./config-store.js";
-import { resolveModuleDir } from "./lockdown.js";
+import { resolveModuleDir, resolveSuperprojectGitDir } from "./lockdown.js";
 
 /**
  * Extracts the submodule NAME from a `submodule.<name>.<property>` config key.
@@ -129,7 +129,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 								.filter((registeredName): registeredName is string => registeredName !== undefined),
 						);
 
-						const modulesRoot = path.join(root, ".git", "modules");
+						const modulesRoot = path.join(yield* resolveSuperprojectGitDir(fs, path, root), "modules");
 						const canonicalNames = new Set(manifestEntries.map(([name]) => `${REPOS_DIR}/${name}`));
 						const explained = new Set<string>();
 

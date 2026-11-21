@@ -129,12 +129,15 @@ For each file found:
 
 ### BiomeSyncError
 
-Raised when a Biome config file cannot be read, parsed, or written.
+Raised when a Biome config file cannot be read, parsed, or written. Match on `code` to tell the stages apart; `cause` carries the original failure unchanged, and `message` is derived from `path` and `code`.
 
 ```typescript
+type BiomeSyncErrorCode = "read-failed" | "parse-failed" | "edit-failed" | "write-failed";
+
 class BiomeSyncError extends Data.TaggedError("BiomeSyncError")<{
   readonly path: string;
-  readonly reason: string;
+  readonly code: BiomeSyncErrorCode;
+  readonly cause: unknown;
 }> {}
 ```
 
