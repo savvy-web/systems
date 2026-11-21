@@ -877,7 +877,7 @@ write_mail() {
 	done
 }
 
-@test "unterminated ball-ours fragment does not fire until the line is completed" {
+@test "torn ball-ours fragment does not fire until the line is completed" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"
 	make_project >/dev/null
@@ -892,6 +892,7 @@ write_mail() {
 
 	const journal = join(process.env.CLAUDE_PROJECT_DIR, ".claude", "dogfood", "effected.jsonl");
 	const full = JSON.stringify({ at: "2026-07-16T01:00:00Z", event: "mail-received", role: "downstream", phase: "adopting", ball: "ours", round: 2 });
+	const cut = full.length - 10;
 	let prev = { journals: new Map(), mailboxes: new Map() };
 	const tick = async (label) => {
 		const r = diagnose(await scan(), prev);
@@ -899,10 +900,10 @@ write_mail() {
 		console.log(label + ":" + r.lines.length);
 	};
 	await tick("TICK1");
-	// A complete object written WITHOUT its newline is still a writer mid-append.
-	appendFileSync(journal, full);
+	// A writer mid-append: the bytes so far are no valid JSON, so no frame.
+	appendFileSync(journal, full.slice(0, cut));
 	await tick("TICK2");
-	appendFileSync(journal, "\n");
+	appendFileSync(journal, full.slice(cut) + "\n");
 	await tick("TICK3");
 	await tick("TICK4");
 	EOF
@@ -913,6 +914,64 @@ write_mail() {
 	[[ "$output" == *"TICK2:0"* ]]
 	[[ "$output" == *"TICK3:1"* ]]
 	[[ "$output" == *"TICK4:0"* ]]
+	done
+}
+
+# Reviewer repro (PR #911): a hand-appended correction saved by an editor that
+# writes no final newline. The guard and journal-append.sh treat it as the
+# current line, so the monitor must too.
+@test "complete ball-ours envelope with no trailing newline fires" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+	printf '%s' '{"at":"2026-07-16T01:00:00Z","event":"correction","role":"downstream","phase":"adopting","ball":"ours","round":2}' \
+		>> "$CLAUDE_PROJECT_DIR/.claude/dogfood/effected.jsonl"
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood: ball is ours in loop "effected" (phase: adopting)'* ]]
+	done
+}
+
+@test "unterminated ball-ours envelope fires once, not again when its newline lands" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+
+	local harness="${SILK_TMP}/unterminated-frame.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const journal = join(process.env.CLAUDE_PROJECT_DIR, ".claude", "dogfood", "effected.jsonl");
+	const full = JSON.stringify({ at: "2026-07-16T01:00:00Z", event: "correction", role: "downstream", phase: "adopting", ball: "ours", round: 2 });
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const tick = async (label) => {
+		const r = diagnose(await scan(), prev);
+		prev = r.next;
+		console.log(label + ":" + r.lines.length);
+	};
+	await tick("TICK1");
+	appendFileSync(journal, full);
+	await tick("TICK2");
+	// Same size: the cached view still holds the unterminated frame.
+	await tick("TICK3");
+	appendFileSync(journal, "\n");
+	await tick("TICK4");
+	await tick("TICK5");
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:0"* ]]
+	[[ "$output" == *"TICK2:1"* ]]
+	[[ "$output" == *"TICK3:0"* ]]
+	[[ "$output" == *"TICK4:0"* ]]
+	[[ "$output" == *"TICK5:0"* ]]
 	done
 }
 
