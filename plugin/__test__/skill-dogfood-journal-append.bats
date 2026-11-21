@@ -641,3 +641,69 @@ seed_project_journal() {
 	[[ "$stderr" == *"is a symlink"* ]]
 	done
 }
+
+# --- torn tails and the envelope-frame rule (@effected/jsonl) -----------------
+# A session killed mid-append leaves an unterminated fragment. Appending
+# straight after it would glue the new snapshot onto the fragment, making BOTH
+# unreadable; the script closes the fragment with a newline first, so it stays
+# a permanent malformed line that readers skip and the snapshot lands whole.
+
+@test "unterminated fragment: closed with a newline, the new snapshot lands on its own line" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	seed
+	printf '%s' '{"at":"2026-' >> "$JOURNAL"
+	run_script "$SILK_TARGET" skills/dogfood/scripts/journal-append.sh "$JOURNAL" --event phase-change --phase handoff --ball ours
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.counterpart.id' <<< "$last")" = "effected" ]
+	[ "$(jq -r '.phase' <<< "$last")" = "handoff" ]
+	[ "$(sed -n 2p "$JOURNAL")" = '{"at":"2026-' ]
+	[ "$(wc -l < "$JOURNAL" | tr -d ' ')" -eq 3 ]
+	done
+}
+
+@test "cleanly terminated journal: no extra blank line is written" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	seed
+	run_script "$SILK_TARGET" skills/dogfood/scripts/journal-append.sh "$JOURNAL" --event phase-change --phase handoff
+	[ "$status" -eq 0 ]
+	[ "$(wc -l < "$JOURNAL" | tr -d ' ')" -eq 2 ]
+	[ "$(grep -c '^$' "$JOURNAL")" -eq 0 ]
+	done
+}
+
+@test "append after a healed fragment still inherits from the latest snapshot" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	seed
+	printf '%s' '{"at":"2026-' >> "$JOURNAL"
+	run_script "$SILK_TARGET" skills/dogfood/scripts/journal-append.sh "$JOURNAL" --event phase-change --phase handoff --ball ours
+	[ "$status" -eq 0 ]
+	run_script "$SILK_TARGET" skills/dogfood/scripts/journal-append.sh "$JOURNAL" --event phase-change --round 2
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.phase' <<< "$last")" = "handoff" ]
+	[ "$(jq -r '.ball' <<< "$last")" = "ours" ]
+	[ "$(jq -r '.round' <<< "$last")" = "2" ]
+	[ "$(wc -l < "$JOURNAL" | tr -d ' ')" -eq 4 ]
+	done
+}
+
+@test "trailing valid-JSON non-envelope line: skipped, inherits from the previous snapshot" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	seed
+	printf '%s\n' '{"foo":1}' >> "$JOURNAL"
+	run_script "$SILK_TARGET" skills/dogfood/scripts/journal-append.sh "$JOURNAL" --event phase-change --phase handoff
+	[ "$status" -eq 0 ]
+	local last
+	last="$(tail -n1 "$JOURNAL")"
+	[ "$(jq -r '.role' <<< "$last")" = "downstream" ]
+	[ "$(jq -r '.counterpart.id' <<< "$last")" = "effected" ]
+	[ "$(jq -r 'has("foo")' <<< "$last")" = "false" ]
+	done
+}

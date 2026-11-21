@@ -15,7 +15,7 @@
 // Shape: a self-scheduling poll loop around a pure `diagnose(current, prev)`
 // step, so tests can import it without starting the interval, plus a
 // `--once` single-shot mode.
-import { globSync, realpathSync, statSync } from "node:fs";
+import { closeSync, globSync, openSync, readSync, realpathSync, statSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { basename, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,31 +27,55 @@ const POLL_MS = 2000;
 // --- parsing --------------------------------------------------------------
 
 /**
- * Return the last VALID line of a JSONL journal (walking bottom-up, per the
- * journal's corrupt-tail-self-heals contract), parsed to an object, or null
- * if the file is empty / every line is malformed.
+ * True when a parsed line is an envelope frame: an object with a string `at`
+ * and a string `event`. This is @effected/jsonl's rule -- "last valid" means
+ * the last valid ENVELOPE, not merely the last valid JSON -- and the same
+ * predicate journal-append.sh and dogfood-guard.sh use, so all three readers
+ * agree on which line is current -- including a complete frame on a final
+ * line with no trailing newline, which the monitor reads as current without
+ * moving its cursor past it. A stray `{"foo":1}` parses but is no
+ * snapshot, and is walked over like a corrupt line.
+ */
+function isEnvelopeFrame(parsed) {
+	return (
+		parsed !== null &&
+		typeof parsed === "object" &&
+		!Array.isArray(parsed) &&
+		typeof parsed.at === "string" &&
+		typeof parsed.event === "string"
+	);
+}
+
+/** Parse one line to an envelope frame, or null (blank, malformed or not a frame). */
+function parseFrame(line) {
+	const trimmed = line.trim();
+	if (!trimmed) return null;
+	try {
+		const parsed = JSON.parse(trimmed);
+		return isEnvelopeFrame(parsed) ? parsed : null;
+	} catch {
+		// unparseable line -- skipped, same posture as dogfood-guard.sh
+		return null;
+	}
+}
+
+/**
+ * Return the last valid envelope of a run of TERMINATED journal lines
+ * (walking bottom-up, per the journal's corrupt-tail-self-heals contract),
+ * parsed to an object, or null if none is a valid frame.
  */
 function lastValidJsonlLine(text) {
 	const lines = text.split("\n");
 	for (let i = lines.length - 1; i >= 0; i--) {
-		const line = lines[i].trim();
-		if (!line) continue;
-		try {
-			const parsed = JSON.parse(line);
-			if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-				return parsed;
-			}
-		} catch {
-			// unparseable tail line -- walk back one line, same posture as
-			// dogfood-guard.sh
-		}
+		const parsed = parseFrame(lines[i]);
+		if (parsed) return parsed;
 	}
 	return null;
 }
 
 /**
  * Timestamp (ms) of the CURRENT collaboration's opening line -- the `at` of the
- * last `loop-started` snapshot in the journal.
+ * last `loop-started` envelope in the text.
  *
  * A journal outlives any one collaboration: a reopened loop appends a fresh
  * `loop-started` after the previous terminal `unlinked`, so the LAST one marks
@@ -60,24 +84,111 @@ function lastValidJsonlLine(text) {
  * journal's `lastMail.in` pointer cannot be resolved (issue #344), so already
  * processed mail from a previous loop is never re-announced as new.
  *
- * Returns null when no `loop-started` line is present or its `at` is unparseable.
+ * Returns undefined when no `loop-started` envelope is present (so an
+ * incremental read keeps the value an earlier region found), or null when the
+ * last one's `at` is unparseable.
  */
 function loopStartedAtMs(text) {
 	const lines = text.split("\n");
 	for (let i = lines.length - 1; i >= 0; i--) {
-		const line = lines[i].trim();
-		if (!line) continue;
-		try {
-			const parsed = JSON.parse(line);
-			if (parsed?.event === "loop-started" && typeof parsed.at === "string") {
-				const ms = Date.parse(parsed.at);
-				return Number.isNaN(ms) ? null : ms;
-			}
-		} catch {
-			// malformed line -- walk back, same posture as lastValidJsonlLine
+		const parsed = parseFrame(lines[i]);
+		if (parsed?.event === "loop-started") return dateOrNull(parsed.at);
+	}
+	return undefined;
+}
+
+// --- cursor-incremental journal reads -----------------------------------------
+//
+// Modelled on @effected/jsonl's cursor: `end` is the byte offset just past the
+// last TERMINATED line this process has read (jsonl's `line.end`). Each poll
+// reads only the bytes appended since, so a long-lived journal costs its
+// growth, not its history. `end` never moves past an unterminated tail: it
+// may be a writer mid-append. A tail that already parses as a complete
+// envelope frame is still the current line for the scan that sees it (the
+// other two readers agree), but it is re-read, not double-counted, once its
+// newline lands. A torn fragment is held back. A file that shrank, was rewritten in place at the same size, or was
+// replaced by a new inode breaks the append-only contract; the cursor is
+// discarded and the file re-read from zero (jsonl's JournalResync, handled by
+// resyncing rather than surfacing, since a monitor must never crash).
+//
+// The cursor is in-process only and deliberately NOT persisted: turn alerts
+// are meant to re-fire when a new session starts, and mail dedupe already
+// persists through the journal's own `lastMail.in`.
+
+/** @type {Map<string, {ino: number, size: number, mtimeMs: number, end: number, snapshot: object | null, loopStartedAtMs: number | null, view: {snapshot: object | null, loopStartedAtMs: number | null}}>} */
+const journalCursors = new Map();
+
+function readRange(path, start, length) {
+	const buf = Buffer.alloc(length);
+	const fd = openSync(path, "r");
+	try {
+		let read = 0;
+		while (read < length) {
+			const n = readSync(fd, buf, read, length - read, start + read);
+			if (n === 0) break;
+			read += n;
+		}
+		return buf.subarray(0, read);
+	} finally {
+		closeSync(fd);
+	}
+}
+
+function readJournal(path) {
+	const stat = statSync(path);
+	let cursor = journalCursors.get(path);
+	if (cursor) {
+		const replaced = stat.ino !== cursor.ino || stat.size < cursor.size;
+		const rewritten = stat.size === cursor.size && stat.mtimeMs !== cursor.mtimeMs;
+		if (replaced || rewritten) {
+			cursor = undefined;
+		} else if (stat.size === cursor.size) {
+			return cursor.view;
 		}
 	}
-	return null;
+	const base = cursor ?? { end: 0, snapshot: null, loopStartedAtMs: null };
+	const fresh = readRange(path, base.end, Math.max(0, stat.size - base.end));
+	const lastNewline = fresh.lastIndexOf(0x0a);
+	let next = {
+		ino: stat.ino,
+		size: stat.size,
+		mtimeMs: stat.mtimeMs,
+		end: base.end,
+		snapshot: base.snapshot,
+		loopStartedAtMs: base.loopStartedAtMs,
+	};
+	if (lastNewline !== -1) {
+		const region = fresh.subarray(0, lastNewline + 1).toString("utf8");
+		const started = loopStartedAtMs(region);
+		next = {
+			...next,
+			end: base.end + lastNewline + 1,
+			snapshot: lastValidJsonlLine(region) ?? base.snapshot,
+			loopStartedAtMs: started === undefined ? base.loopStartedAtMs : started,
+		};
+	}
+	// The bytes after the last newline: a writer mid-append, or a complete
+	// envelope saved with no final newline (an editor that writes none). A
+	// complete frame is current for this scan -- dogfood-guard.sh and
+	// journal-append.sh already treat it so -- but it is NOT folded into the
+	// persisted end/snapshot, so the line is re-read once its newline lands.
+	// It parses to the same object then, so the turn-alert signature is
+	// unchanged and the alert does not fire twice. A torn fragment is no frame
+	// and is held back.
+	const tail = parseFrame(fresh.subarray(lastNewline + 1).toString("utf8"));
+	const view = tail
+		? {
+				snapshot: tail,
+				loopStartedAtMs: tail.event === "loop-started" ? dateOrNull(tail.at) : next.loopStartedAtMs,
+			}
+		: { snapshot: next.snapshot, loopStartedAtMs: next.loopStartedAtMs };
+	journalCursors.set(path, { ...next, view });
+	return view;
+}
+
+function dateOrNull(at) {
+	const ms = Date.parse(at);
+	return Number.isNaN(ms) ? null : ms;
 }
 
 /** Split light YAML frontmatter (`---\nkey: value\n---`) off a mail file. */
@@ -110,8 +221,7 @@ async function scanJournals() {
 		const path = join(DOGFOOD_DIR, rel);
 		const id = rel.slice(0, -".jsonl".length);
 		try {
-			const text = await readFile(path, "utf8");
-			const snapshot = lastValidJsonlLine(text);
+			const { snapshot, loopStartedAtMs: startedAtMs } = readJournal(path);
 			const counterpartFromSnapshot =
 				snapshot?.counterpart && typeof snapshot.counterpart === "object" && typeof snapshot.counterpart.id === "string"
 					? snapshot.counterpart.id
@@ -129,7 +239,7 @@ async function scanJournals() {
 				counterpartId,
 				loopId,
 				snapshot,
-				loopStartedAtMs: loopStartedAtMs(text),
+				loopStartedAtMs: startedAtMs,
 			});
 		} catch {
 			// unreadable journal -- skip, same fail-open posture as the hook

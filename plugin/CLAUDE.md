@@ -41,4 +41,4 @@ Traps:
 → `@../okf/gotchas/markdownlint-fix-renumbers-host-block-lists.md` — load before writing a host block inside a list.
 → `@../okf/gotchas/gitignore-build-rule-hides-plugin-build-skill.md` — load before adding a skill or directory under `plugin/`, or trusting `build --check` to prove a file is committed.
 → `@../okf/gotchas/pkill-monitor-kills-every-session.md` — load before stopping a monitor.
-→ `@../okf/gotchas/it2-doorbell-retry-duplicates.md` — load when touching the dogfood doorbell.
+→ `@./skills/dogfood/SKILL.md` (its "Doorbell on `--send`" rule) — load when touching the dogfood doorbell.

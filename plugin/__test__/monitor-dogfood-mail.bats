@@ -843,6 +843,182 @@ write_mail() {
 	done
 }
 
+# --- @effected/jsonl alignment: envelope frames and cursor-incremental reads --
+
+@test "trailing valid-JSON non-envelope line: walks back to the previous snapshot" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-received","role":"downstream","phase":"adopting","ball":"ours","round":2}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected '{"foo":1}'
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood: ball is ours in loop "effected" (phase: adopting)'* ]]
+	done
+}
+
+# Two real polls, one POLL_MS apart; the journal gains a ball-ours line between
+# them. The second poll reads only the appended bytes and fires once.
+@test "journal growing by one line between ticks fires one turn alert" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+	local out="${SILK_TMP}/monitor.out"
+	env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" PLUGINFINITY_MONITOR_MAX_TICKS=2 node "$MONITOR" > "$out" 2>&1 &
+	local pid=$!
+	sleep 1
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T01:00:00Z","event":"mail-received","role":"downstream","phase":"adopting","ball":"ours","round":2}'
+	wait "$pid"
+	[ "$(grep -c 'dogfood: ball is ours in loop "effected" (phase: adopting)' "$out")" -eq 1 ]
+	done
+}
+
+@test "torn ball-ours fragment does not fire until the line is completed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+
+	local harness="${SILK_TMP}/torn-tail.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const journal = join(process.env.CLAUDE_PROJECT_DIR, ".claude", "dogfood", "effected.jsonl");
+	const full = JSON.stringify({ at: "2026-07-16T01:00:00Z", event: "mail-received", role: "downstream", phase: "adopting", ball: "ours", round: 2 });
+	const cut = full.length - 10;
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const tick = async (label) => {
+		const r = diagnose(await scan(), prev);
+		prev = r.next;
+		console.log(label + ":" + r.lines.length);
+	};
+	await tick("TICK1");
+	// A writer mid-append: the bytes so far are no valid JSON, so no frame.
+	appendFileSync(journal, full.slice(0, cut));
+	await tick("TICK2");
+	appendFileSync(journal, full.slice(cut) + "\n");
+	await tick("TICK3");
+	await tick("TICK4");
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:0"* ]]
+	[[ "$output" == *"TICK2:0"* ]]
+	[[ "$output" == *"TICK3:1"* ]]
+	[[ "$output" == *"TICK4:0"* ]]
+	done
+}
+
+# Reviewer repro (PR #911): a hand-appended correction saved by an editor that
+# writes no final newline. The guard and journal-append.sh treat it as the
+# current line, so the monitor must too.
+@test "complete ball-ours envelope with no trailing newline fires" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+	printf '%s' '{"at":"2026-07-16T01:00:00Z","event":"correction","role":"downstream","phase":"adopting","ball":"ours","round":2}' \
+		>> "$CLAUDE_PROJECT_DIR/.claude/dogfood/effected.jsonl"
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$MONITOR" --once
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'dogfood: ball is ours in loop "effected" (phase: adopting)'* ]]
+	done
+}
+
+@test "unterminated ball-ours envelope fires once, not again when its newline lands" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1}'
+
+	local harness="${SILK_TMP}/unterminated-frame.mjs"
+	cat > "$harness" <<-EOF
+	import { appendFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const journal = join(process.env.CLAUDE_PROJECT_DIR, ".claude", "dogfood", "effected.jsonl");
+	const full = JSON.stringify({ at: "2026-07-16T01:00:00Z", event: "correction", role: "downstream", phase: "adopting", ball: "ours", round: 2 });
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const tick = async (label) => {
+		const r = diagnose(await scan(), prev);
+		prev = r.next;
+		console.log(label + ":" + r.lines.length);
+	};
+	await tick("TICK1");
+	appendFileSync(journal, full);
+	await tick("TICK2");
+	// Same size: the cached view still holds the unterminated frame.
+	await tick("TICK3");
+	appendFileSync(journal, "\n");
+	await tick("TICK4");
+	await tick("TICK5");
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"TICK1:0"* ]]
+	[[ "$output" == *"TICK2:1"* ]]
+	[[ "$output" == *"TICK3:0"* ]]
+	[[ "$output" == *"TICK4:0"* ]]
+	[[ "$output" == *"TICK5:0"* ]]
+	done
+}
+
+@test "truncated or replaced journal: re-read from zero, not resumed from a stale cursor" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_project >/dev/null
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T00:00:00Z","event":"mail-sent","role":"downstream","phase":"requested","ball":"theirs","round":1,"note":"a long note that pads this first line out well past the replacement"}'
+	write_journal_line "$CLAUDE_PROJECT_DIR" effected \
+		'{"at":"2026-07-16T01:00:00Z","event":"mail-received","role":"downstream","phase":"adopting","ball":"ours","round":2}'
+
+	local harness="${SILK_TMP}/resync.mjs"
+	cat > "$harness" <<-EOF
+	import { renameSync, writeFileSync } from "node:fs";
+	import { join } from "node:path";
+	import { scan, diagnose } from "${MONITOR}";
+
+	const dir = join(process.env.CLAUDE_PROJECT_DIR, ".claude", "dogfood");
+	const journal = join(dir, "effected.jsonl");
+	const line = (phase, round) =>
+		JSON.stringify({ at: "2026-07-16T02:00:00Z", event: "phase-change", role: "downstream", phase, ball: "ours", round }) + "\n";
+	let prev = { journals: new Map(), mailboxes: new Map() };
+	const tick = async (label) => {
+		const r = diagnose(await scan(), prev);
+		prev = r.next;
+		console.log(label + ":" + r.lines.join("|"));
+	};
+	await tick("TICK1");
+	// Truncated in place: the file shrinks below the cursor.
+	writeFileSync(journal, line("findings", 3));
+	await tick("TICK2");
+	// Replaced by rename with a LONGER file: same path, new inode, size grew --
+	// resuming at the old offset would land mid-line in unrelated bytes.
+	writeFileSync(join(dir, "tmp.next"), line("handoff", 4) +line("upstream-pr", 5) + line("released", 6));
+	renameSync(join(dir, "tmp.next"), journal);
+	await tick("TICK3");
+	EOF
+
+	run env CLAUDE_PROJECT_DIR="$CLAUDE_PROJECT_DIR" node "$harness"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'TICK1:dogfood: ball is ours in loop "effected" (phase: adopting)'* ]]
+	[[ "$output" == *'TICK2:dogfood: ball is ours in loop "effected" (phase: findings)'* ]]
+	[[ "$output" == *'TICK3:dogfood: ball is ours in loop "effected" (phase: released)'* ]]
+	done
+}
+
 @test "no monitors on Copilot: run_monitor refuses the target" {
 	# run_monitor refuses a target without monitors through bats' run.
 	run_monitor copilot dogfood-mail

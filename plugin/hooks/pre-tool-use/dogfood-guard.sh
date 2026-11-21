@@ -389,13 +389,17 @@ for journal in "${journals[@]}"; do
 
 	# Walk the file bottom-up (awk reverses it -- portable across the
 	# GNU/BSD `tac`-vs-`tail -r` split, and avoids bash4-only mapfile). The
-	# first line that survives `jq -e` as a JSON object is the tail's last
-	# VALID snapshot, per the journal's corrupt-tail-self-heals contract; an
-	# unparseable line is skipped in favor of the one before it.
+	# first line that survives `jq -e` as an envelope frame (an object with a
+	# string `at` and a string `event`) is the tail's last VALID snapshot, per
+	# the journal's corrupt-tail-self-heals contract. That is @effected/jsonl's
+	# rule -- the last valid ENVELOPE, not merely the last valid JSON -- and
+	# the same predicate journal-append.sh and the dogfood-mail monitor use:
+	# an unparseable line, or valid JSON that is not a frame, is skipped in
+	# favor of the one before it.
 	last_valid=""
 	while IFS= read -r line; do
 		[ -z "$line" ] && continue
-		if jq -e 'type == "object"' >/dev/null 2>&1 <<< "$line"; then
+		if jq -e 'type == "object" and (.at|type) == "string" and (.event|type) == "string"' >/dev/null 2>&1 <<< "$line"; then
 			last_valid="$line"
 			break
 		fi
