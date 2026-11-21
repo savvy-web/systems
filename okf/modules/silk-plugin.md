@@ -39,10 +39,10 @@ sources:
     resource: ../../plugin/hooks/pre-tool-use/env-file-guard.sh
 generated:
   by: okfit/claude-code
-  at: 2026-11-21T01:24:11Z
+  at: 2026-11-21T01:23:55Z
 integrity:
   generated:
-    body: bfc54a5701e98600
+    body: de4a5c1c44d94dd7
 ---
 
 # silk-plugin
