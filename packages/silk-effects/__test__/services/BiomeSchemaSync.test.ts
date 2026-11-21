@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { MemoryFileSystem } from "@effected/memfs";
 import { BiomeSyncError } from "@savvy-web/silk-core";
-import { Effect, FileSystem, Layer } from "effect";
+import { Effect, FileSystem, Layer, PlatformError } from "effect";
 import { BiomeSchemaSync, buildSchemaUrl, extractSemver } from "../../src/services/BiomeSchemaSync.js";
 
 // ---------------------------------------------------------------------------
@@ -316,14 +316,93 @@ describe("BiomeSchemaSync.sync", () => {
 // ---------------------------------------------------------------------------
 
 describe("BiomeSyncError", () => {
-	it("has correct tag", () => {
-		const err = new BiomeSyncError({ path: "/biome.json", reason: "disk full" });
+	it("has correct tag and carries code and cause", () => {
+		const cause = new Error("disk full");
+		const err = new BiomeSyncError({ path: "/biome.json", code: "write-failed", cause });
 		expect(err._tag).toBe("BiomeSyncError");
+		expect(err.code).toBe("write-failed");
+		expect(err.cause).toBe(cause);
 	});
 
-	it("has human-readable message", () => {
-		const err = new BiomeSyncError({ path: "/biome.json", reason: "disk full" });
-		expect(err.message).toContain("/biome.json");
-		expect(err.message).toContain("disk full");
+	it("derives the message from path and code without stringifying the cause", () => {
+		const err = new BiomeSyncError({ path: "/biome.json", code: "parse-failed", cause: new Error("secret detail") });
+		expect(err.message).toBe("Failed to sync biome schema in /biome.json: is not valid JSONC");
+		expect(err.message).not.toContain("secret detail");
 	});
+});
+
+// ---------------------------------------------------------------------------
+// Failure paths
+// ---------------------------------------------------------------------------
+
+describe("BiomeSchemaSync failure codes", () => {
+	const configPath = `${CWD}/biome.json`;
+	const staleConfig = JSON.stringify({ $schema: "https://biomejs.dev/schemas/1.0.0/schema.json" });
+
+	const faultFor = (method: "readFileString" | "writeFileString") =>
+		PlatformError.systemError({
+			_tag: "PermissionDenied",
+			module: "FileSystem",
+			method,
+			pathOrDescriptor: configPath,
+		});
+
+	const runFaulty = <A, E>(
+		options: Parameters<typeof MemoryFileSystem.layerWith>[1],
+		body: Effect.Effect<A, E, BiomeSchemaSync>,
+	): Effect.Effect<A, E> =>
+		Effect.provide(
+			body,
+			BiomeSchemaSync.layer.pipe(Layer.provide(MemoryFileSystem.layerWith({ [configPath]: staleConfig }, options))),
+		);
+
+	it.effect("fails parse-failed with the JSONC error as cause for an invalid config", () =>
+		Effect.gen(function* () {
+			const error = yield* Effect.flip(
+				runWith(
+					{ [configPath]: '{ "$schema": ' },
+					BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))),
+				),
+			);
+			expect(error).toBeInstanceOf(BiomeSyncError);
+			const err = error as BiomeSyncError;
+			expect(err.code).toBe("parse-failed");
+			expect(err.path).toBe(configPath);
+			expect(err.cause).toBeDefined();
+			expect(err.cause).not.toBeInstanceOf(BiomeSyncError);
+			expect(err.message).toBe(`Failed to sync biome schema in ${configPath}: is not valid JSONC`);
+		}),
+	);
+
+	it.effect("fails read-failed with the original PlatformError as cause", () =>
+		Effect.gen(function* () {
+			const fault = faultFor("readFileString");
+			const err = yield* Effect.flip(
+				runFaulty(
+					{ faults: { readFileString: (path) => (path === configPath ? Effect.fail(fault) : undefined) } },
+					BiomeSchemaSync.pipe(Effect.andThen((s) => s.check("2.4.9", { cwd: CWD }))),
+				),
+			);
+			expect(err._tag).toBe("BiomeSyncError");
+			expect(err.code).toBe("read-failed");
+			expect(err.path).toBe(configPath);
+			expect(err.cause).toBe(fault);
+		}),
+	);
+
+	it.effect("fails write-failed with the original PlatformError as cause", () =>
+		Effect.gen(function* () {
+			const fault = faultFor("writeFileString");
+			const err = yield* Effect.flip(
+				runFaulty(
+					{ faults: { writeFileString: (path) => (path === configPath ? Effect.fail(fault) : undefined) } },
+					BiomeSchemaSync.pipe(Effect.andThen((s) => s.sync("2.4.9", { cwd: CWD }))),
+				),
+			);
+			expect(err._tag).toBe("BiomeSyncError");
+			expect(err.code).toBe("write-failed");
+			expect(err.cause).toBe(fault);
+			expect(err.message).toBe(`Failed to sync biome schema in ${configPath}: could not write`);
+		}),
+	);
 });
