@@ -156,26 +156,12 @@ export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchem
 					const current: string[] = [];
 
 					for (const configPath of configs) {
-						const raw = yield* fs.readFileString(configPath).pipe(
-							Effect.mapError(
-								/* v8 ignore next 4 -- error path requires a filesystem read failure */
-								(cause) =>
-									new BiomeSyncError({
-										path: configPath,
-										reason: String(cause),
-									}),
-							),
-						);
+						const raw = yield* fs
+							.readFileString(configPath)
+							.pipe(Effect.mapError((cause) => new BiomeSyncError({ path: configPath, code: "read-failed", cause })));
 
 						const parsed = (yield* Jsonc.parse(raw).pipe(
-							Effect.mapError(
-								/* v8 ignore next 4 -- error path requires a JSONC parse failure */
-								(e) =>
-									new BiomeSyncError({
-										path: configPath,
-										reason: `Failed to parse JSONC: ${String(e)}`,
-									}),
-							),
+							Effect.mapError((cause) => new BiomeSyncError({ path: configPath, code: "parse-failed", cause })),
 						)) as Record<string, unknown>;
 
 						const schema = parsed.$schema;
@@ -202,25 +188,16 @@ export class BiomeSchemaSync extends Context.Service<BiomeSchemaSync, BiomeSchem
 							const updatedContent = yield* JsoncModifier.modify(raw, ["$schema"], expectedUrl).pipe(
 								Effect.map((edits) => JsoncEdit.applyAll(raw, edits)),
 								Effect.mapError(
-									/* v8 ignore next 4 -- error path requires a JSONC edit failure */
-									(error) =>
-										new BiomeSyncError({
-											path: configPath,
-											reason: `Failed to update JSONC: ${String(error)}`,
-										}),
+									/* v8 ignore next -- the input already parsed, so the $schema edit cannot fail */
+									(cause) => new BiomeSyncError({ path: configPath, code: "edit-failed", cause }),
 								),
 							);
 
-							yield* fs.writeFileString(configPath, updatedContent).pipe(
-								Effect.mapError(
-									/* v8 ignore next 4 -- error path requires a filesystem write failure */
-									(cause) =>
-										new BiomeSyncError({
-											path: configPath,
-											reason: String(cause),
-										}),
-								),
-							);
+							yield* fs
+								.writeFileString(configPath, updatedContent)
+								.pipe(
+									Effect.mapError((cause) => new BiomeSyncError({ path: configPath, code: "write-failed", cause })),
+								);
 						}
 						updated.push(configPath);
 					}

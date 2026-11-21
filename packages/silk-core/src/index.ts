@@ -13,7 +13,7 @@
  */
 
 // ── Errors ─────────────────────────────────────────────────────
-export { BiomeSyncError } from "./errors/BiomeSyncError.js";
+export { BiomeSyncError, BiomeSyncErrorCode } from "./errors/BiomeSyncError.js";
 export { ChangesetConfigError } from "./errors/ChangesetConfigError.js";
 export { ConfigNotFoundError } from "./errors/ConfigNotFoundError.js";
 export { PublishTargetBindingError } from "./errors/PublishTargetBindingError.js";
