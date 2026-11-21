@@ -44,10 +44,10 @@
 	},
 	"devDependencies": {
 		"@effected/plugin": "catalog:effected",
-		"@okfit/plugin": "^0.5.37",
+		"@okfit/plugin": "^0.5.39",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^6.0.15",
+		"@vitest-agent/plugin": "^6.1.0",
 		"tsx": "catalog:effected:build"
 	},
 	"engines": {
