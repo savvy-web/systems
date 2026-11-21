@@ -210,6 +210,38 @@
 						"timeout": 5
 					}
 				]
+			},
+			{
+				"matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Grep",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "env",
+						"args": [
+							"PLUGINFINITY_EVENT=PreToolUse",
+							"PLUGINFINITY_FAIL_CLOSED=1",
+							"bash",
+							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh"
+						],
+						"timeout": 5
+					}
+				]
+			},
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "env",
+						"args": [
+							"PLUGINFINITY_EVENT=PreToolUse",
+							"PLUGINFINITY_FAIL_CLOSED=1",
+							"bash",
+							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh"
+						],
+						"timeout": 5
+					}
+				]
 			}
 		],
 		"PostToolUse": [

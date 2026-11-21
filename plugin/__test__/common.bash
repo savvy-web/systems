@@ -74,7 +74,7 @@ common_setup() {
 # $status, $output (stdout) and $stderr.
 #
 # run_hook applies the environment of the built entry that runs <script>
-# (PLUGINFINITY_EVENT, and PLUGINFINITY_FAIL_CLOSED=1 on the six guards);
+# (PLUGINFINITY_EVENT, and PLUGINFINITY_FAIL_CLOSED=1 on the guards);
 # trailing VAR=value arguments override it. A script under several entries
 # (dogfood-guard.sh: Bash and MCP) takes --matcher <m>, the entry's exact
 # matcher string. --session-env <file> seeds the session values the hook sees

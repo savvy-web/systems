@@ -30,7 +30,7 @@ Requires a repository that uses `@savvy-web/silk` (it provides the `savvy` and `
 - **Agents.** `changeset-manager` writes and reconciles changesets, and `turborepo` diagnoses Turborepo caching and task graphs.
 - **MCP tools.** The `savvy-mcp` server gives structured answers about the workspace: layout, Turborepo state, Biome diagnostics, changesets, dependency changesets and vendored repos.
 - **Biome language server.** Lint and format diagnostics on the files you edit.
-- **Hooks.** A session-start orientation, guards that check commit messages, block direct Biome runs and writes into read-only vendored repos, block pushes while local `file:` overrides are linked, and validate changeset files as you write them.
+- **Hooks.** A session-start orientation, guards that check commit messages, block direct Biome runs and writes into read-only vendored repos, keep agents out of the real `.envrc`, `.env` and `.dev.vars` files (the `.example` files stay open), block pushes while local `file:` overrides are linked, and validate changeset files as you write them.
 
 Claude Code also gets two background monitors (dogfood mail, vendored-repo drift) and the `/silk:it2` iTerm2 pane skill, plus advisory nudges and an end-of-turn reminder when a branch has no changeset. Copilot has no equivalent for these. On Copilot the agent passes the project directory to each MCP tool, because the server cannot detect it there.
 
