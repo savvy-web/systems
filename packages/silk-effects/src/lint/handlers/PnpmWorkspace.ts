@@ -5,6 +5,7 @@
  */
 
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import type { YamlStringifyError } from "@effected/yaml";
 import { Yaml as EffectedYaml, YamlStringifyOptions } from "@effected/yaml";
 import { Effect, Result } from "effect";
 import type { LintStagedHandler, PnpmWorkspaceOptions } from "../types.js";
@@ -121,26 +122,83 @@ export class PnpmWorkspace {
 	}
 
 	/**
+	 * Stringify sorted workspace content to the repo's canonical YAML byte
+	 * format, as an Effect.
+	 *
+	 * @remarks
+	 * The single source of truth for pnpm-workspace.yaml formatting, together
+	 * with {@link PnpmWorkspace.formatContentResult} and
+	 * {@link PnpmWorkspace.formatContentSync}: all three stringify with the same
+	 * options, so {@link PnpmWorkspace.create}, the
+	 * `savvy lint fmt pnpm-workspace` CLI subcommand and any external caller
+	 * produce identical bytes. The options indent block sequences one level
+	 * under their key, double-quote scalars that need quoting and disable line
+	 * wrapping.
+	 *
+	 * @param content - Sorted pnpm-workspace.yaml content
+	 * @returns An Effect yielding the formatted YAML source, failing with
+	 *   `YamlStringifyError` when the content cannot be represented (a circular
+	 *   reference, excessive nesting, or a function or symbol value)
+	 */
+	static formatContentEffect(content: PnpmWorkspaceContent): Effect.Effect<string, YamlStringifyError> {
+		return EffectedYaml.stringify(content, DEFAULT_STRINGIFY_OPTIONS);
+	}
+
+	/**
+	 * Stringify sorted workspace content to the repo's canonical YAML byte
+	 * format, as a `Result`.
+	 *
+	 * @remarks
+	 * The synchronous, non-throwing form of
+	 * {@link PnpmWorkspace.formatContentEffect}; it produces the same bytes.
+	 *
+	 * @param content - Sorted pnpm-workspace.yaml content
+	 * @returns A success holding the formatted YAML source, or a failure
+	 *   holding the `YamlStringifyError`
+	 */
+	static formatContentResult(content: PnpmWorkspaceContent): Result.Result<string, YamlStringifyError> {
+		return EffectedYaml.stringifyResult(content, DEFAULT_STRINGIFY_OPTIONS);
+	}
+
+	/**
+	 * Stringify sorted workspace content to the repo's canonical YAML byte
+	 * format, synchronously.
+	 *
+	 * @remarks
+	 * The synchronous, throwing form of
+	 * {@link PnpmWorkspace.formatContentEffect}; it produces the same bytes.
+	 * Use it after {@link PnpmWorkspace.sortContent} to reproduce exactly what
+	 * the lint handler writes.
+	 *
+	 * @param content - Sorted pnpm-workspace.yaml content
+	 * @returns The formatted YAML source
+	 * @throws `YamlStringifyError` when the content cannot be represented
+	 */
+	static formatContentSync(content: PnpmWorkspaceContent): string {
+		const result = PnpmWorkspace.formatContentResult(content);
+		if (Result.isFailure(result)) {
+			throw result.failure;
+		}
+		return result.success;
+	}
+
+	/**
 	 * Stringify sorted workspace content to the repo's canonical YAML byte format.
 	 *
 	 * @remarks
-	 * The single source of truth for pnpm-workspace.yaml formatting. Both
-	 * {@link create} and the `savvy lint fmt pnpm-workspace` CLI subcommand route
-	 * through here so the two paths cannot drift.
+	 * Delegates to {@link PnpmWorkspace.formatContentSync}, so its bytes cannot
+	 * drift from the sync and Effect forms. It performs no asynchronous work and
+	 * is kept `async` only for source compatibility.
 	 *
-	 * {@link DEFAULT_STRINGIFY_OPTIONS} produces the repo's byte format directly.
-	 * The former Prettier post-process — which existed only to re-indent block
-	 * sequences and re-quote scalars — is gone: `indentSequences` and
-	 * `quoteStyle` now express both, so there is no second printer to drift from.
-	 *
-	 * Still `async` for source compatibility with existing callers; it performs
-	 * no asynchronous work and can become synchronous in the next major.
+	 * @deprecated Use {@link PnpmWorkspace.formatContentSync} or
+	 *   {@link PnpmWorkspace.formatContentEffect}. This Promise form will be
+	 *   removed in the next major.
 	 *
 	 * @param content - Sorted pnpm-workspace.yaml content
 	 * @returns The formatted YAML source
 	 */
 	static async formatContent(content: PnpmWorkspaceContent): Promise<string> {
-		return Effect.runSync(EffectedYaml.stringify(content, DEFAULT_STRINGIFY_OPTIONS));
+		return PnpmWorkspace.formatContentSync(content);
 	}
 
 	/**
@@ -202,7 +260,7 @@ export class PnpmWorkspace {
 
 			// Format and write back (unless both sort and format are skipped)
 			if (!skipSort || !skipFormat) {
-				const formatted = await PnpmWorkspace.formatContent(parsed);
+				const formatted = PnpmWorkspace.formatContentSync(parsed);
 				writeFileSync(filepath, formatted, "utf-8");
 
 				return [];

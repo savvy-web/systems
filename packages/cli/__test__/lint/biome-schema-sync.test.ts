@@ -3,8 +3,11 @@ import { MemoryFileSystem } from "@effected/memfs";
 import { WorkspaceDiscovery, WorkspaceRoot } from "@effected/workspaces";
 import { BiomeSchemaSync } from "@savvy-web/silk-effects";
 import { Effect, FileSystem, Layer, Logger, Path } from "effect";
+import { systemError } from "effect/PlatformError";
 import { BIOME_VERSION } from "../../src/commands/lint/biome-version.js";
 import { syncBiomeSchemas } from "../../src/commands/lint/init.js";
+import { Report } from "../../src/internal/report.js";
+import { Capture } from "../utils/capture.js";
 
 const ROOT = "/repo";
 
@@ -34,8 +37,9 @@ function runOnVolume<A, E>(
 	seed: Record<string, string>,
 	cwd: string,
 	body: Effect.Effect<A, E, BiomeSchemaSync | WorkspaceDiscovery | FileSystem.FileSystem>,
+	options?: Parameters<typeof MemoryFileSystem.layerWith>[1],
 ): Effect.Effect<A, E> {
-	const volume = Layer.provideMerge(MemoryFileSystem.layerWith(seed), Path.layer);
+	const volume = Layer.provideMerge(MemoryFileSystem.layerWith(seed, options), Path.layer);
 	const workspace = WorkspaceDiscovery.layer({ cwd }).pipe(Layer.provide(WorkspaceRoot.layer));
 	const services = Layer.mergeAll(BiomeSchemaSync.layer, workspace);
 	return Effect.provide(body, Layer.provideMerge(services, volume).pipe(Layer.provide(Logger.layer([]))));
@@ -43,6 +47,20 @@ function runOnVolume<A, E>(
 
 /** Read a file back from the volume the surrounding `runOnVolume` body is running against. */
 const readBack = (path: string) => Effect.flatMap(FileSystem.FileSystem, (fs) => fs.readFileString(path));
+
+/** Run `syncBiomeSchemas` and print its report the way the command does, returning stdout's lines. */
+const printedReport = Effect.gen(function* () {
+	const blocks = yield* syncBiomeSchemas();
+	const result = yield* Capture.run(Report.print(blocks));
+	return result.stdout.join("\n").split("\n");
+});
+
+/** A single-root workspace whose only biome config is `contents`. */
+const singleRoot = (contents: string): Record<string, string> => ({
+	[`${ROOT}/package.json`]: JSON.stringify({ name: "root", version: "0.0.0", private: true }),
+	[`${ROOT}/pnpm-workspace.yaml`]: "packages: []\n",
+	[`${ROOT}/biome.json`]: contents,
+});
 
 describe("syncBiomeSchemas", () => {
 	it.effect("updates leaf-package biome configs as well as the workspace root", () =>
@@ -144,6 +162,54 @@ describe("syncBiomeSchemas", () => {
 
 				expect(yield* readBack(`${process.cwd()}/biome.json`)).toContain(EXPECTED);
 			}),
+		),
+	);
+
+	it.effect("shows the parse failure under the warning when a config is not valid JSONC", () =>
+		runOnVolume(
+			singleRoot("{ this is not json"),
+			ROOT,
+			Effect.gen(function* () {
+				const lines = yield* printedReport;
+
+				const at = lines.findIndex((line) => line.includes("Could not sync biome $schema"));
+				expect(at).toBeGreaterThanOrEqual(0);
+				expect(lines[at]).toContain("is not valid JSONC");
+				// The warning headline is cause-free; the JSONC parser's own text is the detail line under it.
+				expect(lines[at]).not.toContain("JSONC parse failed");
+				expect(lines[at + 1]).toMatch(/^ {2}JSONC parse failed with \d+ errors: .* at 1:\d+/);
+			}),
+		),
+	);
+
+	it.effect("shows the filesystem failure under the warning when a config cannot be written", () =>
+		runOnVolume(
+			singleRoot(STALE),
+			ROOT,
+			Effect.gen(function* () {
+				const lines = yield* printedReport;
+
+				const at = lines.findIndex((line) => line.includes("Could not sync biome $schema"));
+				expect(at).toBeGreaterThanOrEqual(0);
+				expect(lines[at]).toContain("could not write");
+				expect(lines[at]).not.toContain("PermissionDenied");
+				expect(lines.slice(at + 1).join("\n")).toContain("PermissionDenied");
+			}),
+			{
+				faults: {
+					writeFileString: (path) =>
+						path === `${ROOT}/biome.json`
+							? Effect.fail(
+									systemError({
+										_tag: "PermissionDenied",
+										module: "FileSystem",
+										method: "writeFileString",
+										pathOrDescriptor: path,
+									}),
+								)
+							: undefined,
+				},
+			},
 		),
 	);
 });
