@@ -116,8 +116,8 @@ describe("repos sync", () => {
 			const result = yield* Fiber.join(fiber);
 			expect(yield* session.mounts).toBe(1);
 			const frame = yield* (yield* session.next()).plainFrame;
-			expect(frame).toContain("6 synced");
-			expect(frame).toContain("5 changed");
+			expect(frame).toContain("8 synced");
+			expect(frame).toContain("7 changed");
 			// Each repo's lines went through the view's console, above the frame,
 			// not to the program's own stdout.
 			expect(result.stdout).toEqual([]);
