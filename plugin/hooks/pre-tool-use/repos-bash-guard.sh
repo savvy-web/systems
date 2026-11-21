@@ -115,18 +115,86 @@ SCAN=$(printf '%s' "$SCAN" | sed -E "s/\"[^\"]*[[:space:]][^\"]*\"//g; s/${sq}[^
 # every branch below only fires when ".repos" appears literally in SCAN.
 [[ "$SCAN" != *.repos* ]] && exit 0
 
-# Token exemption-peeling (a directly-glued redirect operator, dd's "of=",
-# one pair of surrounding quotes, then an exact ".repos/config.json"
-# compare). Shared by every leg below (git leg's manifest-staging
-# allowance, non-git leg's per-shape target analysis) -- defined here, ahead
-# of first use, rather than duplicated per leg.
+# --- Path anchoring (#757) --------------------------------------------------
+# A ".repos/" token is a vendored target only when it RESOLVES under this
+# project's own .repos/ directory. A substring match denied a `.repos/` in a
+# scratch directory, another checkout or a test fixture, and missed the
+# manifest when it was spelled `./.repos/config.json` or by absolute path.
+#
+# Resolution is lexical and touches no filesystem: peel the token, expand a
+# leading `~`, make a relative token absolute against the call's directory
+# (the envelope's absolute `cwd`, else the project dir), then fold `.`, `..`
+# and `//`. A token carrying `$` or a backtick cannot be resolved without
+# running the shell, so it keeps the literal `*.repos/*` test (fail-safe).
+_REPOS_PROJECT=$(hook_project_dir)
+_REPOS_BASE=$(hook_input cwd)
+[[ "$_REPOS_BASE" == /* ]] || _REPOS_BASE="$_REPOS_PROJECT"
+
+# _repos_normalize <abs-path> -- fold ".", ".." and empty segments; sets _NORM.
+# String-based, not array-based, so an empty path is safe under `set -u`.
+_repos_normalize() {
+	local rest="$1" seg out=""
+	while [ -n "$rest" ]; do
+		seg="${rest%%/*}"
+		if [ "$seg" = "$rest" ]; then rest=""; else rest="${rest#*/}"; fi
+		case "$seg" in
+			"" | .) ;;
+			..) out="${out%/*}" ;;
+			*) out="$out/$seg" ;;
+		esac
+	done
+	_NORM="${out:-/}"
+}
+
+_repos_normalize "$_REPOS_PROJECT"
+_REPOS_ROOT="${_NORM%/}/.repos"
+_REPOS_MANIFEST="$_REPOS_ROOT/config.json"
+_repos_normalize "$_REPOS_BASE"
+_REPOS_BASE="$_NORM"
+
+# _repos_resolve <tok> -- peel a directly-glued redirect operator, dd's "of=",
+# and one pair of surrounding quotes, then resolve. Sets _RESOLVED; returns 1
+# (leaving the peeled token in _RESOLVED) when the token cannot be resolved.
+_repos_resolve() {
+	local t="$1"
+	while [[ "$t" == ">"* ]]; do t="${t#>}"; done
+	t="${t#of=}"
+	t="${t%\"}"; t="${t#\"}"
+	t="${t%\'}"; t="${t#\'}"
+	_RESOLVED="$t"
+	case "$t" in *'$'* | *'`'*) return 1 ;; esac
+	case "$t" in
+		\~ | \~/*)
+			[ -n "${HOME:-}" ] || return 1
+			t="${HOME}${t#\~}"
+			;;
+	esac
+	[[ "$t" == /* ]] || t="$_REPOS_BASE/$t"
+	_repos_normalize "$t"
+	_RESOLVED="$_NORM"
+}
+
+# _repos_exempt <tok> -- the token names the project's hand-editable
+# manifest, by any spelling that resolves to it (an unresolvable token must
+# literally be ".repos/config.json").
 _repos_exempt() {
-	local target="$1"
-	while [[ "$target" == ">"* ]]; do target="${target#>}"; done
-	target="${target#of=}"
-	target="${target%\"}"; target="${target#\"}"
-	target="${target%\'}"; target="${target#\'}"
-	[ "$target" = ".repos/config.json" ]
+	if _repos_resolve "$1"; then
+		[ "$_RESOLVED" = "$_REPOS_MANIFEST" ]
+	else
+		[ "$_RESOLVED" = ".repos/config.json" ]
+	fi
+}
+
+# _repos_vendored_target <tok> -- the token is a write target this guard
+# protects: under the project's .repos/ and not the manifest. Shared by every
+# shape of the non-git leg and the git leg's manifest-staging allowance.
+_repos_vendored_target() {
+	if _repos_resolve "$1"; then
+		[ "$_RESOLVED" = "$_REPOS_MANIFEST" ] && return 1
+		[ "$_RESOLVED" = "$_REPOS_ROOT" ] || [[ "$_RESOLVED" == "$_REPOS_ROOT"/* ]]
+	else
+		[[ "$_RESOLVED" == *.repos/* ]] && [ "$_RESOLVED" != ".repos/config.json" ]
+	fi
 }
 
 # The one sanctioned `git config` WRITE: removing a submodule registration
@@ -342,9 +410,10 @@ if [[ "$SCAN" =~ $GIT_REPOS_RE ]]; then
 			continue
 		fi
 		# Manifest staging allowance (#379): `git add`/`git restore` are
-		# allowed when EVERY token that mentions ".repos/" peels (via the
-		# shared _repos_exempt helper, defined above the git leg and reused
-		# by the non-git leg below) to exactly ".repos/config.json". A mixed
+		# allowed when EVERY token that mentions ".repos/" resolves (via the
+		# shared _repos_exempt helper, defined above the git leg) to the
+		# project's own manifest -- ".repos/config.json", "./.repos/config.json"
+		# or its absolute path all qualify (#757). A mixed
 		# pathspec (config.json plus a vendored path in the same invocation)
 		# still denies -- this only clears the pure "stage the manifest"
 		# shape.
@@ -399,10 +468,12 @@ fi
 # Per-shape target analysis, not a single "is this command write-shaped"
 # flag: which token has to be a non-exempt ".repos/" path depends on the
 # shape, so a command isn't denied just because ".repos/" appears somewhere
-# in it. ".repos/config.json" is the one hand-editable exception -- exact
-# token match only (see _repos_exempt above the git leg; a previous version
-# stripped that substring out of $SCAN wholesale, which wrongly cleared
-# adjacent-filename writes like ".repos/config.json.bak").
+# in it. A ".repos/" token counts only when it resolves under the project's
+# own .repos/ (see _repos_vendored_target above the git leg, #757), and the
+# manifest ".repos/config.json" is the one hand-editable exception -- an
+# exact resolved-path match only (a previous version stripped that substring
+# out of $SCAN wholesale, which wrongly cleared adjacent-filename writes like
+# ".repos/config.json.bak").
 #
 #   - redirect (> / >>): deny only when the redirect TARGET token (glued
 #     ">file" or the word after a bare operator) is a non-exempt ".repos/"
@@ -418,11 +489,16 @@ fi
 #     .repos/effect/README.md`) is never mistaken for a still-open tee
 #     operand.
 #   - sed with an -i flag, rm, patch, dd of=: these mutate their operands,
-#     so any non-exempt ".repos/" token anywhere in the command denies
-#     (unchanged strictness from the prior single-flag version). sed -i
-#     detection stays widened to "sed appears as a command" AND "an
-#     -i-shaped flag (-i, -ni, --in-place, ...) appears anywhere", so a
-#     reordered flag (`sed -e 's/a/b/' -i .repos/x`) is still caught.
+#     so any vendored ".repos/" token in the MUTATOR'S OWN CLAUSE denies.
+#     SCAN is split into clauses on ; & | && || and each clause is judged
+#     by its own command word: a `grep -i` in one clause plus a `sed -n`
+#     read of a vendored file in another, or a `grep -n rm` next to a
+#     vendored `cat`, used to deny because the whole-command scan let one
+#     clause's flag or word arm another clause's tokens (#594, #853). sed
+#     -i detection still looks for an -i-shaped flag (-i, -ni, -i.bak,
+#     --in-place, --in-place=SUF) ANYWHERE in sed's own clause, so a
+#     reordered flag (`sed -e 's/a/b/' -i .repos/x`) is still caught
+#     within that clause.
 #     Best-effort: a flag value that merely looks like `-i` inside a quoted
 #     script argument can false-positive -- accepted; over-denial only
 #     costs a re-pin, and the permissions layer is the actual backstop.
@@ -435,10 +511,11 @@ fi
 #     `cp -t .repos/dir src.ts` would inspect "src.ts" (the source) instead
 #     of ".repos/dir" (the actual destination) (#436).
 #
-# Token exemption-peeling (a directly-glued redirect operator, dd's "of=",
-# one pair of surrounding quotes, then an exact ".repos/config.json"
-# compare) is factored into _repos_exempt above (defined ahead of the git
-# leg, which needs it too) and used by every shape below. Tokens come from
+# Token peeling and resolution (a directly-glued redirect operator, dd's
+# "of=", one pair of surrounding quotes, then lexical resolution against the
+# call's directory) is factored into _repos_resolve / _repos_vendored_target
+# above (defined ahead of the git leg, which needs it too) and used by every
+# shape below. Tokens come from
 # word-splitting $SCAN (best-effort, not quote-aware -- consistent with the
 # rest of this script).
 
@@ -462,7 +539,7 @@ for i in "${!TOKENS[@]}"; do
 		target="${TOKENS[$next]:-}"
 	fi
 	[[ "$target" == *.repos/* ]] || continue
-	_repos_exempt "$target" || deny=1
+	if _repos_vendored_target "$target"; then deny=1; fi
 done
 
 # tee: any token after a token exactly equal to "tee", scoped to tee's OWN
@@ -484,19 +561,13 @@ if [[ "$SCAN" =~ (^|[^[:alnum:]_])tee([[:space:]]|$) ]]; then
 		TEE_TOKENS=($seg)
 		for tok in "${TEE_TOKENS[@]}"; do
 			if [ "$seen_tee" -eq 1 ] && [[ "$tok" == *.repos/* ]]; then
-				_repos_exempt "$tok" || deny=1
+				if _repos_vendored_target "$tok"; then deny=1; fi
 			fi
 			[ "$tok" = "tee" ] && seen_tee=1
 		done
 	done <<< "$TEE_SEGMENTS"
 fi
 
-# sed -i / rm / patch / dd of=: any non-exempt ".repos/" token anywhere.
-sed_i=0
-if [[ "$SCAN" =~ (^|[^[:alnum:]_])sed([[:space:]]|$) ]] \
-	&& [[ "$SCAN" =~ (^|[[:space:]])(-[A-Za-z]*i|--in-place)([[:space:]]|$) ]]; then
-	sed_i=1
-fi
 # A sed SCRIPT is not a path, and scanning every token could not tell them
 # apart. `sed -i 's|.repos/old|.repos/new|g' <files outside .repos>` mentions
 # ".repos/" twice inside the EXPRESSION while writing only to its file
@@ -521,20 +592,105 @@ _repos_is_sed_script() {
 	return 1
 }
 
-if [ "$sed_i" -eq 1 ] \
-	|| [[ "$SCAN" =~ (^|[^[:alnum:]_])rm([[:space:]]|$) ]] \
-	|| [[ "$SCAN" =~ (^|[^[:alnum:]_])patch([[:space:]]|$) ]] \
-	|| [[ "$SCAN" =~ dd[[:space:]].*of= ]]; then
-	for tok in "${TOKENS[@]}"; do
-		[[ "$tok" == *.repos/* ]] || continue
-		# Scoped to the sed case: only a sed invocation has a non-path operand
-		# to skip, so rm/patch/dd keep the unchanged any-token strictness.
-		if [ "$sed_i" -eq 1 ] && _repos_is_sed_script "$tok"; then
+# _repos_command_word <tokens...> -- the clause's command word, in _CMD:
+# the first token after any leading `(`/`{`/`!`, VAR=value assignments and
+# wrapper commands (sudo, env, xargs, ...) with their flags, stripped of a
+# leading path and backslash (`/bin/rm`, `\rm`). Best-effort, like the rest:
+# a wrapper flag that takes a value (`sudo -u root rm`) is a documented miss.
+_repos_command_word() {
+	local tok wrapped=0
+	_CMD=""
+	for tok in "$@"; do
+		while [[ "$tok" == [\(\{\!]* ]]; do tok="${tok:1}"; done
+		[ -z "$tok" ] && continue
+		[[ "$tok" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+		if [ "$wrapped" -eq 1 ] && [[ "$tok" == -* ]]; then
 			continue
 		fi
-		_repos_exempt "$tok" || deny=1
+		case "$tok" in
+			sudo | doas | env | command | builtin | exec | nohup | time | nice | xargs | then | do | else | if | while | until)
+				wrapped=1
+				continue
+				;;
+		esac
+		tok="${tok##*/}"
+		tok="${tok#\\}"
+		_CMD="$tok"
+		return 0
 	done
-fi
+	return 0
+}
+
+# sed -i / rm / patch / dd of=: a vendored ".repos/" token in the mutator's
+# OWN clause denies (#594, #853). The split is on the same separators as the
+# git leg and cp/mv, but QUOTE-AWARE: a sed script routinely uses `|` as its
+# delimiter (`sed -i 's|.repos/a|.repos/b|' .repos/x`), and a plain split
+# would cut sed's own clause apart and lose the operand. `\047` is `'`. An
+# unbalanced quote only suppresses splitting (the stricter direction).
+MUTATOR_CLAUSES="$(printf '%s' "$SCAN" | awk '
+	BEGIN { q = "" }
+	{
+		out = ""
+		n = length($0)
+		for (i = 1; i <= n; i++) {
+			c = substr($0, i, 1)
+			if (q != "") {
+				if (c == q) q = ""
+				out = out c
+				continue
+			}
+			if (c == "\047" || c == "\"") { q = c; out = out c; continue }
+			if (c == ";" || c == "&" || c == "|") { out = out "\n"; continue }
+			out = out c
+		}
+		print out
+	}
+')"
+while IFS= read -r clause; do
+	[[ "$clause" == *.repos/* ]] || continue
+	# shellcheck disable=SC2206 # best-effort word split is the intent
+	MUT_TOKENS=($clause)
+	[ "${#MUT_TOKENS[@]}" -gt 0 ] || continue
+	_repos_command_word "${MUT_TOKENS[@]}"
+	mutator=0
+	sed_clause=0
+	case "$_CMD" in
+		sed)
+			# -i, -ni, -i.bak, -i'' and --in-place[=SUF], anywhere in sed's
+			# own clause, so a reordered flag is still caught.
+			for tok in "${MUT_TOKENS[@]}"; do
+				if [[ "$tok" =~ ^-[A-Za-z]*i ]] || [[ "$tok" =~ ^--in-place(=.*)?$ ]]; then
+					mutator=1
+					sed_clause=1
+					break
+				fi
+			done
+			;;
+		rm | patch)
+			mutator=1
+			;;
+		dd)
+			for tok in "${MUT_TOKENS[@]}"; do
+				if [[ "$tok" == of=* ]]; then
+					mutator=1
+					break
+				fi
+			done
+			;;
+	esac
+	[ "$mutator" -eq 1 ] || continue
+	for tok in "${MUT_TOKENS[@]}"; do
+		[[ "$tok" == *.repos/* ]] || continue
+		# Scoped to the sed case: only a sed invocation has a non-path operand
+		# to skip, so rm/patch/dd keep their any-token strictness.
+		if [ "$sed_clause" -eq 1 ] && _repos_is_sed_script "$tok"; then
+			continue
+		fi
+		if _repos_vendored_target "$tok"; then
+			deny=1
+		fi
+	done
+done <<< "$MUTATOR_CLAUSES"
 
 # cp / mv: only the final non-flag token (the destination operand) --
 # clause-scoped, same "don't cross a clause boundary" principle as the git
@@ -592,7 +748,7 @@ if [[ "$SCAN" =~ (^|[^[:alnum:]_])cp([[:space:]]|$) ]] \
 			done
 		fi
 		if [[ "$last" == *.repos/* ]]; then
-			_repos_exempt "$last" || deny=1
+			if _repos_vendored_target "$last"; then deny=1; fi
 		fi
 	done <<< "$CLAUSES"
 fi
