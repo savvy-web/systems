@@ -7,6 +7,7 @@ import { chmod } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import type { Block } from "@effected/cli-kit";
+import { Fmt } from "@effected/cli-kit";
 import type {
 	JsoncFormattingOptions,
 	JsoncModificationError,
@@ -310,14 +311,24 @@ export function syncBiomeSchemas(): Effect.Effect<ReadonlyArray<Block>, never, B
 					...result.current.map((configPath) => Report.ok(`${configPath}: biome $schema up-to-date`)),
 					...result.updated.map((configPath) => Report.ok(`Updated $schema in ${configPath}`)),
 				]),
+				// The error's message names the file and the failed stage only; the
+				// underlying JSONC or filesystem failure is drawn from `cause` beneath it.
 				Effect.catchTag("BiomeSyncError", (e) =>
-					Effect.succeed([Report.warn(`Could not sync biome $schema: ${e.message}`)]),
+					Effect.succeed([Report.warn(`Could not sync biome $schema: ${e.message}`, ...causeLines(e.cause))]),
 				),
 			);
 			blocks.push(...passBlocks);
 		}
 		return blocks;
 	});
+}
+
+/** A failure's own text as report detail lines, one per non-empty line; none when it has no text. */
+function causeLines(cause: unknown): ReadonlyArray<string> {
+	return Fmt.errorText(cause)
+		.split(/\r?\n/)
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
 }
 
 /** Make a file executable. */
