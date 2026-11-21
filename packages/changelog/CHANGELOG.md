@@ -1,5 +1,17 @@
 # @savvy-web/changelog
 
+## 1.0.38
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effect/platform-node | dependency | updated | 4.1.4 | 4.1.5 |
+| @effected/git | dependency | updated | 0.32.0 | 0.33.0 |
+| @effected/workspaces | dependency | updated | 0.48.1 | 0.48.2 |
+| @savvy-web/silk-effects | dependency | updated | 13.0.1 | 14.0.0 |
+| effect | dependency | updated | 4.1.4 | 4.1.5 |
+
 ## 1.0.37
 
 ### Dependencies
