@@ -23,10 +23,10 @@ sources:
     resource: ../../packages/silk-effects/src/services
 generated:
   by: okfit/claude-code
-  at: 2026-11-12T03:36:35Z
+  at: 2026-11-21T01:12:26Z
 integrity:
   generated:
-    body: 5c02219d447b37fc
+    body: a51b745fc8e947d6
   verified:
     by: human:spencer
     at: 2026-11-12T03:50:40Z
@@ -92,7 +92,7 @@ Each rule under `hook/rules/` is an independent `Rule` with its own severity —
 
 `Lint` (`src/lint/`, `export * as Lint`) holds the business logic of the former `@savvy-web/lint-staged` package: one handler per file kind (`Biome`, `Markdown`, `PackageJson`, `PnpmWorkspace`, `ShellScripts`, `TextFiles`, `TypeScript`, `Yaml`), the `Preset`/`createConfig` lint-staged configuration builders, and the `SAVVY-LINT` managed-section id the CLI installs.[^lint]
 
-Every handler is reachable two ways — as a lint-staged handler and as a `savvy lint fmt <name>` CLI subcommand — so a handler's byte-format step must be a public static both entry points call, and the operation must be idempotent, or the two paths silently rewrite a file differently.[^lint] `Lint.TextFiles` is a read-only check rather than a formatter — it fails a file containing a NUL byte or invalid UTF-8, which `grep`/`rg` would skip — so its CLI entry point is `savvy lint text`, not a `fmt` subcommand, and the rule above does not apply to it. It is on in `Preset.silk()`, `Preset.standard()` and `createConfig`, off in `Preset.minimal()`. `Lint.Yaml` formats user-authored YAML synchronously through `@effected/yaml` (a pure IO-free tier); it has no config-file tier, and `indentSequences` is the option that matters — `quoteStyle` governs only newly-created scalars.[^lint]
+Every handler is reachable two ways — as a lint-staged handler and as a `savvy lint fmt <name>` CLI subcommand — so a handler's byte-format step must be a public static both entry points call, and the operation must be idempotent, or the two paths silently rewrite a file differently.[^lint] `Lint.TextFiles` is a read-only check rather than a formatter — it fails a file containing a NUL byte or invalid UTF-8, which `grep`/`rg` would skip — so its CLI entry point is `savvy lint text`, not a `fmt` subcommand, and the rule above does not apply to it. It is on in `Preset.silk()`, `Preset.standard()` and `createConfig`, off in `Preset.minimal()`. `Lint.Yaml` formats user-authored YAML synchronously through `@effected/yaml` (a pure IO-free tier); it has no config-file tier, and `indentSequences` is the option that matters — `quoteStyle` governs only newly-created scalars.[^lint] `Lint.PnpmWorkspace` exposes its byte-format step three ways over one set of stringify options: `formatContentSync` (throws `YamlStringifyError`), `formatContentResult` (a `Result`) and `formatContentEffect` (an Effect with a typed `YamlStringifyError` channel, which `savvy lint fmt pnpm-workspace` uses); the Promise-returning `formatContent` delegates to the sync form and is deprecated.[^lint]
 
 The handlers are plain synchronous functions with no Effect runtime, because lint-staged calls them that way. They find their tools through `Command` (`src/lint/utils/Command.ts`), a thin static wrapper over the kit's synchronous facades: `detectPackageManagerSync` from `@effected/workspaces`, one memoized `makeToolDiscoverySync` over `nodeSpawnSync` from `@effected/commands` that resolves with `prefer: "global"` so global installs still win, and `LocalExec.contextFor` for exec prefixes. The lint-staged path and the Effect services therefore share one tool-discovery implementation. `Command.exec` and `Command.execSilent` are deprecated. See [lint-staged-boundary](../decisions/lint-staged-boundary.md).[^lint]
 

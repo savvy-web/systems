@@ -59,9 +59,9 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 		const parsed = (yield* Yaml.parse(content)) as Lint.PnpmWorkspaceContent;
 		const sorted = Lint.PnpmWorkspace.sortContent(parsed);
 		// Formatting lives in silk-effects so this path and the lint-staged
-		// handler cannot drift; it normalizes @effected/yaml's unindented
-		// sequences and single-quoted scalars back to the repo's byte format.
-		const formatted = yield* Effect.promise(() => Lint.PnpmWorkspace.formatContent(sorted));
+		// handler cannot drift; a value YAML cannot represent fails typed with
+		// YamlStringifyError instead of a defect.
+		const formatted = yield* Lint.PnpmWorkspace.formatContentEffect(sorted);
 		writeFileSync(filepath, formatted, "utf-8");
 	}),
 ).pipe(Command.withDescription("Sort and format pnpm-workspace.yaml in the current directory"));

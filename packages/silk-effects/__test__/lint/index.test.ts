@@ -1,8 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "@effect/vitest";
 import { findWorkspaceRootSync, getWorkspacePackagesSync } from "@effected/workspaces";
 import { YamlFormattingOptions } from "@effected/yaml";
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { Effect, Result } from "effect";
+import { vi } from "vitest";
 import { ConfigDiscovery, Lint } from "../../src/index.js";
 
 const {
@@ -502,10 +504,10 @@ describe("Handler classes", () => {
 			expect(PnpmWorkspace.glob).toBe("pnpm-workspace.yaml");
 		});
 
-		// Regression guard: @effected/yaml emits unindented block sequences and
-		// single-quoted scalars. formatContent normalizes both back to the repo's
-		// byte format via Prettier. Writing raw kit output reformats the whole
-		// workspace file on every `savvy lint fmt pnpm-workspace` run.
+		// Regression guard: the repo's byte format is indented block sequences and
+		// double-quoted scalars, produced directly by the handler's stringify
+		// options (indentSequences + quoteStyle). Drifting from it reformats the
+		// whole workspace file on every `savvy lint fmt pnpm-workspace` run.
 		it("should normalize kit output to indented sequences and double quotes", async () => {
 			const formatted = await PnpmWorkspace.formatContent({
 				packages: ["e2e/*", "packages/*"],
@@ -516,6 +518,59 @@ describe("Handler classes", () => {
 			expect(formatted).not.toContain("\n- e2e/*");
 			expect(formatted).toContain('"@types/acorn": "*"');
 			expect(formatted).not.toContain("'@types/acorn'");
+		});
+
+		const formatFixture = {
+			packages: ["e2e/*", "packages/*"],
+			allowedDeprecatedVersions: { "@types/acorn": "*" },
+		};
+
+		const circularFixture = (): Record<string, unknown> => {
+			const circular: Record<string, unknown> = { packages: ["a"] };
+			circular.self = circular;
+			return circular;
+		};
+
+		it("formatContentSync returns the same bytes as formatContent", async () => {
+			const sync = PnpmWorkspace.formatContentSync(formatFixture);
+
+			expect(sync).toBe(await PnpmWorkspace.formatContent(formatFixture));
+			expect(sync).toContain("  - e2e/*");
+			expect(sync).toContain('"@types/acorn": "*"');
+		});
+
+		it("formatContentResult succeeds with the same string", () => {
+			const result = PnpmWorkspace.formatContentResult(formatFixture);
+
+			expect(Result.isSuccess(result)).toBe(true);
+			if (Result.isSuccess(result)) {
+				expect(result.success).toBe(PnpmWorkspace.formatContentSync(formatFixture));
+			}
+		});
+
+		it.effect("formatContentEffect yields the same string", () =>
+			Effect.gen(function* () {
+				const formatted = yield* PnpmWorkspace.formatContentEffect(formatFixture);
+				expect(formatted).toBe(PnpmWorkspace.formatContentSync(formatFixture));
+			}),
+		);
+
+		it.effect("formatContentEffect fails typed on a circular value", () =>
+			Effect.gen(function* () {
+				const error = yield* Effect.flip(PnpmWorkspace.formatContentEffect(circularFixture()));
+				expect(error._tag).toBe("YamlStringifyError");
+				expect(error.diagnostics[0]?.code).toBe("CircularReference");
+			}),
+		);
+
+		it("formatContentResult and formatContentSync fail on a circular value", () => {
+			const result = PnpmWorkspace.formatContentResult(circularFixture());
+
+			expect(Result.isFailure(result)).toBe(true);
+			if (Result.isFailure(result)) {
+				expect(result.failure._tag).toBe("YamlStringifyError");
+			}
+			expect(() => PnpmWorkspace.formatContentSync(circularFixture())).toThrow();
 		});
 
 		it("should sort and format in-place", async () => {
