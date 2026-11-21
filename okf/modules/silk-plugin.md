@@ -39,10 +39,10 @@ sources:
     resource: ../../plugin/hooks/pre-tool-use/env-file-guard.sh
 generated:
   by: okfit/claude-code
-  at: 2026-11-21T01:23:57Z
+  at: 2026-11-21T01:24:11Z
 integrity:
   generated:
-    body: 3ce940c202b4ee23
+    body: bfc54a5701e98600
 ---
 
 # silk-plugin
@@ -156,7 +156,7 @@ State is a per-loop **append-only JSONL journal**, `.claude/dogfood/<counterpart
 
 **The push guard** (`hooks/pre-tool-use/dogfood-guard.sh`, registered on both `Bash` and the GitKraken/GitHub MCP matcher, fail-closed on both) scans only the `overrides:` block of `pnpm-workspace.yaml` for a `file:`/`link:` path escaping the repo, and denies on any branch except `dev` (a long-lived integration branch exempt unconditionally). It has no bypass flag: a wrong deny is corrected by appending a `correction` snapshot, because a linked `file:` override is a mechanical fact readable from the tree, never a judgement call.[^dogfood]
 
-**The rules worth knowing before editing this protocol:** mailbox content is never design documentation (the `okf/` bundle is the durable record; a learning worth keeping is promoted there as a concept, written via the `okfit:okf-docs` agent, in a docs pass); claims about an artifact are verified by a stated method (signatures read from the built `.d.ts`, presence checked with a recursive search citing a module path); a multi-package cut is released per package, so `--watch`/`--exit` probe `npm view` once per package; the safety net and the check are never present at the same time, since while linked the `file:` override replaces semver resolution outright and `--exit`'s registry install runs with no net; the opening ball is a fact about the opening mail, not about role; a relay owes its downstream a `status`; a closed loop reopens through `briefing`; it2 is an optional transport, never authoritative, and the file mailbox is the source of truth. The it2 doorbell currently over-delivers: [it2-doorbell-retry-duplicates](../gotchas/it2-doorbell-retry-duplicates.md).[^dogfood]
+**The rules worth knowing before editing this protocol:** mailbox content is never design documentation (the `okf/` bundle is the durable record; a learning worth keeping is promoted there as a concept, written via the `okfit:okf-docs` agent, in a docs pass); claims about an artifact are verified by a stated method (signatures read from the built `.d.ts`, presence checked with a recursive search citing a module path); a multi-package cut is released per package, so `--watch`/`--exit` probe `npm view` once per package; the safety net and the check are never present at the same time, since while linked the `file:` override replaces semver resolution outright and `--exit`'s registry install runs with no net; the opening ball is a fact about the opening mail, not about role; a relay owes its downstream a `status`; a closed loop reopens through `briefing`; it2 is an optional transport, never authoritative, and the file mailbox is the source of truth. The it2 doorbell sends once with `it2 session send-text --skip-confirm` and never retries, because send-text's echo check cannot see a Claude Code input box and every retry typed a duplicate notice; a receiver treats a doorbell as a hint and reads the mailbox. The journal readers share @effected/jsonl's "last valid envelope" rule, and the monitor reads each journal from an in-process byte cursor.[^dogfood]
 
 **The repo-level convention this protocol generalizes** is [effected-dogfood-rounds](../conventions/effected-dogfood-rounds.md): a round consumes a sibling checkout's LOCAL prod artifacts via `pnpm-workspace.yaml` `overrides:` entries, the branch does not push while they are linked, and the exit is a live release, deleted overrides, a clean registry install and full verification before the finalize workflow. The pluginfinity rounds of 2026-10-06/07 ran this loop against `pluginfinity-workspace` and ended in the pluginfinity 0.3.0 release; their mail is history under `.claude/dogfood/pluginfinity-workspace/`, and this concept and the ones it links are where the durable results were promoted.[^dogfood]
 

@@ -695,6 +695,26 @@ append_raw() {
 	done
 }
 
+# "Last valid" means last valid ENVELOPE (string at + event), not merely last
+# valid JSON -- the @effected/jsonl rule. A trailing {"foo":1} parses but is not
+# a snapshot, so the guard must walk back past it to the real one.
+@test "trailing valid-JSON non-envelope line: guard walks back to the real snapshot and still denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	local project
+	project="$(init_push_repo)"
+	git -C "$project" checkout -b feat/thing >/dev/null 2>&1
+	write_journal_full "$project" effected downstream adopting false
+	append_raw "$project" effected '{"foo":1}'
+	local env_file
+	env_file="$(envelope_with_cwd "${FIXTURES_DIR}/pretooluse.dogfood-bash-git-push.json" "$project")"
+	_guard_run "${env_file}"
+	[ "$status" -eq 0 ]
+	[ "$(_decision "$output")" = "deny" ]
+	[[ "$(_reason "$output")" == *"derived"* ]]
+	done
+}
+
 @test "packagesDerived false on a downstream loop: denied even with a clean tree" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"

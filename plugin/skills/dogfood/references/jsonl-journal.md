@@ -7,10 +7,18 @@ One JSONL file per loop, per repo: `.claude/dogfood/<counterpart-id>[.<loop-id>]
 - **Current state = the last valid line.** No fold/reduce logic anywhere — the hook and the monitor both read exactly one line.
 - **History = the file.** Every ball-flip, phase change, and mail exchange is a line; the journal reads like a log because it is one.
 - **Corrections are appends.** A wrong entry is superseded by appending a corrected snapshot (`event: "correction"`), never by editing in place — safer for hand maintenance than in-place JSON surgery, and the audit trail keeps the mistake visible.
-- **Corrupt tails self-heal.** A malformed last line (a session killed mid-write) is skipped; readers walk back to the previous valid line, and the next append supersedes the damage. Both the enforcement hook and the monitor implement this walk-back.
+- **Corrupt tails self-heal.** A malformed last line (a session killed mid-write) is skipped; readers walk back to the previous valid line, and the next append supersedes the damage. The enforcement hook, the monitor and `journal-append.sh` all implement this walk-back, with one shared definition of "valid": an **envelope frame**, an object whose `at` and `event` are both strings. Valid JSON that is not a frame (a stray `{"foo":1}`) is walked over like a malformed line. When the journal ends in an unterminated fragment, `journal-append.sh` writes a single newline before the new snapshot. That closes the fragment as a permanent malformed line that every reader skips, and the new snapshot lands on its own line instead of being glued onto the damage. The monitor never reads an unterminated tail at all: it waits for the line's newline.
 - **A new collaboration can either continue a loop's journal or start another loop journal for the same counterpart.** A fresh `loop-started` line after a terminal `unlinked` line reopens that loop; a simultaneous second loop uses a distinct `<loop-id>` in the filename.
 
 Repeating the static config (`counterpart`, `packages`, `linkType`) on every line costs bytes and buys the no-fold property. The trade is deliberate — don't "optimize" it into a diff-only format.
+
+## Relation to `@effected/jsonl`
+
+The format follows `@effected/jsonl`'s journal model: append-only snapshots, current state as the last valid **envelope** (never merely the last valid JSON), a terminal `unlinked` snapshot, and a cursor that is the byte offset just past the last terminated line (jsonl's `line.end`). The monitor keeps that cursor in-process and reads only the bytes appended since its last poll. A journal that shrinks or is replaced resets the cursor to zero and is re-read in full, which is jsonl's `JournalResync` case. The cursor is not persisted, so turn alerts re-fire in a new session by design.
+
+The lines are flat today. jsonl's envelope nests the payload as `{at, event, scope, data}`, and moving to it is a coordinated migration with every counterpart repo that shares this format, not a local edit.
+
+The plugin does not import `@effected/jsonl`. Its builds ship no `node_modules`, and jsonl needs `effect` as a peer, so the monitor, the hook and the script each apply the same rules with Node built-ins, `jq` and `awk`.
 
 ## Snapshot line shape (downstream side)
 

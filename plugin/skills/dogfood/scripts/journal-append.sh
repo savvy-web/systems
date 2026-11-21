@@ -130,6 +130,29 @@ _valid_phase() {
 	esac
 }
 
+# The validity predicate every journal reader shares (this script's walk-back,
+# dogfood-guard.sh and monitors/dogfood-mail.mjs): a line counts only when it
+# is an envelope frame -- an object with a string `at` and a string `event`.
+# This is @effected/jsonl's rule: "last valid" means the last valid ENVELOPE,
+# not merely the last valid JSON, so a stray `{"foo":1}` or a torn scalar that
+# happens to parse is walked over rather than inherited from.
+ENVELOPE_FRAME='type == "object" and (.at|type) == "string" and (.event|type) == "string"'
+
+# Appends one line to the journal, first closing an unterminated tail. A
+# session killed mid-append leaves a fragment with no trailing newline;
+# writing straight after it would glue the new snapshot onto the fragment and
+# make both unreadable. One "\n" closes the fragment as a permanent malformed
+# line that readers skip (@effected/jsonl's torn-tail model: only the SAME
+# interrupted write could have completed it), and the new snapshot lands on
+# its own line.
+_append_line() {
+	if [ -s "$JOURNAL" ] && [ -n "$(tail -c1 "$JOURNAL")" ]; then
+		script_log "closing unterminated tail fragment in $JOURNAL before appending"
+		printf '\n' >> "$JOURNAL"
+	fi
+	printf '%s\n' "$1" >> "$JOURNAL"
+}
+
 AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 if [ "$INIT" -eq 1 ]; then
@@ -219,7 +242,7 @@ if [ "$INIT" -eq 1 ]; then
 			 + (if $owner == "" then {} else {owner:$owner} end)
 			 + (if $note == "" then {} else {note:$note} end)')
 	fi
-	printf '%s\n' "$LINE" >> "$JOURNAL"
+	_append_line "$LINE"
 	echo "journal-append: wrote loop-started for $CP_ID (role=$ROLE ball=$INIT_BALL)"
 	exit 0
 fi
@@ -289,12 +312,12 @@ if [ -n "$ROUND" ]; then
 	esac
 fi
 
-# Last VALID line, walking back past a corrupt tail -- same contract the
-# readers (guard, monitor, --status) use.
+# Last valid ENVELOPE, walking back past a corrupt tail or a valid-JSON line
+# that is not a frame -- same predicate the readers (guard, monitor) use.
 PREV=""
 while IFS= read -r line; do
 	[ -z "$line" ] && continue
-	if jq -e 'type == "object"' >/dev/null 2>&1 <<< "$line"; then PREV="$line"; break; fi
+	if jq -e "$ENVELOPE_FRAME" >/dev/null 2>&1 <<< "$line"; then PREV="$line"; break; fi
 done < <(awk '{ lines[NR] = $0 } END { for (i = NR; i >= 1; i--) print lines[i] }' "$JOURNAL")
 
 [ -n "$PREV" ] || { echo "journal-append: $JOURNAL has no valid line to inherit from" >&2; exit 1; }
@@ -431,6 +454,6 @@ NEXT=$(jq -c \
 jq -e 'type == "object" and has("role") and has("phase") and has("ball")' >/dev/null 2>&1 <<< "$NEXT" \
 	|| { script_log "composed line failed validation for $JOURNAL"; echo "journal-append: composed line failed validation; nothing appended" >&2; exit 1; }
 
-printf '%s\n' "$NEXT" >> "$JOURNAL"
+_append_line "$NEXT"
 script_debug "appended $EVENT to $JOURNAL"
 echo "journal-append: appended $EVENT (phase=$(jq -r '.phase' <<< "$NEXT") ball=$(jq -r '.ball' <<< "$NEXT"))"
