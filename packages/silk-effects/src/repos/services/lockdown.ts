@@ -33,8 +33,51 @@ export interface ReposLockdownShape {
 }
 
 /**
- * Derives a submodule's git metadata directory (`.git/modules/...`) from the
- * checkout itself rather than assuming it is named after the manifest key.
+ * Resolves the superproject's own git directory for the checkout at `root`.
+ *
+ * In a primary checkout `<root>/.git` is a directory and is returned as-is. In
+ * a LINKED worktree (`git worktree add`) `<root>/.git` is a FILE holding a
+ * single `gitdir: <common>/worktrees/<id>` line, and that per-worktree git
+ * directory is where git keeps everything private to the worktree, its
+ * `modules/` tree included. A relative pointer resolves against `root`.
+ *
+ * Never fails: when the `.git` entry cannot be read or its pointer cannot be
+ * parsed, it degrades to `<root>/.git`, the primary-checkout answer.
+ *
+ * @internal
+ */
+export const resolveSuperprojectGitDir = (
+	fs: FileSystem.FileSystem,
+	path: Path.Path,
+	root: string,
+): Effect.Effect<string> =>
+	Effect.gen(function* () {
+		const dotGit = path.join(root, ".git");
+		const info = yield* fs.stat(dotGit).pipe(Effect.option);
+		if (Option.isNone(info) || info.value.type === "Directory") {
+			return dotGit;
+		}
+		const content = yield* fs.readFileString(dotGit).pipe(Effect.option);
+		if (Option.isNone(content)) {
+			return dotGit;
+		}
+		const gitFile = GitFile.parseResult(content.value);
+		if (Result.isFailure(gitFile)) {
+			return dotGit;
+		}
+		const pointer = gitFile.success.gitdir;
+		return path.isAbsolute(pointer) ? pointer : path.resolve(root, pointer);
+	});
+
+/** True when `candidate` is `base` itself or lies beneath it. */
+const isContainedIn = (path: Path.Path, base: string, candidate: string): boolean => {
+	const relative = path.relative(base, candidate);
+	return !(relative.startsWith("..") || path.isAbsolute(relative));
+};
+
+/**
+ * Derives a submodule's git metadata directory (`<gitdir>/modules/...`) from
+ * the checkout itself rather than assuming it is named after the manifest key.
  *
  * A submodule worktree's `<root>/.repos/<name>/.git` is normally a FILE
  * containing a single `gitdir: <path>` line pointing at the real metadata
@@ -48,7 +91,14 @@ export interface ReposLockdownShape {
  * directory containing the `.git` file) so callers always land on the real
  * metadata directory.
  *
- * Falls back to the name-based path `<root>/.git/modules/<REPOS_DIR>/<name>`
+ * `<gitdir>` is the superproject's git directory as
+ * {@link resolveSuperprojectGitDir} resolves it: `<root>/.git` in a primary
+ * checkout, and the per-worktree `<common>/worktrees/<id>` in a linked
+ * worktree (`git worktree add`), where git keeps that worktree's submodule
+ * gitdirs (`<common>/worktrees/<id>/modules/...`) — outside `<root>`
+ * entirely.
+ *
+ * Falls back to the name-based path `<gitdir>/modules/<REPOS_DIR>/<name>`
  * whenever the pointer can't be read (submodule not initialized, `.git`
  * missing) — this never fails, it only degrades to prior behavior. If
  * `<root>/.repos/<name>/.git` is itself a directory (a plain, non-submodule
@@ -63,7 +113,8 @@ export const resolveModuleDir = (
 	name: string,
 ): Effect.Effect<string> =>
 	Effect.gen(function* () {
-		const fallback = path.join(root, ".git", "modules", REPOS_DIR, name);
+		const gitDir = yield* resolveSuperprojectGitDir(fs, path, root);
+		const fallback = path.join(gitDir, "modules", REPOS_DIR, name);
 		const dotGit = path.join(root, REPOS_DIR, name, ".git");
 
 		const info = yield* fs.stat(dotGit).pipe(Effect.option);
@@ -86,12 +137,12 @@ export const resolveModuleDir = (
 		const resolved = path.isAbsolute(pointer) ? pointer : path.resolve(path.dirname(dotGit), pointer);
 
 		// A hand-edited (or otherwise malicious) `gitdir:` pointer could escape
-		// the repository root entirely (e.g. `gitdir: ../../../../etc`), which
-		// would make the caller chmod a tree outside the repo. Fall back to the
-		// name-based path whenever the resolved pointer isn't contained under
-		// `root`.
-		const relative = path.relative(root, resolved);
-		if (relative.startsWith("..") || path.isAbsolute(relative)) {
+		// the repository entirely (e.g. `gitdir: ../../../../etc`), which would
+		// make the caller chmod a tree outside the repo. Fall back to the
+		// name-based path whenever the resolved pointer is contained neither
+		// under `root` nor under the superproject's git directory (the only
+		// place a linked worktree's submodule gitdirs live).
+		if (!isContainedIn(path, root, resolved) && !isContainedIn(path, gitDir, resolved)) {
 			return fallback;
 		}
 		return resolved;
@@ -221,12 +272,21 @@ export class ReposLockdown extends Context.Service<ReposLockdown, ReposLockdownS
 				Effect.gen(function* () {
 					const worktree = path.join(root, REPOS_DIR, name);
 					const targets = order === "unlock" ? [worktree, yield* resolveModuleDir(fs, path, root, name)] : [worktree];
-					for (const dir of targets) {
+					for (const [index, dir] of targets.entries()) {
+						// A module-gitdir probe that cannot even stat because the path
+						// runs through a FILE (ENOTDIR / BadResource: an uninitialized
+						// submodule's fallback in a linked worktree) folds to "absent,
+						// skip": there is nothing there to unlock, and failing here
+						// would abort the very `sync` that initializes it. A permission
+						// failure is still a real lockdown failure, and a WORKTREE
+						// probe failure (index 0) always stays fatal.
 						const present = yield* fs
 							.exists(dir)
 							.pipe(
-								Effect.mapError(
-									(cause) => new ReposLockdownError({ path: dir, reason: `stat failed: ${String(cause)}` }),
+								Effect.catchTag("PlatformError", (cause) =>
+									index > 0 && cause.reason._tag !== "PermissionDenied"
+										? Effect.succeed(false)
+										: Effect.fail(new ReposLockdownError({ path: dir, reason: `stat failed: ${String(cause)}` })),
 								),
 							);
 						if (!present) {

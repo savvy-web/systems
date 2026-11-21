@@ -364,11 +364,16 @@ read them via the tools below rather than trusting recall for field names.
   each manifest entry, `sync` clears stale git locks, re-initializes any
   **absent** submodule checkout, and re-applies each repo's configured sparse
   paths on every run regardless of presence — that's how a manifest sparse
-  change propagates to a checkout that already exists. A submodule that is
-  **present but dirty** (stray local edits) has its content left untouched by
-  `sync` and is reported `upToDate` — though `sync`'s lockdown pass still
-  chmods the tree read-only regardless, so "untouched" covers content only,
-  not permissions. Dirtiness is surfaced by `repos_inspect mode:"status"`
+  change propagates to a checkout that already exists. A **present, clean**
+  checkout whose gitlink moved (a pulled repin) is checked out onto the
+  recorded commit (staged first, then committed) and reported `advanced`, so
+  no `restore` is needed after a pull. A submodule that is **present but
+  dirty** (stray local edits) has its content left untouched by `sync`: when
+  its gitlink moved it is reported `skippedDirty`, otherwise `upToDate` —
+  though `sync`'s lockdown pass still chmods the tree read-only regardless,
+  so "untouched" covers content only, not permissions. `sync` and `pin` also
+  work from a linked git worktree (`git worktree add`), where git keeps
+  submodule gitdirs under the worktree's own git dir. Dirtiness is surfaced by `repos_inspect mode:"status"`
   (or `savvy repos status`), not fixed by it. **A dirty vendored tree stays
   locked — don't try to clean it up yourself.** `git reset --hard`,
   deleting-and-re-`sync`ing the working directory, or any other hand-run

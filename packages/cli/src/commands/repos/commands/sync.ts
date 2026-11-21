@@ -3,7 +3,9 @@
  *
  * @remarks
  * A thin adapter over {@link Repos.ReposManager.sync}: initializes missing
- * submodules, re-applies sparse-checkout patterns, clears stale git locks
+ * submodules, re-applies sparse-checkout patterns, advances a populated
+ * clean checkout onto a moved gitlink (a dirty one is reported, not
+ * clobbered), clears stale git locks
  * left behind by an interrupted fetch, reconciles a submodule's URL when it
  * drifts from the manifest, and registers an orphan manifest entry (no
  * gitlink at all) from scratch. Sync is idempotent repair, so
@@ -56,6 +58,14 @@ export const runReposSync = (cwd: string) =>
 		for (const name of report.sparseApplied) {
 			blocks.push(Report.ok(`${name}: sparse-checkout applied`));
 		}
+		for (const name of report.advanced) {
+			blocks.push(Report.ok(`${name}: advanced to recorded gitlink`));
+		}
+		for (const name of report.skippedDirty) {
+			blocks.push(
+				Report.warn(`${name}: worktree dirty, gitlink moved — not advanced`, `run savvy repos restore ${name}`),
+			);
+		}
 		for (const name of report.urlSynced) {
 			blocks.push(Report.ok(`${name}: url reconciled`));
 		}
@@ -72,6 +82,8 @@ export const runReposSync = (cwd: string) =>
 			report.initialized.length === 0 &&
 			report.sparseApplied.length === 0 &&
 			report.clearedLocks.length === 0 &&
+			report.advanced.length === 0 &&
+			report.skippedDirty.length === 0 &&
 			report.urlSynced.length === 0 &&
 			report.registered.length === 0
 		) {
@@ -87,6 +99,8 @@ export const runReposSync = (cwd: string) =>
 
 /* v8 ignore start -- CLI registration; handler tested via runReposSync */
 export const syncCommand = Command.make("sync", { cwd: cwdOption }, ({ cwd }) => runReposSync(cwd)).pipe(
-	Command.withDescription("Reconcile vendored submodules with the manifest: init missing, apply sparse, clear locks"),
+	Command.withDescription(
+		"Reconcile vendored submodules with the manifest: init missing, advance moved gitlinks, apply sparse, clear locks",
+	),
 );
 /* v8 ignore stop */

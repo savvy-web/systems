@@ -20,7 +20,7 @@ import type {
 } from "../schemas/reports.js";
 import { ReposConfigStore } from "./config-store.js";
 import { submoduleNameFromKey } from "./drift.js";
-import { ReposLockdown, resolveModuleDir } from "./lockdown.js";
+import { ReposLockdown, resolveModuleDir, resolveSuperprojectGitDir } from "./lockdown.js";
 
 /**
  * Lock files git leaves behind when a submodule fetch is interrupted; `sync`
@@ -237,6 +237,112 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 			const getRepoEntry = (repos: ReposManifestFile["repos"], name: string): RepoEntry | undefined =>
 				Object.hasOwn(repos, name) ? repos[name] : undefined;
 
+			/**
+			 * The commit the superproject records for a vendored path: the
+			 * STAGED gitlink (index, mode `160000`) first, then the one committed
+			 * at `HEAD`. Staged wins so a pin that was staged but never committed
+			 * is honored rather than silently discarded back to the last commit.
+			 * `undefined` when neither records one.
+			 */
+			const recordedGitlink = (
+				root: string,
+				repoPathRel: string,
+			): Effect.Effect<string | undefined, GitSubmoduleError> =>
+				Effect.gen(function* () {
+					const lsFiles = yield* git
+						.lsFiles(root, { pathspec: [repoPathRel] })
+						.pipe(Effect.mapError(asSubmoduleError(`git ls-files --stage -- ${repoPathRel}`, root)));
+					const stagedCommit = lsFiles.find((lsFilesEntry) => lsFilesEntry.mode === "160000")?.oid;
+					if (stagedCommit !== undefined) {
+						return stagedCommit;
+					}
+					const lsTree = yield* git
+						.lsTree(root, "HEAD", { pathspec: [repoPathRel] })
+						.pipe(Effect.mapError(asSubmoduleError(`git ls-tree HEAD -- ${repoPathRel}`, root)));
+					return lsTree[0]?.oid;
+				});
+
+			/**
+			 * Fetches `commit` shallow from the vendored repo's own `origin` when
+			 * its object store lacks it — a pulled repin routinely records a
+			 * commit the depth-1 clone has never seen, and neither `checkout` nor
+			 * `reset --hard` can reach a missing object. The `^{commit}` peel is
+			 * load-bearing: a bare full sha passes `rev-parse --verify` whether or
+			 * not the object exists. Git reports a missing object as an
+			 * unclassified failure (`GitCommandError`), so both ref-shaped
+			 * failures read as "absent"; a wrongly-absent answer only costs a
+			 * fetch, and the caller's checkout or reset is the real verification.
+			 *
+			 * Fetching through the repo's own remote rather than `git submodule
+			 * update` keeps this working for a populated repo with no
+			 * `.gitmodules` section, which `submodule update` has no URL for.
+			 */
+			const ensureCommit = (repoPath: string, commit: string): Effect.Effect<void, GitSubmoduleError> =>
+				Effect.gen(function* () {
+					const present = yield* git.revParse(repoPath, `${commit}^{commit}`).pipe(
+						Effect.as(true),
+						Effect.catchTag(["UnknownRefError", "GitCommandError"], () => Effect.succeed(false)),
+						Effect.mapError(asSubmoduleError(`git rev-parse --verify ${commit}^{commit}`, repoPath)),
+					);
+					if (!present) {
+						yield* git
+							.fetch(repoPath, { ref: commit, depth: 1 })
+							.pipe(Effect.mapError(asSubmoduleError(`git fetch --depth 1 origin ${commit}`, repoPath)));
+					}
+				});
+
+			/**
+			 * Moves a POPULATED vendored worktree onto the gitlink the superproject
+			 * records, when the two differ — the repin-then-sync case. A clean
+			 * worktree fetches the commit when the shallow clone lacks it
+			 * (`ensureCommit`), is checked out onto it detached inside the
+			 * vendored repo itself — so the `update = none` boundary marker is
+			 * never in play and a repo with no `.gitmodules` section advances
+			 * too — and the result is verified, never assumed. A dirty worktree
+			 * is left exactly as it is and reported instead of clobbered.
+			 */
+			const advanceToGitlink = (
+				root: string,
+				repoPath: string,
+				repoPathRel: string,
+			): Effect.Effect<"advanced" | "skippedDirty" | "unchanged", GitSubmoduleError> =>
+				Effect.gen(function* () {
+					const recorded = yield* recordedGitlink(root, repoPathRel);
+					if (recorded === undefined) {
+						return "unchanged" as const;
+					}
+					const head = yield* git.revParse(repoPath, "HEAD").pipe(
+						Effect.catchTag("NotARepositoryError", () => Effect.succeed(undefined)),
+						Effect.mapError(asSubmoduleError("git rev-parse HEAD", repoPath)),
+					);
+					if (head === undefined || head === recorded) {
+						return "unchanged" as const;
+					}
+					const porcelain = yield* git
+						.status(repoPath)
+						.pipe(Effect.mapError(asSubmoduleError("git status --porcelain", repoPath)));
+					if (porcelain.length > 0) {
+						return "skippedDirty" as const;
+					}
+					yield* ensureCommit(repoPath, recorded);
+					yield* git
+						.checkout(repoPath, recorded, { detach: true })
+						.pipe(Effect.mapError(asSubmoduleError(`git checkout --detach ${recorded}`, repoPath)));
+					const after = yield* git
+						.revParse(repoPath, "HEAD")
+						.pipe(Effect.mapError(asSubmoduleError("git rev-parse HEAD", repoPath)));
+					if (after !== recorded) {
+						return yield* Effect.fail(
+							new GitSubmoduleError({
+								command: `git checkout --detach ${recorded}`,
+								cwd: repoPath,
+								reason: `worktree HEAD is ${after} after the update, not the recorded gitlink ${recorded}`,
+							}),
+						);
+					}
+					return "advanced" as const;
+				});
+
 			const status = (root: string) =>
 				Effect.gen(function* () {
 					const manifest = yield* configStore.read(root);
@@ -318,6 +424,26 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					const upToDate: string[] = [];
 					const clearedLocks: string[] = [];
 					const urlSynced: string[] = [];
+					const advanced: string[] = [];
+					const skippedDirty: string[] = [];
+
+					// A populated repo lands in exactly one of these: moved onto a
+					// changed gitlink, left alone because its worktree is dirty, or
+					// up to date -- the last only when nothing at all changed (a URL
+					// reconciliation already reports it under `urlSynced`).
+					const recordOutcome = (
+						name: string,
+						outcome: "advanced" | "skippedDirty" | "unchanged",
+						urlChanged: boolean,
+					): void => {
+						if (outcome === "advanced") {
+							advanced.push(name);
+						} else if (outcome === "skippedDirty") {
+							skippedDirty.push(name);
+						} else if (!urlChanged) {
+							upToDate.push(name);
+						}
+					};
 					const registered: string[] = [];
 					const boundaryMarked: string[] = [];
 
@@ -421,6 +547,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								}
 
 								if (present && gitmodulesEntry) {
+									let urlChanged = false;
 									const currentUrl = yield* git
 										.configGet(repoPath, "remote.origin.url")
 										.pipe(Effect.mapError(asSubmoduleError("git config --get remote.origin.url", repoPath)));
@@ -448,9 +575,10 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 											.submoduleSync(root, { paths: [repoPathRel] })
 											.pipe(Effect.mapError(asSubmoduleError(`git submodule sync -- ${repoPathRel}`, root)));
 										urlSynced.push(name);
-									} else {
-										upToDate.push(name);
+										urlChanged = true;
 									}
+									const outcome = yield* advanceToGitlink(root, repoPath, repoPathRel);
+									recordOutcome(name, outcome, urlChanged);
 								} else if (!present && !gitmodulesEntry) {
 									yield* git
 										.submoduleAdd(root, { url: entry.url, path: repoPathRel, depth: 1 })
@@ -495,7 +623,8 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										);
 									initialized.push(name);
 								} else {
-									upToDate.push(name);
+									const outcome = yield* advanceToGitlink(root, repoPath, repoPathRel);
+									recordOutcome(name, outcome, false);
 								}
 
 								if (entry.sparse && entry.sparse.length > 0) {
@@ -542,7 +671,17 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						);
 					}
 
-					return { initialized, sparseApplied, upToDate, clearedLocks, urlSynced, registered, boundaryMarked };
+					return {
+						initialized,
+						sparseApplied,
+						upToDate,
+						advanced,
+						skippedDirty,
+						clearedLocks,
+						urlSynced,
+						registered,
+						boundaryMarked,
+					};
 				});
 
 			/**
@@ -1464,18 +1603,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								// discard it back to the last commit (the
 								// staged-gitlink-preference contract this op exists to
 								// honor).
-								const lsFiles = yield* git
-									.lsFiles(root, { pathspec: [repoPath] })
-									.pipe(Effect.mapError(asSubmoduleError(`git ls-files --stage -- ${repoPath}`, root)));
-								const stagedCommit = lsFiles.find((lsFilesEntry) => lsFilesEntry.mode === "160000")?.oid;
-
-								let targetCommit = stagedCommit;
-								if (targetCommit === undefined) {
-									const lsTree = yield* git
-										.lsTree(root, "HEAD", { pathspec: [repoPath] })
-										.pipe(Effect.mapError(asSubmoduleError(`git ls-tree HEAD -- ${repoPath}`, root)));
-									targetCommit = lsTree[0]?.oid;
-								}
+								const targetCommit = yield* recordedGitlink(root, repoPath);
 
 								if (targetCommit === undefined) {
 									return yield* Effect.fail(
@@ -1514,6 +1642,11 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										.submoduleDeinit(subPath, { all: true, force: true })
 										.pipe(Effect.mapError(asSubmoduleError("git submodule deinit --all --force", subPath)));
 								}
+
+								// `sync` leaves a DIRTY checkout on a moved gitlink
+								// (`skippedDirty`, with a hint pointing here), and that
+								// commit may be absent from the depth-1 clone.
+								yield* ensureCommit(subPath, targetCommit);
 
 								yield* git
 									.reset(subPath, { mode: "hard", ref: targetCommit })
@@ -1631,9 +1764,13 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						.map((configEntry) => configEntry.key)
 						.filter((key) => submoduleNameFromKey(key) === section);
 					if (removedKeys.length === 0) {
+						// Name the config file the probe actually read: in a linked
+						// worktree that is the SHARED config under the common dir, not
+						// `<root>/.git/config` (which runs through a pointer file).
+						const commonDir = yield* git.commonDir(root).pipe(Effect.orElseSucceed(() => path.join(root, ".git")));
 						return yield* Effect.fail(
 							new ReposConfigError({
-								path: path.join(root, ".git", "config"),
+								path: path.join(commonDir, "config"),
 								reason: `no submodule.${section} section registered in the local git config — nothing to deregister`,
 								kind: "invalid",
 							}),
@@ -1664,7 +1801,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					// which the loop above already refused — so this loop can only
 					// act on a genuinely diverged gitdir, never double-report the
 					// canonical case.
-					const modulesRoot = path.join(root, ".git", "modules");
+					const modulesRoot = path.join(yield* resolveSuperprojectGitDir(fs, path, root), "modules");
 					for (const name of Object.keys(manifest.repos)) {
 						const moduleDir = yield* resolveModuleDir(fs, path, root, name);
 						const relativeToModules = path.relative(modulesRoot, moduleDir);
