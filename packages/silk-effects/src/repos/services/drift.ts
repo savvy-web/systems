@@ -1,3 +1,4 @@
+import type { GitmodulesEntry } from "@effected/git";
 import { Git, Gitmodules } from "@effected/git";
 import { Context, Effect, FileSystem, Layer, Option, Path, Result } from "effect";
 import { REPOS_DIR } from "../constants.js";
@@ -31,6 +32,68 @@ export const submoduleNameFromKey = (key: string): string | undefined => {
 	const rest = key.slice("submodule.".length);
 	const lastDot = rest.lastIndexOf(".");
 	return lastDot <= 0 ? undefined : rest.slice(0, lastDot);
+};
+
+/**
+ * One manifest entry's `.gitmodules` section, and whether it was paired by
+ * the section's `path` field (a diverged, re-slugged section name) rather than
+ * by its canonical name.
+ *
+ * @internal
+ */
+export interface PairedSection {
+	readonly section: GitmodulesEntry;
+	readonly viaPath: boolean;
+}
+
+/**
+ * Pairs each manifest entry with at most one `.gitmodules` section, keyed by
+ * manifest entry name. Sections absent from the result's values are orphans.
+ *
+ * @remarks
+ * Pairing is arbitrated in TWO PASSES over every manifest entry, not one entry
+ * at a time — entry order used to decide the outcome: with a section named
+ * ".repos/A" whose `path` field reads ".repos/B", pairing B first stole that
+ * section via the path fallback, leaving A's own correctly-named section
+ * unclaimed. Pass 1 claims every exact-NAME match (`git submodule add` derives
+ * a section's name from its path, so the canonical name is the repo path);
+ * pass 2 lets each still-unpaired entry fall back to the first unclaimed
+ * section whose `path` matches, in `.gitmodules` order. A section is claimed
+ * at most once, so when two sections share an entry's path only the first
+ * pairs and the other stays an orphan.
+ *
+ * Shared by `ReposDrift.check` and `ReposManager.deregister`: the report and
+ * the refusal must agree on which section an entry owns, or the refusal names
+ * a remedy for a section the report calls an orphan.
+ *
+ * @internal
+ */
+export const pairManifestSections = (
+	manifestNames: ReadonlyArray<string>,
+	sections: ReadonlyArray<GitmodulesEntry>,
+): ReadonlyMap<string, PairedSection> => {
+	const claimed = new Set<string>();
+	const paired = new Map<string, PairedSection>();
+	for (const name of manifestNames) {
+		const expectedPath = `${REPOS_DIR}/${name}`;
+		const nameMatch = sections.find((candidate) => candidate.name === expectedPath && !claimed.has(candidate.name));
+		if (nameMatch) {
+			claimed.add(nameMatch.name);
+			paired.set(name, { section: nameMatch, viaPath: false });
+		}
+	}
+	for (const name of manifestNames) {
+		if (paired.has(name)) {
+			continue;
+		}
+		const expectedPath = `${REPOS_DIR}/${name}`;
+		const pathMatch = sections.find((candidate) => candidate.path === expectedPath && !claimed.has(candidate.name));
+		if (pathMatch) {
+			claimed.add(pathMatch.name);
+			paired.set(name, { section: pathMatch, viaPath: true });
+		}
+	}
+	return paired;
 };
 
 /**
@@ -326,68 +389,15 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						const statusByPath = new Map(statuses.map((status) => [status.path, status]));
 
 						const drifts: RepoDrift[] = [];
-						const matchedSectionNames = new Set<string>();
 
-						// Pairing is arbitrated in TWO PASSES over every manifest entry,
-						// not one entry at a time -- entry order used to decide the
-						// outcome: with a section named ".repos/A" but whose `path` field
-						// reads ".repos/B", pairing B FIRST (in `Object.entries` order)
-						// stole that section via the path fallback below, leaving A's own
-						// correctly-named section unclaimed and A wrongly reported
-						// `unregisteredManifestEntry` despite its exact-name section
-						// existing. Claiming every exact-NAME match first, across ALL
-						// entries, before any entry is allowed to fall back to a PATH
-						// match closes that: a section already claimed by its rightful
-						// name-matched entry can never be stolen by another entry's path
-						// fallback, regardless of manifest iteration order.
-						interface Paired {
-							readonly section: (typeof gitmodules.entries)[number];
-							readonly viaPath: boolean;
-						}
-						const pairedByName = new Map<string, Paired>();
-
-						// Pass 1: exact-name claims, across every entry.
-						for (const [name] of manifestEntries) {
-							const expectedPath = `${REPOS_DIR}/${name}`;
-							// `git submodule add` derives the section's NAME (the
-							// `[submodule "<name>"]` subsection) from its path at
-							// creation time, so under normal use `section.name` already
-							// equals `expectedPath` -- matching sections is done against
-							// that canonical name, never the section's own `path` field,
-							// because a differing `path` field is itself the
-							// `pathMismatch` drift this loop needs to be able to report;
-							// matching on `path` would hide it.
-							const nameMatch = gitmodules.entries.find(
-								(candidate) => candidate.name === expectedPath && !matchedSectionNames.has(candidate.name),
-							);
-							if (nameMatch) {
-								matchedSectionNames.add(nameMatch.name);
-								pairedByName.set(name, { section: nameMatch, viaPath: false });
-							}
-						}
-
-						// Pass 2: path-fallback for entries STILL unmatched after pass 1,
-						// against sections pass 1 (or an earlier pass-2 iteration) hasn't
-						// already claimed. A diverged section name (e.g. a manifest entry
-						// re-slugged after the `.gitmodules` section was created under an
-						// older name) would otherwise degrade straight to an
-						// unregistered/orphan pair and mask the url/shallow comparisons
-						// below; pairing by the section's own `path` field is the one
-						// other identifier that still ties a section to this manifest
-						// entry.
-						for (const [name] of manifestEntries) {
-							if (pairedByName.has(name)) {
-								continue;
-							}
-							const expectedPath = `${REPOS_DIR}/${name}`;
-							const pathMatch = gitmodules.entries.find(
-								(candidate) => candidate.path === expectedPath && !matchedSectionNames.has(candidate.name),
-							);
-							if (pathMatch) {
-								matchedSectionNames.add(pathMatch.name);
-								pairedByName.set(name, { section: pathMatch, viaPath: true });
-							}
-						}
+						// The pairing is the shared pure `pairManifestSections`, so
+						// `ReposManager.deregister` classifies a section exactly as this
+						// report does.
+						const pairedByName = pairManifestSections(
+							manifestEntries.map(([name]) => name),
+							gitmodules.entries,
+						);
+						const matchedSectionNames = new Set([...pairedByName.values()].map((paired) => paired.section.name));
 
 						for (const [name, entry] of manifestEntries) {
 							const expectedPath = `${REPOS_DIR}/${name}`;

@@ -692,6 +692,47 @@ describe("ReposDrift.check", () => {
 			}),
 	);
 
+	// Two sections declaring the SAME path: the entry pairs with exactly one
+	// (the first in .gitmodules order); the other is an orphan, so its
+	// registration is the transition finding, never the entry's re-vendor.
+	it.effect(
+		"of two sections sharing an entry's path, only the paired one is claimed; the other is an orphan transition",
+		() =>
+			Effect.gen(function* () {
+				const root = makeRoot();
+				const oldA = `${REPOS_DIR}/old-a`;
+				const oldB = `${REPOS_DIR}/old-b`;
+				writeFileSync(
+					join(root, ".gitmodules"),
+					`[submodule "${oldA}"]\n\tpath = ${EXPECTED_PATH}\n\turl = ${URL}\n\tshallow = true\n[submodule "${oldB}"]\n\tpath = ${EXPECTED_PATH}\n\turl = ${URL}\n\tshallow = true\n`,
+				);
+
+				const report = yield* Effect.gen(function* () {
+					const drift = yield* ReposDrift;
+					return yield* drift.check(root);
+				}).pipe(
+					Effect.provide(
+						driftLayer(healthyManifest(), [statusEntry(EXPECTED_PATH, "uninitialized")], {
+							configEntries: [
+								{ key: `submodule.${oldA}.url`, value: URL },
+								{ key: `submodule.${oldB}.url`, value: URL },
+							],
+						}),
+					),
+				);
+
+				const orphans = report.drifts.filter((d) => d.kind === "orphanGitmodulesEntry").map((d) => d.name);
+				expect(orphans).toEqual([oldB]);
+				const local = report.drifts.filter((d) => d.kind === "localRegistrationDivergence");
+				const claimed = local.find((d) => d.observedValue === oldA);
+				const transition = local.find((d) => d.observedValue === oldB);
+				expect(claimed).toEqual(expect.objectContaining({ name: NAME, manifestValue: EXPECTED_PATH }));
+				expect(transition).toEqual(expect.objectContaining({ name: oldB }));
+				expect(transition?.manifestValue).toBeUndefined();
+				expect(transition?.detail).toContain("mid-add/remove transition");
+			}),
+	);
+
 	it.effect("a canonical local registration is NOT reported (the healthy case stays clean)", () =>
 		Effect.gen(function* () {
 			const root = makeRoot();

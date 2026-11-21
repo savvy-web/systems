@@ -4385,6 +4385,41 @@ describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
 			}),
 	);
 
+	it.effect(
+		"of two sections sharing an entry's path, refuses the unpaired one as a transition and only the paired one as a re-vendor",
+		() =>
+			Effect.gen(function* () {
+				const host = makeHost();
+				// Drift pairs "foo" with the FIRST path-matching section (old-a);
+				// old-b is an orphan, so its refusal must be the transition one.
+				writeFileSync(
+					join(host, ".gitmodules"),
+					'[submodule ".repos/old-a"]\n\tpath = .repos/foo\n\turl = https://example.com/foo.git\n[submodule ".repos/old-b"]\n\tpath = .repos/foo\n\turl = https://example.com/foo.git\n',
+				);
+				git(host, "config", "submodule..repos/old-a.url", "https://example.com/foo.git");
+				git(host, "config", "submodule..repos/old-b.url", "https://example.com/foo.git");
+
+				const managerLayer = makeManagerLayer(
+					Effect.succeed({
+						repos: { foo: { url: "https://example.com/foo.git", ref: "1.0.0", purpose: "p" } },
+					} as unknown as ReposManifestFile),
+				);
+				const refuse = (section: string) =>
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.deregister(host, section);
+					}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+				const paired = yield* refuse(".repos/old-a");
+				expect(String(paired.message)).toContain('manifest entry "foo" claims by its path');
+
+				const orphan = yield* refuse(".repos/old-b");
+				expect(orphan).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+				expect(String(orphan.message)).toContain("still declared in .gitmodules");
+				expect(String(orphan.message)).not.toContain("claims by its path");
+			}),
+	);
+
 	it.effect("refuses a section outside .repos/ — a host repo's own submodule registration is not ours to clear", () =>
 		Effect.gen(function* () {
 			const host = makeHost();

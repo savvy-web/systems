@@ -19,7 +19,7 @@ import type {
 	ReposSyncReport,
 } from "../schemas/reports.js";
 import { ReposConfigStore } from "./config-store.js";
-import { submoduleNameFromKey } from "./drift.js";
+import { pairManifestSections, submoduleNameFromKey } from "./drift.js";
 import { ReposLockdown, resolveModuleDir, resolveSuperprojectGitDir } from "./lockdown.js";
 
 /**
@@ -1866,17 +1866,17 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						// is that entry's own section under a diverged (re-slugged) name —
 						// the same path-fallback pairing `ReposDrift` makes — so the
 						// remedy is a re-vendor, not finishing an add/remove that never
-						// happened. As in drift's pass 1, an entry that already has its
-						// exact-name section does not claim a second one by path; that
-						// second section is an orphan and keeps the transition refusal.
+						// happened. The claimant comes from the SAME pairing drift uses,
+						// so only the section an entry actually pairs with is refused as
+						// a re-vendor; any other section declaring that path (a second
+						// re-slugged section, or one beside the entry's exact-name
+						// section) is an orphan and keeps the transition refusal.
 						const claimant =
 							declared === undefined
 								? undefined
-								: Object.keys(manifest.repos).find(
-										(name) =>
-											declared.path === `${REPOS_DIR}/${name}` &&
-											!parsedGitmodules.entries.some((entry) => entry.name === `${REPOS_DIR}/${name}`),
-									);
+								: [...pairManifestSections(Object.keys(manifest.repos), parsedGitmodules.entries)].find(
+										([, paired]) => paired.viaPath && paired.section.name === section,
+									)?.[0];
 						if (claimant !== undefined) {
 							return yield* Effect.fail(
 								new ReposConfigError({
