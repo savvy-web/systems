@@ -14,6 +14,7 @@
 		"@effected/git": "catalog:effected",
 		"@effected/github": "catalog:effected",
 		"@effected/mcp-kit": "catalog:effected",
+		"@effected/npm": "catalog:effected",
 		"@effected/templates": "catalog:effected",
 		"@effected/workspaces": "catalog:effected",
 		"@savvy-web/changelog": "workspace:*",
