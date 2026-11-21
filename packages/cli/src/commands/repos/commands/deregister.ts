@@ -17,8 +17,10 @@
  *
  * Every failure here is a REAL failure (exit 1): a `ReposConfigError` means
  * the section still backs a live manifest entry (use `remove` to unvendor, or
- * `sync` to reconcile), the section is not registered at all (usually a
- * typo), or the manifest itself is unreadable; a `GitSubmoduleError` means
+ * `sync` to reconcile), `.gitmodules` still declares the section (a
+ * mid-add/remove transition — finish or revert it; an unparsable
+ * `.gitmodules` refuses too), the section is not registered at all (usually
+ * a typo), or the manifest itself is unreadable; a `GitSubmoduleError` means
  * the underlying git command failed. Each fails as a `CommandError` with a
  * hint. There is no friendly missing-manifest exit-0 case: the manager folds
  * a missing manifest to "no live entries" and proceeds, since a stale
@@ -26,8 +28,9 @@
  *
  * Left off at a terminal, the section is picked (`Select`) from the stale
  * registrations `ReposDrift.check` reports — a `localRegistrationDivergence`
- * with no manifest value — never from the vendored repos, which this command
- * refuses. Anywhere else, or with nothing stale to pick, a missing section is
+ * with no manifest value and no `orphanGitmodulesEntry` for the same name
+ * (that pairing is a mid-add/remove transition, which this command refuses) —
+ * never from the vendored repos, which this command refuses too. Anywhere else, or with nothing stale to pick, a missing section is
  * the usage error it always was, exit 64.
  *
  * @example
@@ -60,8 +63,15 @@ const sectionOrPick = (cwd: string, given: string | undefined) =>
 		if (given !== undefined) return given;
 		if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument(["deregister"], "section"));
 		const drift = yield* Repos.ReposDrift;
-		const stale = (yield* drift.check(cwd)).drifts.filter(
-			(item) => item.kind === "localRegistrationDivergence" && item.manifestValue === undefined,
+		const drifts = (yield* drift.check(cwd)).drifts;
+		// A registration whose section `.gitmodules` still declares is paired with
+		// an `orphanGitmodulesEntry` of the same name: a transition, not stale.
+		const transitional = new Set(
+			drifts.filter((item) => item.kind === "orphanGitmodulesEntry").map((item) => item.name),
+		);
+		const stale = drifts.filter(
+			(item) =>
+				item.kind === "localRegistrationDivergence" && item.manifestValue === undefined && !transitional.has(item.name),
 		);
 		if (stale.length === 0) return yield* Effect.fail(ReposCli.missingArgument(["deregister"], "section"));
 		return yield* CliUi.prompt(
@@ -94,7 +104,7 @@ export const runReposDeregister = (cwd: string, section: string | undefined) =>
 			"ReposConfigError",
 			ReposCli.fail(
 				"deregister the submodule registration",
-				"it still backs a manifest entry (use `savvy repos remove`), is not registered, or the manifest is unreadable; `savvy repos status --drift` lists the stale ones",
+				"it still backs a manifest entry (use `savvy repos remove`), .gitmodules still declares it (finish or revert the add/remove), is not registered, or the manifest is unreadable; `savvy repos status --drift` lists the stale ones",
 			),
 		),
 		Effect.catchTag("GitSubmoduleError", ReposCli.fail("deregister the submodule registration")),

@@ -600,6 +600,51 @@ describe("ReposDrift.check", () => {
 					kind: "localRegistrationDivergence",
 				}),
 			]);
+			// Absent from `.gitmodules` too, so the stale remedy stays — with the
+			// branch-switch caveat, since local config is shared across branches.
+			expect(report.drifts[0]?.detail).toContain("savvy repos deregister");
+			expect(report.drifts[0]?.detail).toContain("branch");
+			expect(report.drifts[0]?.detail).toContain("switching back");
+		}),
+	);
+
+	// --- #563: a registration backing a still-declared .gitmodules section --
+	// Mid add/remove (or across a branch switch) the manifest and .gitmodules
+	// disagree. The registration then backs a LIVE section: calling it stale
+	// and prescribing deregister is a false cause and a destructive remedy.
+
+	it.effect("a registration whose section .gitmodules still declares is a transition, not a stale registration", () =>
+		Effect.gen(function* () {
+			const root = makeRoot();
+			const transitional = `${REPOS_DIR}/transitional`;
+			writeFileSync(
+				join(root, ".gitmodules"),
+				`${healthyGitmodulesText()}[submodule "${transitional}"]\n\tpath = ${transitional}\n\turl = https://example.com/t.git\n`,
+			);
+			makeWorktree(root);
+
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						configEntries: [
+							{ key: `submodule.${EXPECTED_PATH}.url`, value: URL },
+							{ key: `submodule.${transitional}.url`, value: "https://example.com/t.git" },
+						],
+					}),
+				),
+			);
+
+			expect(report.clean).toBe(false);
+			expect(report.drifts.map((d) => d.kind).sort()).toEqual(["localRegistrationDivergence", "orphanGitmodulesEntry"]);
+			const local = report.drifts.find((d) => d.kind === "localRegistrationDivergence");
+			expect(local).toEqual(expect.objectContaining({ name: transitional, observedValue: transitional }));
+			expect(local?.detail).not.toContain("deregister");
+			expect(local?.detail).not.toContain("stale");
+			expect(local?.detail).toContain("mid-add/remove transition");
+			expect(local?.detail).toContain("orphanGitmodulesEntry");
 		}),
 	);
 

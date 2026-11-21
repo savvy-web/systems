@@ -4326,6 +4326,34 @@ describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
 		}),
 	);
 
+	it.effect(
+		"refuses a section .gitmodules still declares — a mid-add/remove transition, not a stale registration",
+		() =>
+			Effect.gen(function* () {
+				const host = makeHost();
+				// #563: the manifest no longer carries "old", but .gitmodules still
+				// declares its section, so the registration backs a live section.
+				writeFileSync(
+					join(host, ".gitmodules"),
+					'[submodule ".repos/old"]\n\tpath = .repos/old\n\turl = https://example.com/old.git\n',
+				);
+				git(host, "config", "submodule..repos/old.url", "https://example.com/old.git");
+				git(host, "config", "submodule..repos/old.active", "true");
+
+				const managerLayer = makeManagerLayer(Effect.succeed({ repos: {} } as ReposManifestFile));
+				const error = yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/old");
+				}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+				expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+				expect(String(error.message)).toContain("still declared in .gitmodules");
+				// The refusal happened before any mutation: every key survives.
+				expect(git(host, "config", "--get", "submodule..repos/old.url").trim()).toBe("https://example.com/old.git");
+				expect(git(host, "config", "--get", "submodule..repos/old.active").trim()).toBe("true");
+			}),
+	);
+
 	it.effect("refuses a section outside .repos/ — a host repo's own submodule registration is not ours to clear", () =>
 		Effect.gen(function* () {
 			const host = makeHost();

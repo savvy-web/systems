@@ -90,7 +90,11 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 				 * `submodule.<name>.*` section reported clean while `git submodule
 				 * status` still listed the phantom entry.
 				 */
-				const localRegistrationDrifts = (root: string, manifestEntries: ReadonlyArray<readonly [string, unknown]>) =>
+				const localRegistrationDrifts = (
+					root: string,
+					manifestEntries: ReadonlyArray<readonly [string, unknown]>,
+					gitmodulesSectionNames: ReadonlySet<string>,
+				) =>
 					Effect.gen(function* () {
 						const found: RepoDrift[] = [];
 						// --- Fifth authority: the superproject's LOCAL git config ------
@@ -166,16 +170,39 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						// A stale local registration whose gitdir no longer backs any
-						// manifest entry: nothing above can attribute it to an entry, but
-						// leaving it unreported means `git submodule status` keeps
-						// listing a name the manifest has never heard of.
+						// A local registration that matches no manifest entry. Two very
+						// different states land here, told apart by `.gitmodules`:
+						//
+						// - The section is STILL DECLARED in `.gitmodules`: the manifest
+						//   and `.gitmodules` disagree (the `orphanGitmodulesEntry` above
+						//   reports that), which is a mid-add/remove transition. The
+						//   registration is backing a live section — it is NOT stale, and
+						//   deregistering it would break the checkout. The finding stays
+						//   (it is real local state) but names the transition and a
+						//   non-destructive fix.
+						// - The section is ABSENT from `.gitmodules` too: nothing in this
+						//   branch declares it, so the registration is stale for THIS
+						//   checkout. Local git config is unversioned and shared across
+						//   branches, though, so another branch may still vendor the path —
+						//   switching back is then the cheap fix, and deregister is right
+						//   only when no branch vendors it.
 						for (const registeredName of registeredNames) {
 							if (
 								!registeredName.startsWith(`${REPOS_DIR}/`) ||
 								canonicalNames.has(registeredName) ||
 								explained.has(registeredName)
 							) {
+								continue;
+							}
+							if (gitmodulesSectionNames.has(registeredName)) {
+								found.push(
+									RepoDrift.make({
+										name: registeredName,
+										kind: "localRegistrationDivergence",
+										detail: `local git config registers submodule "${registeredName}", which backs a .gitmodules section that is still declared but matches no manifest entry — the manifest and .gitmodules disagree (see orphanGitmodulesEntry), a mid-add/remove transition rather than a leftover registration; finish or revert the add/remove that left them disagreeing, and do not remove this registration`,
+										observedValue: registeredName,
+									}),
+								);
 								continue;
 							}
 							found.push(
@@ -187,7 +214,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 									// manifest entry left to re-register, so the only fix is to
 									// drop the section outright. Say that, or the report names a
 									// problem whose stated remedy is for a different one.
-									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry — a stale registration left behind by a rename or an unvendoring; clear it with \`savvy repos deregister ${registeredName}\``,
+									detail: `local git config registers submodule "${registeredName}", which matches no manifest entry or .gitmodules section — a stale registration left behind by a rename, an unvendoring, or a branch switch (local git config is shared across branches, so if another branch still vendors this path, switching back to it is the cheap fix); only when no branch vendors it, clear it with \`savvy repos deregister ${registeredName}\``,
 									observedValue: registeredName,
 								}),
 							);
@@ -235,7 +262,7 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							// nested-submodule probe is deliberately not run: with nothing
 							// registered, every entry is already reported unregistered
 							// above, which is the dominant signal.
-							drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
+							drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries, new Set<string>())));
 							return ReposDriftReport.make({ drifts, clean: drifts.length === 0 });
 						}
 
@@ -445,7 +472,13 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries)));
+						drifts.push(
+							...(yield* localRegistrationDrifts(
+								root,
+								manifestEntries,
+								new Set(gitmodules.entries.map((entry) => entry.name)),
+							)),
+						);
 
 						// --- One level down: a vendored repo's OWN submodules ----------
 						// Sparse-checkout governs only the parent's TRACKED files; an
