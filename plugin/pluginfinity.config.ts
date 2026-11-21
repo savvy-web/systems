@@ -75,6 +75,13 @@ export default defineConfig({
 				timeout: 5,
 				failClosed: true,
 			},
+			{
+				matcher: "Read|Write|Edit|MultiEdit|NotebookEdit|Grep",
+				script: "hooks/pre-tool-use/env-file-guard.sh",
+				timeout: 5,
+				failClosed: true,
+			},
+			{ matcher: "Bash", script: "hooks/pre-tool-use/env-file-guard.sh", timeout: 5, failClosed: true },
 		],
 		PostToolUse: [
 			{ matcher: "Write|Edit", script: "hooks/post-tool-use/changeset-validate-changeset.sh", timeout: 15 },

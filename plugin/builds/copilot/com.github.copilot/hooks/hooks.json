@@ -132,6 +132,26 @@
 					"PLUGINFINITY_EVENT": "PreToolUse",
 					"PLUGINFINITY_FAIL_CLOSED": "1"
 				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh\"",
+				"matcher": "Read|Write|Edit|MultiEdit|NotebookEdit|Grep",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
+			},
+			{
+				"type": "command",
+				"bash": "bash \"${PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh\"",
+				"matcher": "Bash",
+				"timeoutSec": 5,
+				"env": {
+					"PLUGINFINITY_EVENT": "PreToolUse",
+					"PLUGINFINITY_FAIL_CLOSED": "1"
+				}
 			}
 		],
 		"PostToolUse": [

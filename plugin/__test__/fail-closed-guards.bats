@@ -3,10 +3,10 @@
 #
 # The guards that must not fail open carry `failClosed: true` in
 # pluginfinity.config.ts: biome-direct-deny, repos-bash-guard, repos-mcp-guard,
-# repos-fs-guard and both dogfood-guard entries. The build writes that as
-# PLUGINFINITY_FAIL_CLOSED=1 into the entry's environment (Claude: an `env K=V`
-# prefix in args; Copilot: the entry's `env` object), and the hook library turns
-# a crash into a PreToolUse deny.
+# repos-fs-guard, and both dogfood-guard and both env-file-guard entries. The
+# build writes that as PLUGINFINITY_FAIL_CLOSED=1 into the entry's environment
+# (Claude: an `env K=V` prefix in args; Copilot: the entry's `env` object), and
+# the hook library turns a crash into a PreToolUse deny.
 #
 # pluginfinity's run_hook applies the environment of the BUILT entry that runs
 # the script, so a crash test exercises the config and the library together.
@@ -20,6 +20,7 @@
 load common
 
 GUARD_MATCHER_MCP='mcp__(gk|gitkraken|GitKraken)__.*|mcp__github(-[^_].*)?__.*'
+GUARD_MATCHER_ENV_FS='Read|Write|Edit|MultiEdit|NotebookEdit|Grep'
 
 # entry_env <script> <matcher> — print the built entry's VAR=value pairs, one
 # per line, for the current target.
@@ -68,17 +69,18 @@ expect_fail_closed_deny() {
 	grep -q "exited 1 during PreToolUse" "$SILK_ERROR_LOG"
 }
 
-@test "the six guarded entries, and only those, carry PLUGINFINITY_FAIL_CLOSED=1" {
+@test "the eight guarded entries, and only those, carry PLUGINFINITY_FAIL_CLOSED=1" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"
 	local s
-	for s in biome-direct-deny.sh repos-bash-guard.sh dogfood-guard.sh; do
+	for s in biome-direct-deny.sh repos-bash-guard.sh dogfood-guard.sh env-file-guard.sh; do
 		entry_env "hooks/pre-tool-use/$s" Bash | grep -qx 'PLUGINFINITY_FAIL_CLOSED=1'
 	done
 	for s in repos-mcp-guard.sh dogfood-guard.sh; do
 		entry_env "hooks/pre-tool-use/$s" "$GUARD_MATCHER_MCP" | grep -qx 'PLUGINFINITY_FAIL_CLOSED=1'
 	done
 	entry_env hooks/pre-tool-use/repos-fs-guard.sh 'Write|Edit|NotebookEdit' | grep -qx 'PLUGINFINITY_FAIL_CLOSED=1'
+	entry_env hooks/pre-tool-use/env-file-guard.sh "$GUARD_MATCHER_ENV_FS" | grep -qx 'PLUGINFINITY_FAIL_CLOSED=1'
 	# Advisory hooks stay fail-open.
 	! entry_env hooks/pre-tool-use/commit-bash.sh Bash | grep -q FAIL_CLOSED
 	! entry_env hooks/pre-tool-use/biome-prefer-mcp.sh Bash | grep -q FAIL_CLOSED
@@ -137,6 +139,24 @@ expect_fail_closed_deny() {
 	silk_setup "$SILK_TARGET"
 	make_repo_project >/dev/null
 	crash_run hooks/pre-tool-use/repos-fs-guard.sh "${FIXTURES_DIR}/pretooluse.repos-fs-outside.json"
+	expect_fail_closed_deny
+	done
+}
+
+@test "Bash guard (env-file-guard, Bash entry): a crash denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_repo_project >/dev/null
+	crash_run hooks/pre-tool-use/env-file-guard.sh "${FIXTURES_DIR}/pretooluse.bash-safe.json" --matcher Bash
+	expect_fail_closed_deny
+	done
+}
+
+@test "FS guard (env-file-guard, file-tool entry): a crash denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	make_repo_project >/dev/null
+	crash_run hooks/pre-tool-use/env-file-guard.sh "${FIXTURES_DIR}/pretooluse.env-file-read-example.json" --matcher "$GUARD_MATCHER_ENV_FS"
 	expect_fail_closed_deny
 	done
 }

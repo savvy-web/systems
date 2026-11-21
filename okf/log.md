@@ -4,6 +4,8 @@
 
 * Updated silk-effects
 * Updated Run an @effected dogfood round through the mailbox protocol
+* Updated The Copilot build of silk drops context nudges, monitors and project discovery
+* Updated silk-plugin
 
 ## 2026-11-12
 

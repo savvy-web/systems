@@ -35,12 +35,14 @@ sources:
     resource: ../../plugin/skills/it2
   - id: dogfood
     resource: ../../plugin/skills/dogfood
+  - id: env-file-guard
+    resource: ../../plugin/hooks/pre-tool-use/env-file-guard.sh
 generated:
   by: okfit/claude-code
-  at: 2026-11-09T20:39:04Z
+  at: 2026-11-21T01:23:57Z
 integrity:
   generated:
-    body: 523e51d86e4d282a
+    body: 3ce940c202b4ee23
 ---
 
 # silk-plugin
@@ -102,9 +104,9 @@ A change that adds a note should be one the [copilot-plugin-host-gaps](../limita
 
 ## Hook infrastructure and session orientation
 
-Hook registrations live in `pluginfinity.config.ts`; several guards share a matcher (`Bash`, `Write|Edit|NotebookEdit`, the GitKraken/GitHub MCP regex) and a deny from any one entry wins. Every built entry runs its script through `bash` with `PLUGINFINITY_EVENT` set, so the exec bit never matters.[^config] The scripts' plumbing is pluginfinity's hook library: `hook_input`/`hook_require_input` for the payload, `hook_project_dir`/`hook_cd_project` for the tree, `hook_relay` for the `savvy` CLI round trip, `hook_allow`/`hook_deny`/`hook_context`/`hook_system_message` for responses.[^authoring]
+Hook registrations live in `pluginfinity.config.ts`; several guards share a matcher (`Bash`, `Write|Edit|NotebookEdit`, `Read|Write|Edit|MultiEdit|NotebookEdit|Grep`, the GitKraken/GitHub MCP regex) and a deny from any one entry wins. Every built entry runs its script through `bash` with `PLUGINFINITY_EVENT` set, so the exec bit never matters.[^config] The scripts' plumbing is pluginfinity's hook library: `hook_input`/`hook_require_input` for the payload, `hook_project_dir`/`hook_cd_project` for the tree, `hook_relay` for the `savvy` CLI round trip, `hook_allow`/`hook_deny`/`hook_context`/`hook_system_message` for responses.[^authoring]
 
-**Fail policy.** The library's exit trap fails open by default: a crashing hook answers nothing and the tool call proceeds. The six guard entries (`biome-direct-deny`, `repos-bash-guard`, `repos-mcp-guard`, `repos-fs-guard`, and both `dogfood-guard` entries) carry `failClosed: true`, so a crash in one of them denies the call ("silk hook failed (exit N)"). `__test__/fail-closed-guards.bats` pins that set against the built hooks file.[^config][^authoring]
+**Fail policy.** The library's exit trap fails open by default: a crashing hook answers nothing and the tool call proceeds. The eight guard entries (`biome-direct-deny`, `repos-bash-guard`, `repos-mcp-guard`, `repos-fs-guard`, and both `dogfood-guard` and both `env-file-guard` entries) carry `failClosed: true`, so a crash in one of them denies the call ("silk hook failed (exit N)"). `__test__/fail-closed-guards.bats` pins that set against the built hooks file.[^config][^authoring]
 
 Three SessionStart hooks split by responsibility: `orientation.sh` (no matcher, fires on every start including resume and compact; emits the always-on `<silk_capabilities>` block and writes no session state); `startup-only.sh` (`matcher: "startup"`, fresh starts only; runs `savvy commit hook session-start` as a side effect and emits the edit-time lint/pre-commit contract); `repos-orientation.sh` (no matcher, self-silencing when `.repos/config.json` does not exist).[^hooks]
 
@@ -140,6 +142,12 @@ A read-only capability layered over the `savvy-mcp` server's `turbo_inspect` too
 
 Claude-only (`targets: { copilot: false }`), and the lightest capability, with no agent, MCP tool, hook or guard: `skills/it2/SKILL.md` plus the `<terminal>` sub-block in `hooks/session-start/orientation.sh`.[^it2] The gated orientation block renders only when `TERM_PROGRAM == "iTerm.app"` or `LC_TERMINAL == "iTerm2"`, AND `it2` is on `PATH`: a deliberately prompt-free, env-only gate, since the hook fires on every resume/compact and any it2 call risks the first-use API-authorization dialog or a hang.[^it2] `/silk:it2` (description-triggered, no `paths` trigger since it has no backing file) is the self-contained playbook: split-direction semantics, a geometry-driven layout heuristic, grid recipes, session-id-prefix badging, and dismiss-and-close discipline. Every it2 call and geometry query happens at point-of-use, never in a hook.[^it2] The [dogfood capability](#dogfood-mailbox-protocol) uses it2 as a cross-session doorbell/spawn transport; this capability uses it as a pane-layout tool for subagents: same CLI, different job. Both decline it2's auto-approve/modal plugins, since cross-session auto-approval is permission laundering.[^it2]
 
+## Env-file guard
+
+One hook, no skill or agent: `hooks/pre-tool-use/env-file-guard.sh`, registered on `Read|Write|Edit|MultiEdit|NotebookEdit|Grep` and on `Bash`, fail-closed on both (#794).[^env-file-guard] It denies agents reading or writing the real environment files, which can hold secrets or values resolved from them: `.envrc`, `.env`, `.env.*` and `.dev.vars` (plus `.envrc.*` and `.dev.vars.*`), matched on the basename so a nested path counts. A name ending in `.example` is never denied, so the agent edits `.envrc.example`, describes the change, and the owner applies it to the real file. The deny message says exactly that and points at 1Password `op://` references read with `op read`.[^env-file-guard]
+
+The file tools are judged by their path (`file_path`, `notebook_path`, Grep's `path`) and Grep's `glob` (`.env*` or `**/.envrc` is denied, `*.example` and `*` are not). Bash is judged per command-position segment after the same heredoc and quoted-prose stripping as `repos-bash-guard`: a reader (`cat`, `head`, `sed`, `awk`, `grep`, `rg`, `cp`, `source`, `.` and others) with an env-file argument or glob, a `<`/`>`/`>>` redirect or `tee` onto one, `direnv exec <dir> env|printenv|export|set`, and `direnv export`/`dump`. `direnv exec . <cmd>`, `direnv allow` and `direnv reload` run, so an agent can use a variable without seeing it.[^env-file-guard] It is a tripwire like every guard here: a directory-wide Grep (ripgrep skips the gitignored env files anyway), a variable or `$(...)` building the path, and an interpreter opening the file itself are not covered. It has no subagent exemption. A `savvy` command for setting, rotating and explaining secrets is the planned follow-up and is not part of this guard.
+
 ## Dogfood-mailbox protocol
 
 A repeatable loop for two agent sessions in sibling repo checkouts to request, deliver, adopt and iterate on cross-repo changes before anything is released. Pieces: `skills/dogfood/` (skill, two `references/`, `scripts/journal-append.sh`, `scripts/override-audit.mjs`), `hooks/pre-tool-use/dogfood-guard.sh`, `monitors/dogfood-mail.mjs` (Claude only). State lives on disk under the gitignored `.claude/dogfood/` in each repo.[^dogfood]
@@ -166,3 +174,4 @@ State is a per-loop **append-only JSONL journal**, `.claude/dogfood/<counterpart
 [^turbo]: `../../plugin/skills/turbo`
 [^it2]: `../../plugin/skills/it2`
 [^dogfood]: `../../plugin/skills/dogfood`
+[^env-file-guard]: `../../plugin/hooks/pre-tool-use/env-file-guard.sh`
