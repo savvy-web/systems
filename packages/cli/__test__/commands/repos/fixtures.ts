@@ -51,6 +51,46 @@ export class ReposStub {
 			...methods,
 		} as ManagerShape);
 
+	/**
+	 * A `ReposManager.sync` that replays `steps` through the caller's `onStep`,
+	 * in order, then ends as `end` does (a report, or a typed failure).
+	 */
+	static readonly sync =
+		(
+			steps: ReadonlyArray<Repos.ReposSyncStep>,
+			end: EffectType.Effect<
+				Repos.ReposSyncReport,
+				Repos.ReposConfigError | Repos.GitSubmoduleError | Repos.ReposLockdownError
+			> = Effect.succeed(ReposStub.syncReport),
+		): ManagerShape["sync"] =>
+		(_root, options) =>
+			Effect.gen(function* () {
+				const onStep = options?.onStep;
+				if (onStep !== undefined) {
+					for (const step of steps) {
+						yield* onStep(step);
+					}
+				}
+				return yield* end;
+			});
+
+	/** A `RepoSynced` step literal. */
+	static readonly synced = (name: string, actions: ReadonlyArray<Repos.ReposSyncAction>): Repos.ReposSyncStep =>
+		({ _tag: "RepoSynced", name, actions }) as Repos.ReposSyncStep;
+
+	/** An empty sync report (the CLI prints from the steps, never the report). */
+	static readonly syncReport: Repos.ReposSyncReport = {
+		clearedLocks: [],
+		initialized: [],
+		sparseApplied: [],
+		upToDate: [],
+		advanced: [],
+		skippedDirty: [],
+		urlSynced: [],
+		registered: [],
+		boundaryMarked: [],
+	};
+
 	/** A `ReposDrift` whose `check` is given, dying when it is not. */
 	static readonly drift = (
 		check: (

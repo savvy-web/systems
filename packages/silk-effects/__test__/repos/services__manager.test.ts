@@ -781,6 +781,141 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 				expect(error).toMatchObject({ _tag: "GitSubmoduleError" });
 			}),
 	);
+
+	describe("onStep progress", () => {
+		const managerFor = (manifest: ReposManifestFile) =>
+			ReposManager.layer.pipe(
+				Layer.provide(
+					Layer.succeed(ReposConfigStore, {
+						exists: () => Effect.succeed(true),
+						read: () => Effect.succeed(manifest),
+						write: () => Effect.succeed(undefined),
+					} as never),
+				),
+				Layer.provide(Git.layer.pipe(Layer.provide(NodeServices.layer))),
+				Layer.provide(reposLockdownLayer),
+				Layer.provide(NodeServices.layer),
+			);
+
+		/** Run one `sync` with an `onStep` that records each step as a plain object. */
+		const syncCollecting = (host: string, manifest: ReposManifestFile) => {
+			const steps: Array<Record<string, unknown>> = [];
+			const effect = Effect.gen(function* () {
+				const manager = yield* ReposManager;
+				return yield* manager.sync(host, {
+					onStep: (step) => Effect.sync(() => steps.push({ ...step })),
+				});
+			}).pipe(Effect.provide(managerFor(manifest)));
+			return { steps, effect };
+		};
+
+		it.effect("reports Started, then RepoStarted and RepoSynced per entry in manifest order", () =>
+			Effect.gen(function* () {
+				const up = makeUpstream();
+				const host = makeHost();
+				const upstreamUrl = `file://${up}`;
+				const manifest = {
+					repos: {
+						spec: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority", sparse: ["src"] },
+						other: { url: upstreamUrl, ref: "1.0.0", purpose: "second source" },
+					},
+				} as unknown as ReposManifestFile;
+				mkdirSync(join(host, ".repos"), { recursive: true });
+				writeFileSync(join(host, ".repos", "config.json"), JSON.stringify(manifest));
+				// Register both before removing either worktree: `simulatePriorAdd`
+				// twice would stage the first one's deleted worktree in the second
+				// `git add .repos`.
+				for (const name of ["spec", "other"]) {
+					execFileSync("git", ["submodule", "add", upstreamUrl, `.repos/${name}`], {
+						cwd: host,
+						env: { ...process.env, ...GIT_ENV, GIT_ALLOW_PROTOCOL: "file" },
+						stdio: ["ignore", "pipe", "pipe"],
+					});
+					git(join(host, ".repos", name), "checkout", "1.0.0");
+				}
+				git(host, "add", ".repos", ".gitmodules");
+				git(host, "commit", "--quiet", "-m", "add spec and other submodules");
+				rmSync(join(host, ".repos", "spec"), { recursive: true, force: true });
+				rmSync(join(host, ".repos", "other"), { recursive: true, force: true });
+
+				const first = syncCollecting(host, manifest);
+				const firstReport = yield* first.effect;
+				expect(first.steps).toEqual([
+					{ _tag: "Started", repos: ["spec", "other"] },
+					{ _tag: "RepoStarted", name: "spec" },
+					{ _tag: "RepoSynced", name: "spec", actions: ["initialized", "sparseApplied"] },
+					{ _tag: "RepoStarted", name: "other" },
+					{ _tag: "RepoSynced", name: "other", actions: ["initialized"] },
+				]);
+				// The report is unchanged by the callback.
+				expect(firstReport.initialized).toEqual(["spec", "other"]);
+				expect(firstReport.sparseApplied).toEqual(["spec"]);
+
+				const second = syncCollecting(host, manifest);
+				yield* second.effect;
+				expect(second.steps.filter((step) => step._tag === "RepoSynced")).toEqual([
+					{ _tag: "RepoSynced", name: "spec", actions: ["upToDate", "sparseApplied"] },
+					{ _tag: "RepoSynced", name: "other", actions: ["upToDate"] },
+				]);
+			}),
+		);
+
+		// Real clock for the same reason as the stale-lock test above: the lock's
+		// age is computed against Effect's Clock.
+		it.live("reports clearedLock in the repo's RepoSynced actions", () =>
+			Effect.gen(function* () {
+				const up = makeUpstream();
+				const host = makeHost();
+				const name = "spec";
+				const upstreamUrl = `file://${up}`;
+				const manifest = {
+					repos: { [name]: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" } },
+				} as unknown as ReposManifestFile;
+				mkdirSync(join(host, ".repos"), { recursive: true });
+				writeFileSync(join(host, ".repos", "config.json"), JSON.stringify(manifest));
+				simulatePriorAdd(host, upstreamUrl, name, "1.0.0");
+
+				const lockDirPath = join(host, ".git", "modules", ".repos", name);
+				mkdirSync(lockDirPath, { recursive: true });
+				writeFileSync(join(lockDirPath, "index.lock"), "");
+				const staleTime = new Date(Date.now() - STALE_LOCK_MAX_AGE_MS - 60_000);
+				utimesSync(join(lockDirPath, "index.lock"), staleTime, staleTime);
+
+				const run = syncCollecting(host, manifest);
+				const report = yield* run.effect;
+				expect(report.clearedLocks).toEqual([name]);
+				expect(run.steps.at(-1)).toEqual({ _tag: "RepoSynced", name, actions: ["clearedLock", "initialized"] });
+			}),
+		);
+
+		it.effect("delivers an earlier repo's RepoSynced before a later repo fails typed", () =>
+			Effect.gen(function* () {
+				const up = makeUpstream();
+				const host = makeHost();
+				const upstreamUrl = `file://${up}`;
+				const missingUrl = `file://${join(tmpdir(), "repos-manager-missing-upstream-does-not-exist")}`;
+				const manifest = {
+					repos: {
+						spec: { url: upstreamUrl, ref: "1.0.0", purpose: "spec authority" },
+						broken: { url: missingUrl, ref: "1.0.0", purpose: "unreachable" },
+					},
+				} as unknown as ReposManifestFile;
+				mkdirSync(join(host, ".repos"), { recursive: true });
+				writeFileSync(join(host, ".repos", "config.json"), JSON.stringify(manifest));
+				simulatePriorAdd(host, upstreamUrl, "spec", "1.0.0");
+
+				const run = syncCollecting(host, manifest);
+				const error = yield* Effect.flip(run.effect);
+				expect(error).toMatchObject({ _tag: "GitSubmoduleError" });
+				expect(run.steps).toEqual([
+					{ _tag: "Started", repos: ["spec", "broken"] },
+					{ _tag: "RepoStarted", name: "spec" },
+					{ _tag: "RepoSynced", name: "spec", actions: ["initialized"] },
+					{ _tag: "RepoStarted", name: "broken" },
+				]);
+			}),
+		);
+	});
 });
 
 describe("ReposManager.add / pin — real git", REAL_GIT_TIMEOUT, () => {
@@ -2053,13 +2188,15 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 
 			moveGitlink(host, name, tag2);
 
+			const steps: Array<Record<string, unknown>> = [];
 			const report = yield* run(
 				Effect.gen(function* () {
 					const manager = yield* ReposManager;
-					return yield* manager.sync(host);
+					return yield* manager.sync(host, { onStep: (step) => Effect.sync(() => steps.push({ ...step })) });
 				}),
 			);
 
+			expect(steps.at(-1)).toEqual({ _tag: "RepoSynced", name, actions: ["advanced"] });
 			expect(report.advanced).toEqual([name]);
 			expect(report.upToDate).toEqual([]);
 			expect(report.skippedDirty).toEqual([]);
@@ -2092,13 +2229,15 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 
 			moveGitlink(host, name, tag2);
 
+			const steps: Array<Record<string, unknown>> = [];
 			const report = yield* run(
 				Effect.gen(function* () {
 					const manager = yield* ReposManager;
-					return yield* manager.sync(host);
+					return yield* manager.sync(host, { onStep: (step) => Effect.sync(() => steps.push({ ...step })) });
 				}),
 			);
 
+			expect(steps.at(-1)).toEqual({ _tag: "RepoSynced", name, actions: ["skippedDirty"] });
 			expect(report.skippedDirty).toEqual([name]);
 			expect(report.advanced).toEqual([]);
 			expect(report.upToDate).toEqual([]);
