@@ -1355,3 +1355,139 @@ _make_proj() {
 	assert_allow
 	done
 }
+
+# --- a cwd inside a vendored submodule --------------------------------------
+# A persisted `cd .repos/effect` leaves the cwd inside an initialized
+# submodule, whose own .git file stops the library's walk up to the git root.
+# The guard anchors to the superproject that owns .repos/ instead.
+
+# A project whose .repos/effect is an initialized submodule (a .git FILE).
+_make_proj_with_submodule() {
+	_make_proj
+	mkdir -p "$SILK_TMP/proj/.repos/effect"
+	printf 'gitdir: ../../.git/modules/effect\n' > "$SILK_TMP/proj/.repos/effect/.git"
+}
+
+@test "cwd in a vendored submodule: sed -i on its file by absolute path denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj_with_submodule
+	run_guard_in_cwd "$SILK_TMP/proj/.repos/effect" "sed -i s/a/b/ $SILK_TMP/proj/.repos/effect/x.ts"
+	assert_deny
+	done
+}
+
+@test "cwd in a vendored submodule: rm -rf ../../.repos/effect denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj_with_submodule
+	run_guard_in_cwd "$SILK_TMP/proj/.repos/effect" "rm -rf ../../.repos/effect"
+	assert_deny
+	done
+}
+
+@test "cwd in a vendored submodule: a redirect into it by absolute path denies" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj_with_submodule
+	run_guard_in_cwd "$SILK_TMP/proj/.repos/effect" "echo x > $SILK_TMP/proj/.repos/effect/x"
+	assert_deny
+	done
+}
+
+@test "cwd in a vendored submodule: the superproject's manifest stays writable" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	_make_proj_with_submodule
+	run_guard_in_cwd "$SILK_TMP/proj/.repos/effect" "cp a ../config.json"
+	assert_allow
+	run_guard_in_cwd "$SILK_TMP/proj/.repos/effect" "echo x > $SILK_TMP/proj/.repos/config.json"
+	assert_allow
+	done
+}
+
+# --- a line continuation keeps a mutator with its operands ------------------
+
+@test "rm -rf with its vendored operand on a continuation line: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command $'rm -rf \\\n  .repos/effect'
+	assert_deny
+	done
+}
+
+@test "sed -i with its vendored file on a continuation line: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command $'sed -i s/a/b/ \\\n  .repos/x.ts'
+	assert_deny
+	done
+}
+
+@test "a read continued across lines, then rm on its own line: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command $'grep -rn foo \\\n  .repos/effect\nrm -f /tmp/x'
+	assert_allow
+	done
+}
+
+# --- a mutator inside command substitution or eval --------------------------
+
+@test "rm of a vendored tree inside \$(...): deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'echo $(rm -rf .repos/effect)'
+	assert_deny
+	done
+}
+
+@test "rm of a vendored tree inside an assignment's \$(...): deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'x=$(rm -rf .repos/effect)'
+	assert_deny
+	done
+}
+
+@test "rm of a vendored tree inside backticks: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'echo `rm -rf .repos/effect`'
+	assert_deny
+	done
+}
+
+@test "eval rm -rf of a vendored tree: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'eval rm -rf .repos/effect'
+	assert_deny
+	done
+}
+
+@test "parallel rm over a vendored tree: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'parallel -j 4 rm -rf ::: .repos/effect'
+	assert_deny
+	run_guard_with_command 'ls .repos/effect | parallel rm'
+	assert_deny
+	done
+}
+
+@test "busybox rm of a vendored tree: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'busybox rm -rf .repos/effect'
+	assert_deny
+	done
+}
+
+@test "a vendored read inside \$(...) beside an rm elsewhere: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	run_guard_with_command 'echo $(cat .repos/effect/VERSION); rm -f /tmp/x'
+	assert_allow
+	done
+}

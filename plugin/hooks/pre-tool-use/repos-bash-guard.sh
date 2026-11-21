@@ -140,6 +140,10 @@ if [[ "$SCAN" =~ (^|[^[:alnum:]_./-])(cd|pushd|popd)([[:space:]]|$) ]]; then
 	_REPOS_CD_SEEN=1
 fi
 _REPOS_PROJECT=$(hook_project_dir)
+# A cwd inside a vendored tree (a persisted `cd .repos/effect`) walks up to
+# that submodule's own .git file; anchor to the superproject that owns the
+# .repos/ directory instead.
+_REPOS_PROJECT="${_REPOS_PROJECT%%/.repos/*}"
 _REPOS_BASE=$(hook_input cwd)
 [[ "$_REPOS_BASE" == /* ]] || _REPOS_BASE="$_REPOS_PROJECT"
 
@@ -638,6 +642,8 @@ _repos_wrapper_takes_value() {
 		exec:-a) return 0 ;;
 		xargs:-I | xargs:-n | xargs:-P | xargs:-L | xargs:-s | xargs:-d | xargs:-E | xargs:-a) return 0 ;;
 		xargs:--max-args | xargs:--max-procs | xargs:--max-lines | xargs:--max-chars | xargs:--delimiter | xargs:--arg-file | xargs:--eof) return 0 ;;
+		parallel:-j | parallel:-S | parallel:-a | parallel:-d | parallel:-n | parallel:-N | parallel:-I) return 0 ;;
+		parallel:--jobs | parallel:--sshlogin | parallel:--arg-file | parallel:--delimiter | parallel:--max-args | parallel:--joblog) return 0 ;;
 	esac
 	return 1
 }
@@ -671,9 +677,9 @@ _repos_command_word() {
 			continue
 		fi
 		case "$tok" in
-			sudo | doas | env | command | builtin | exec | nohup | time | nice | ionice | timeout | stdbuf | xargs | then | do | else | if | while | until)
+			sudo | doas | env | command | builtin | exec | eval | nohup | time | nice | ionice | timeout | stdbuf | xargs | parallel | busybox | then | do | else | if | while | until)
 				wrapper="$tok"
-				[ "$tok" = "xargs" ] && _VIA_XARGS=1
+				case "$tok" in xargs | parallel) _VIA_XARGS=1 ;; esac
 				continue
 				;;
 		esac
@@ -744,14 +750,18 @@ _repos_tokens_mutate() {
 #
 # The split is QUOTE-AWARE (a sed script routinely uses `|` as its delimiter:
 # `sed -i 's|.repos/a|.repos/b|' .repos/x`), honours a backslash escape
-# (find's `\;`), keeps `>&`/`&>` redirects whole, and tags each segment S (a
+# (find's `\;`), carries a segment across a trailing-backslash line
+# continuation (`rm -rf \` then `.repos/x` on the next line), starts a new
+# statement at `$(`, a backtick and `)` so a mutator inside a command
+# substitution is judged by its own command word (`x=$(rm -rf .repos/x)`),
+# keeps `>&`/`&>` redirects whole, and tags each segment S (a
 # new statement) or P (continues the pipeline before it). `\047` is `'`. An
 # unbalanced quote only suppresses splitting (the stricter direction).
 MUTATOR_SEGMENTS="$(printf '%s' "$SCAN" | awk '
-	BEGIN { q = "" }
+	BEGIN { q = ""; cont = 0 }
 	{
-		out = ""
-		kind = "S"
+		if (!cont) { out = ""; kind = "S" }
+		cont = 0
 		n = length($0)
 		for (i = 1; i <= n; i++) {
 			c = substr($0, i, 1)
@@ -760,8 +770,14 @@ MUTATOR_SEGMENTS="$(printf '%s' "$SCAN" | awk '
 				out = out c
 				continue
 			}
-			if (c == "\\" && i < n) { out = out c substr($0, i + 1, 1); i++; continue }
+			if (c == "\\" && i == n) { cont = 1; out = out " "; continue }
+			if (c == "\\") { out = out c substr($0, i + 1, 1); i++; continue }
 			if (c == "\047" || c == "\"") { q = c; out = out c; continue }
+			if (c == "`" || c == ")" || (c == "$" && substr($0, i + 1, 1) == "(")) {
+				print kind "\t" out; out = ""; kind = "S"
+				if (c == "$") i++
+				continue
+			}
 			if (c == "|") {
 				nx = substr($0, i + 1, 1)
 				if (nx == "|") { print kind "\t" out; out = ""; kind = "S"; i++; continue }
@@ -778,8 +794,9 @@ MUTATOR_SEGMENTS="$(printf '%s' "$SCAN" | awk '
 			if (c == ";") { print kind "\t" out; out = ""; kind = "S"; continue }
 			out = out c
 		}
-		print kind "\t" out
+		if (!cont) print kind "\t" out
 	}
+	END { if (cont) print kind "\t" out }
 ')"
 
 SEG_TEXT=()
