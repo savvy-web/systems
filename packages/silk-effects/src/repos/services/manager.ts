@@ -1,6 +1,6 @@
 import type { GitmodulesEntry } from "@effected/git";
 import { Git, GitConfig, GitRemote, Gitmodules, LsRemoteEntry } from "@effected/git";
-import { Clock, Context, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
+import { Clock, Context, Data, Effect, Exit, FileSystem, Layer, Option, Path, Result, Schema } from "effect";
 import { Digest } from "effect/crypto";
 import { MANIFEST_PATH, NOTE_LIMIT, REPOS_DIR } from "../constants.js";
 import type { ReposLockdownError } from "../errors.js";
@@ -65,6 +65,67 @@ export const repoSlug = (url: string): string => {
 export const STALE_LOCK_MAX_AGE_MS = 10 * 60_000;
 
 /**
+ * One piece of work {@link ReposManagerShape.sync} did for a single repo, as
+ * reported in a {@link ReposSyncStep} `RepoSynced` step. Each action matches
+ * the `ReposSyncReport` bucket of the same meaning: `clearedLock` is
+ * `clearedLocks`, and `initialized`, `registered`, `urlSynced`, `advanced`,
+ * `skippedDirty`, `sparseApplied` and `upToDate` are the buckets of the same
+ * names. The
+ * boundary marker is left out on purpose: it is asserted for every repo, so
+ * it carries no per-repo signal.
+ *
+ * @public
+ */
+export type ReposSyncAction =
+	| "clearedLock"
+	| "initialized"
+	| "registered"
+	| "urlSynced"
+	| "advanced"
+	| "skippedDirty"
+	| "sparseApplied"
+	| "upToDate";
+
+/**
+ * One progress step of {@link ReposManagerShape.sync}, reported to
+ * {@link ReposSyncOptions.onStep}.
+ *
+ * @remarks
+ * `Started` fires once, before the first repo, naming every manifest entry
+ * in the order `sync` walks them. `RepoStarted` fires as a repo's work
+ * begins. `RepoSynced` fires once that repo's work has reached disk and its
+ * tree is locked again, carrying the actions it took in the order they ran.
+ *
+ * @public
+ */
+export type ReposSyncStep = Data.TaggedEnum<{
+	/** `sync` is about to walk `repos`, in this order. */
+	readonly Started: { readonly repos: ReadonlyArray<string> };
+	/** Work on the repo `name` began. */
+	readonly RepoStarted: { readonly name: string };
+	/** The repo `name` finished; `actions` is what it did, in order. */
+	readonly RepoSynced: { readonly name: string; readonly actions: ReadonlyArray<ReposSyncAction> };
+}>;
+
+const ReposSyncStep = Data.taggedEnum<ReposSyncStep>();
+
+/**
+ * Options for {@link ReposManagerShape.sync}.
+ *
+ * @typeParam R - Services the `onStep` callback requires.
+ *
+ * @public
+ */
+export interface ReposSyncOptions<R = never> {
+	/**
+	 * Called in order after each step, once that repo's work has reached disk
+	 * and before the next repo starts, so a caller can report what already
+	 * landed if a later repo fails.
+	 */
+	readonly onStep?: (step: ReposSyncStep) => Effect.Effect<void, never, R>;
+}
+
+/**
  * The full contractual surface of {@link ReposManager}. All five methods are
  * implemented against real git plumbing and the manifest store: `status`
  * reports drift, `sync` reconciles the working tree with the manifest,
@@ -74,9 +135,15 @@ export const STALE_LOCK_MAX_AGE_MS = 10 * 60_000;
  */
 export interface ReposManagerShape {
 	readonly status: (root: string) => Effect.Effect<ReposStatusReport, ReposConfigError | GitSubmoduleError>;
-	readonly sync: (
+	/**
+	 * Reconciles the working tree with the manifest. `options.onStep` (see
+	 * {@link ReposSyncOptions}) reports per-repo progress as each repo lands;
+	 * the returned report is the same with or without it.
+	 */
+	readonly sync: <R = never>(
 		root: string,
-	) => Effect.Effect<ReposSyncReport, ReposConfigError | GitSubmoduleError | ReposLockdownError>;
+		options?: ReposSyncOptions<R>,
+	) => Effect.Effect<ReposSyncReport, ReposConfigError | GitSubmoduleError | ReposLockdownError, R>;
 	/**
 	 * Vendors a new repo.
 	 *
@@ -416,8 +483,12 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 					return { repos, clean };
 				});
 
-			const sync = (root: string) =>
+			const sync = <R = never>(
+				root: string,
+				options?: ReposSyncOptions<R>,
+			): Effect.Effect<ReposSyncReport, ReposConfigError | GitSubmoduleError | ReposLockdownError, R> =>
 				Effect.gen(function* () {
+					const onStep = options?.onStep ?? (() => Effect.void);
 					const manifest = yield* configStore.read(root);
 					const initialized: string[] = [];
 					const sparseApplied: string[] = [];
@@ -435,13 +506,17 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						name: string,
 						outcome: "advanced" | "skippedDirty" | "unchanged",
 						urlChanged: boolean,
+						actions: ReposSyncAction[],
 					): void => {
 						if (outcome === "advanced") {
 							advanced.push(name);
+							actions.push("advanced");
 						} else if (outcome === "skippedDirty") {
 							skippedDirty.push(name);
+							actions.push("skippedDirty");
 						} else if (!urlChanged) {
 							upToDate.push(name);
+							actions.push("upToDate");
 						}
 					};
 					const registered: string[] = [];
@@ -464,10 +539,16 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 						.configSet(root, "fetch.recurseSubmodules", "false")
 						.pipe(Effect.mapError(asSubmoduleError("git config fetch.recurseSubmodules false", root)));
 
+					yield* onStep(ReposSyncStep.Started({ repos: Object.keys(manifest.repos) }));
+
 					for (const [name, entry] of Object.entries(manifest.repos)) {
 						const repoPath = path.join(root, REPOS_DIR, name);
 						const repoPathRel = `${REPOS_DIR}/${name}`;
 						const moduleDir = yield* resolveModuleDir(fs, path, root, name);
+						// This repo's actions, in the order they ran, for its `RepoSynced` step.
+						const actions: ReposSyncAction[] = [];
+
+						yield* onStep(ReposSyncStep.RepoStarted({ name }));
 
 						yield* lockdown.withUnlocked(
 							root,
@@ -526,6 +607,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								}
 								if (clearedAnyLock) {
 									clearedLocks.push(name);
+									actions.push("clearedLock");
 								}
 
 								const present = yield* isPresent(repoPath);
@@ -576,9 +658,10 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 											.pipe(Effect.mapError(asSubmoduleError(`git submodule sync -- ${repoPathRel}`, root)));
 										urlSynced.push(name);
 										urlChanged = true;
+										actions.push("urlSynced");
 									}
 									const outcome = yield* advanceToGitlink(root, repoPath, repoPathRel);
-									recordOutcome(name, outcome, urlChanged);
+									recordOutcome(name, outcome, urlChanged, actions);
 								} else if (!present && !gitmodulesEntry) {
 									yield* git
 										.submoduleAdd(root, { url: entry.url, path: repoPathRel, depth: 1 })
@@ -605,6 +688,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										.pipe(Effect.mapError(asSubmoduleError(`git add .gitmodules ${repoPathRel}`, root)));
 
 									registered.push(name);
+									actions.push("registered");
 								} else if (!present) {
 									// The only call in this method that `update = none` would
 									// suppress. `checkout: true` (`--checkout`) is git's
@@ -622,9 +706,10 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 											),
 										);
 									initialized.push(name);
+									actions.push("initialized");
 								} else {
 									const outcome = yield* advanceToGitlink(root, repoPath, repoPathRel);
-									recordOutcome(name, outcome, false);
+									recordOutcome(name, outcome, false, actions);
 								}
 
 								if (entry.sparse && entry.sparse.length > 0) {
@@ -647,6 +732,7 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 										.sparseCheckoutSet(repoPath, entry.sparse, { cone: false })
 										.pipe(Effect.mapError(asSubmoduleError("git sparse-checkout set --no-cone", repoPath)));
 									sparseApplied.push(name);
+									actions.push("sparseApplied");
 								}
 
 								// Assert the boundary now that our own git work is done:
@@ -669,6 +755,10 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 								boundaryMarked.push(name);
 							}),
 						);
+
+						// After `withUnlocked` resolves, so the step fires only once the
+						// tree is locked again.
+						yield* onStep(ReposSyncStep.RepoSynced({ name, actions }));
 					}
 
 					return {
