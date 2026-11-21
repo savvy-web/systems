@@ -7,12 +7,14 @@ import { Capture } from "../../utils/capture.js";
 import { Interactive } from "../../utils/interactive.js";
 import { ReposStub } from "./fixtures.js";
 
-/** A canned report with one entry in each of the five actionable buckets. */
+/** A canned report with one entry in each of the seven actionable buckets. */
 const activeReport: Repos.ReposSyncReport = {
 	clearedLocks: ["foo"],
 	initialized: ["bar"],
 	sparseApplied: ["baz"],
 	upToDate: [],
+	advanced: ["adv"],
+	skippedDirty: ["dirt"],
 	urlSynced: ["qux"],
 	registered: ["quux"],
 	boundaryMarked: [],
@@ -24,6 +26,8 @@ const emptyReport: Repos.ReposSyncReport = {
 	initialized: [],
 	sparseApplied: [],
 	upToDate: ["foo"],
+	advanced: [],
+	skippedDirty: [],
 	urlSynced: [],
 	registered: [],
 	boundaryMarked: ["foo"],
@@ -45,6 +49,9 @@ describe("repos sync", () => {
 					"✓ foo: cleared stale lock",
 					"✓ bar: initialized",
 					"✓ baz: sparse-checkout applied",
+					"✓ adv: advanced to recorded gitlink",
+					"⚠ dirt: worktree dirty, gitlink moved — not advanced",
+					"  run savvy repos restore dirt",
 					"✓ qux: url reconciled",
 					"✓ quux: registered",
 				].join("\n"),
@@ -57,6 +64,24 @@ describe("repos sync", () => {
 		Effect.gen(function* () {
 			const result = yield* Capture.run(sync(Effect.succeed(emptyReport)));
 			expect(result.stdout).toEqual(["✓ all vendored repos up to date"]);
+		}),
+	);
+
+	it.effect("an advanced or dirty-skipped repo alone is news, never 'up to date'", () =>
+		Effect.gen(function* () {
+			const advancedOnly = yield* Capture.run(
+				sync(Effect.succeed({ ...emptyReport, upToDate: [], advanced: ["foo"] })),
+			);
+			expect(advancedOnly.stdout).toEqual(["✓ foo: advanced to recorded gitlink"]);
+
+			const dirtyOnly = yield* Capture.run(
+				sync(Effect.succeed({ ...emptyReport, upToDate: [], skippedDirty: ["foo"] })),
+			);
+			const dirtyText = dirtyOnly.stdout.join("\n");
+			expect(dirtyText).toContain("⚠ foo: worktree dirty, gitlink moved — not advanced");
+			expect(dirtyText).toContain("run savvy repos restore foo");
+			expect(dirtyText).not.toContain("up to date");
+			expect(dirtyOnly.exitCode).toBe(0);
 		}),
 	);
 

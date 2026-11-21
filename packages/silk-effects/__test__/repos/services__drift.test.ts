@@ -632,6 +632,60 @@ describe("ReposDrift.check", () => {
 		}),
 	);
 
+	/**
+	 * A linked-worktree layout: `<root>/.git` is a FILE pointing at the
+	 * per-worktree git dir (outside `<root>`), and the vendored checkout's
+	 * module gitdir lives under THAT dir's `modules/`, as git puts it.
+	 */
+	function linkedWorktreeRoot(moduleName: string): string {
+		const root = makeRoot();
+		const worktreeGitDir = join(makeRoot(), "worktrees", "wt");
+		mkdirSync(join(worktreeGitDir, "modules", REPOS_DIR, moduleName), { recursive: true });
+		writeFileSync(join(root, ".git"), `gitdir: ${worktreeGitDir}\n`);
+		writeFileSync(join(root, ".gitmodules"), healthyGitmodulesText());
+		makeWorktree(root);
+		writeFileSync(
+			join(root, EXPECTED_PATH, ".git"),
+			`gitdir: ${join(worktreeGitDir, "modules", REPOS_DIR, moduleName)}\n`,
+		);
+		return root;
+	}
+
+	it.effect("a canonical checkout inside a linked worktree is NOT reported as localRegistrationDivergence", () =>
+		Effect.gen(function* () {
+			const root = linkedWorktreeRoot(NAME);
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(
+				Effect.provide(
+					driftLayer(healthyManifest(), [statusEntry()], {
+						configEntries: [{ key: `submodule.${EXPECTED_PATH}.url`, value: URL }],
+					}),
+				),
+			);
+			expect(report.drifts).toEqual([]);
+			expect(report.clean).toBe(true);
+		}),
+	);
+
+	it.effect("a diverged gitdir name inside a linked worktree IS reported (the comparison runs there)", () =>
+		Effect.gen(function* () {
+			const root = linkedWorktreeRoot("spec-old");
+			const report = yield* Effect.gen(function* () {
+				const drift = yield* ReposDrift;
+				return yield* drift.check(root);
+			}).pipe(Effect.provide(driftLayer(healthyManifest(), [statusEntry()])));
+			expect(report.drifts).toEqual([
+				expect.objectContaining({
+					name: NAME,
+					kind: "localRegistrationDivergence",
+					observedValue: `${REPOS_DIR}/spec-old`,
+				}),
+			]);
+		}),
+	);
+
 	// --- nestedSubmoduleDivergence (#459) ----------------------------------
 
 	it.effect("reports nestedSubmoduleDivergence when a vendored repo's OWN submodule is out of sync", () =>

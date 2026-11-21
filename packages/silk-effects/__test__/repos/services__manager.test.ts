@@ -645,6 +645,8 @@ describe("ReposManager.sync / status — real git", REAL_GIT_TIMEOUT, () => {
 			);
 
 			expect(syncResult.upToDate).toEqual([name]);
+			expect(syncResult.advanced).toEqual([]);
+			expect(syncResult.skippedDirty).toEqual([]);
 			expect(syncResult.urlSynced).toEqual([]);
 			expect(syncResult.registered).toEqual([]);
 			expect(syncResult.initialized).toEqual([]);
@@ -1998,6 +2000,179 @@ describe("ReposManager lockdown integration", REAL_GIT_TIMEOUT, () => {
 			expect(entry?.dirty).toBe(false);
 		}),
 	);
+
+	/** A host with `name` vendored at `tag1` and materialized by a real `sync`, ready to be repinned. */
+	const syncedHost = (name: string) =>
+		Effect.gen(function* () {
+			const up = makeUpstream();
+			const host = makeHost();
+			const upstreamUrl = `file://${up}`;
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+			);
+			simulatePriorAdd(host, upstreamUrl, name, "tag1");
+			const first = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+			expect(first.initialized).toEqual([name]);
+			return {
+				host,
+				tag1: git(up, "rev-parse", "tag1").trim(),
+				tag2: git(up, "rev-parse", "tag2").trim(),
+			};
+		});
+
+	/** Move the superproject's gitlink in the index, as pulling a repin does, without touching the vendored worktree. */
+	function moveGitlink(host: string, name: string, commit: string): void {
+		git(host, "update-index", "--cacheinfo", `160000,${commit},.repos/${name}`);
+	}
+
+	it.effect("sync advances a clean populated checkout onto a moved gitlink and relocks it", () =>
+		Effect.gen(function* () {
+			const name = "spec";
+			const { host, tag1, tag2 } = yield* syncedHost(name);
+			const subPath = join(host, ".repos", name);
+			expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag1);
+
+			moveGitlink(host, name, tag2);
+
+			const report = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+
+			expect(report.advanced).toEqual([name]);
+			expect(report.upToDate).toEqual([]);
+			expect(report.skippedDirty).toEqual([]);
+			expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag2);
+			expect(readFileSync(join(subPath, "src", "keep.ts"), "utf8")).toBe("export const keep = false;\n");
+			expect(statSync(join(subPath, "src", "keep.ts")).mode & 0o222).toBe(0);
+			// The boundary marker survives the --checkout override.
+			expect(git(host, "config", "--get", `submodule..repos/${name}.update`).trim()).toBe("none");
+
+			// Nothing moved since: the next sync is idle.
+			const again = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+			expect(again.upToDate).toEqual([name]);
+			expect(again.advanced).toEqual([]);
+		}),
+	);
+
+	it.effect("sync leaves a dirty checkout untouched when its gitlink moved, reporting skippedDirty", () =>
+		Effect.gen(function* () {
+			const name = "spec";
+			const { host, tag1, tag2 } = yield* syncedHost(name);
+			const subPath = join(host, ".repos", name);
+			const file = join(subPath, "src", "keep.ts");
+			chmodSync(file, 0o644);
+			writeFileSync(file, "export const keep = 'local edit';\n");
+
+			moveGitlink(host, name, tag2);
+
+			const report = yield* run(
+				Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.sync(host);
+				}),
+			);
+
+			expect(report.skippedDirty).toEqual([name]);
+			expect(report.advanced).toEqual([]);
+			expect(report.upToDate).toEqual([]);
+			expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag1);
+			expect(readFileSync(file, "utf8")).toBe("export const keep = 'local edit';\n");
+		}),
+	);
+
+	describe("inside a linked git worktree", () => {
+		/** A host with `name` registered and committed, and a fresh linked worktree of it where the repo is uninitialized. */
+		function linkedWorktree(name: string) {
+			const up = makeUpstream();
+			const host = makeHost();
+			const upstreamUrl = `file://${up}`;
+			mkdirSync(join(host, ".repos"), { recursive: true });
+			writeFileSync(
+				join(host, ".repos", "config.json"),
+				JSON.stringify({ repos: { [name]: { url: upstreamUrl, ref: "tag1", purpose: "test" } } }),
+			);
+			simulatePriorAdd(host, upstreamUrl, name, "tag1");
+			const parent = mkdtempSync(join(tmpdir(), "repos-manager-lockdown-wt-"));
+			createdRoots.push(parent);
+			const worktree = join(parent, "wt");
+			git(host, "worktree", "add", "--quiet", worktree);
+			return {
+				host,
+				worktree,
+				tag1: git(up, "rev-parse", "tag1").trim(),
+				tag2: git(up, "rev-parse", "tag2").trim(),
+			};
+		}
+
+		it.effect("status reports missing, sync initializes, pin repins, and the tree stays locked", () =>
+			Effect.gen(function* () {
+				const name = "spec";
+				const { host, worktree, tag1, tag2 } = linkedWorktree(name);
+				const subPath = join(worktree, ".repos", name);
+
+				const before = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.status(worktree);
+					}),
+				);
+				expect(before.repos.find((r) => r.name === name)?.present).toBe(false);
+
+				const synced = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.sync(worktree);
+					}),
+				);
+				expect(synced.initialized).toEqual([name]);
+				expect(git(subPath, "rev-parse", "HEAD").trim()).toBe(tag1);
+				// git keeps a linked worktree's submodule gitdirs under that
+				// worktree's own git dir, outside the worktree root.
+				const moduleGitDir = git(subPath, "rev-parse", "--absolute-git-dir").trim();
+				const commonDir = git(host, "rev-parse", "--path-format=absolute", "--git-common-dir").trim();
+				expect(moduleGitDir.startsWith(join(commonDir, "worktrees"))).toBe(true);
+				expect(moduleGitDir.endsWith(join("modules", ".repos", name))).toBe(true);
+				expect(statSync(join(subPath, "src", "keep.ts")).mode & 0o222).toBe(0);
+
+				const pinned = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.pin(worktree, name, "tag2");
+					}),
+				);
+				expect(pinned.oldCommit).toBe(tag1);
+				expect(pinned.newCommit).toBe(tag2);
+				expect(statSync(join(subPath, "src", "keep.ts")).mode & 0o222).toBe(0);
+
+				const after = yield* run(
+					Effect.gen(function* () {
+						const manager = yield* ReposManager;
+						return yield* manager.status(worktree);
+					}),
+				);
+				const entry = after.repos.find((r) => r.name === name);
+				expect(entry?.present).toBe(true);
+				expect(entry?.dirty).toBe(false);
+				expect(entry?.checkedOutCommit).toBe(tag2);
+				expect(entry?.stagedCommit).toBe(tag2);
+			}),
+		);
+	});
 });
 
 describe("ReposManager.status — propagates git failures", () => {

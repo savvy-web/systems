@@ -43,16 +43,32 @@ export type ReposStatusReport = typeof ReposStatusReport.Type;
 
 /**
  * Result of reconciling working-tree submodules with the manifest: missing
- * repos initialized, sparse-checkout patterns re-applied, already-present
- * repos left alone, stale locks cleared, drifted submodule URLs reconciled,
- * orphan manifest entries (no gitlink at all) registered, and the vendored
- * boundary re-declared to git.
+ * repos initialized, sparse-checkout patterns re-applied, populated repos
+ * advanced onto a moved gitlink (or reported when a dirty worktree blocks
+ * that), untouched repos left alone, stale locks cleared, drifted submodule
+ * URLs reconciled, orphan manifest entries (no gitlink at all) registered,
+ * and the vendored boundary re-declared to git.
  * @public
  */
 export const ReposSyncReport = Schema.Struct({
 	initialized: Schema.Array(Schema.String),
 	sparseApplied: Schema.Array(Schema.String),
+	/**
+	 * Populated repos with nothing to change: worktree `HEAD` already on the
+	 * recorded gitlink and the origin URL matching the manifest.
+	 */
 	upToDate: Schema.Array(Schema.String),
+	/**
+	 * Populated repos whose clean worktree was checked out onto the gitlink
+	 * the superproject records (staged first, then `HEAD`) because it had
+	 * moved, e.g. after a repin was pulled. The new `HEAD` is verified.
+	 */
+	advanced: Schema.Array(Schema.String),
+	/**
+	 * Populated repos whose gitlink moved but whose worktree is dirty, so
+	 * they were left untouched rather than clobbered; `restore` resets them.
+	 */
+	skippedDirty: Schema.Array(Schema.String),
 	clearedLocks: Schema.Array(Schema.String),
 	urlSynced: Schema.Array(Schema.String),
 	registered: Schema.Array(Schema.String),
