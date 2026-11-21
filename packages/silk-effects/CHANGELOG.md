@@ -1,5 +1,36 @@
 # @savvy-web/silk-effects
 
+## 14.0.0
+
+### Breaking Changes
+
+- `BiomeSyncError` no longer has a free-form `reason` string. It now carries a `code` (the new `BiomeSyncErrorCode`: `"read-failed"`, `"parse-failed"`, `"edit-failed"` or `"write-failed"`) naming the stage that failed, and a `cause` holding the original filesystem or JSONC error unchanged. The `message` is derived from `path` and `code` and no longer includes the underlying error text. Code that built a `BiomeSyncError` with `reason` must pass `code` and `cause` instead, and code that inspected the failure should match on `code`, not on message text. `BiomeSyncErrorCode` is exported from `@savvy-web/silk-core` and re-exported from `@savvy-web/silk-effects`.
+
+### Features
+
+- `Lint.PnpmWorkspace` gains `formatContentSync`, `formatContentResult` and `formatContentEffect`, which stringify sorted `pnpm-workspace.yaml` content to the same canonical bytes as the lint handler without a Promise. A synchronous caller can now call it directly, and an Effect caller gets a typed `YamlStringifyError` instead of a defect. The Promise-returning `formatContent` now delegates to `formatContentSync`, so its output is unchanged, and it is deprecated in favour of the new forms; it will be removed in the next major.
+
+* `Repos.ReposSyncReport` gains `advanced` and `skippedDirty`. `ReposManager.sync` now compares a populated checkout's `HEAD` with the gitlink the superproject records (staged first, then committed). A clean checkout that is behind is checked out onto that commit, verified and reported in `advanced`. A dirty one is left untouched and reported in `skippedDirty`. `upToDate` now means nothing changed.
+
+- `ReposManager.sync` accepts an optional `onStep` that reports per-repo progress: a `Started` step naming every manifest entry, then `RepoStarted` and `RepoSynced` for each repo, where `RepoSynced` fires once that repo is on disk and locked again and carries the actions it took. A caller can report what already landed if a later repo fails. The returned report is unchanged. The new `ReposSyncStep`, `ReposSyncAction` and `ReposSyncOptions` types are exported from the `Repos` namespace.
+
+### Bug Fixes
+
+- `sync`, `pin` and the other lockdown-bracketed operations work inside a linked git worktree. The module gitdir is resolved through the worktree's `.git` file, so its fallback lands under the worktree's own git dir rather than running through the file. A pointer under that git dir passes the containment guard, and a module-gitdir probe that fails because the path runs through a file is skipped instead of aborting the command. `ReposDrift` and `deregister` resolve the modules root the same way.
+- `ReposManager.restore` fetches the recorded gitlink from the vendored repo's `origin` when the shallow clone lacks it, so the `restore` that `skippedDirty` points to works after a pulled repin. `sync` advances a checkout the same way, fetching and checking out inside the vendored repo, so a present repo with no `.gitmodules` section advances instead of failing in `git submodule update`.
+
+* `localRegistrationDivergence` no longer calls a live registration stale. When local git config registers a submodule whose section `.gitmodules` still declares but the manifest does not, drift now reports a mid-add/remove transition with a non-destructive remedy (finish or revert the add/remove) instead of prescribing `deregister`. A registration absent from both `.gitmodules` and the manifest keeps the deregister remedy, now with a note that local git config is shared across branches, so switching back to a branch that still vendors the path is the cheaper fix.
+
+* `ReposManager.deregister` now refuses a section `.gitmodules` still declares, and refuses rather than guesses when `.gitmodules` cannot be parsed. `savvy repos deregister` no longer offers such a registration in its picker, and the `repos_manage` description lists the new refusal.
+
+* A registration backing a section that a manifest entry claims by its `path` under a diverged (re-slugged) name is reported as that entry's own divergence, with its canonical path and a re-vendor remedy, rather than as a transition pointing at an `orphanGitmodulesEntry` that does not exist. `deregister` refuses it with the same re-vendor remedy, and the picker never offers it.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.6.6 | 0.7.0 |
+
 ## 13.0.1
 
 ### Dependencies

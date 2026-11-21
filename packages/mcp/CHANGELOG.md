@@ -1,5 +1,24 @@
 # @savvy-web/mcp
 
+## 3.6.6
+
+### Bug Fixes
+
+- `localRegistrationDivergence` no longer calls a live registration stale. When local git config registers a submodule whose section `.gitmodules` still declares but the manifest does not, drift now reports a mid-add/remove transition with a non-destructive remedy (finish or revert the add/remove) instead of prescribing `deregister`. A registration absent from both `.gitmodules` and the manifest keeps the deregister remedy, now with a note that local git config is shared across branches, so switching back to a branch that still vendors the path is the cheaper fix.
+
+- `ReposManager.deregister` now refuses a section `.gitmodules` still declares, and refuses rather than guesses when `.gitmodules` cannot be parsed. `savvy repos deregister` no longer offers such a registration in its picker, and the `repos_manage` description lists the new refusal.
+
+- A registration backing a section that a manifest entry claims by its `path` under a diverged (re-slugged) name is reported as that entry's own divergence, with its canonical path and a re-vendor remedy, rather than as a transition pointing at an `orphanGitmodulesEntry` that does not exist. `deregister` refuses it with the same re-vendor remedy, and the picker never offers it.
+
+* `savvy repos sync` prints a line for each repo it advanced onto a moved gitlink and a warning for each dirty repo it left behind, with a `savvy repos restore` hint. Either case suppresses the "all vendored repos up to date" line. The `repos_manage` sync result carries the new `advanced` and `skippedDirty` fields.
+* `savvy repos sync` and `savvy repos pin` work from a linked git worktree.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-effects | dependency | updated | 13.0.1 | 14.0.0 |
+
 ## 3.6.5
 
 ### Dependencies

@@ -1,5 +1,28 @@
 # @savvy-web/ai-plugins
 
+## 4.6.0
+
+### Features
+
+#### Guard the real environment files
+
+- A new fail-closed `env-file-guard` hook stops agents reading or writing `.envrc`, `.env`, `.env.*` and `.dev.vars`, which can hold secrets. It covers Read, Write, Edit, MultiEdit, NotebookEdit and Grep, and Bash readers, redirects and `tee`. It also covers `direnv exec <dir> env`, `printenv`, `export` and `set`, and `direnv export` and `direnv dump`. The `.example` files read and write normally, and `direnv exec . <cmd>` still runs, so an agent can use a variable without seeing it. The deny points the agent at `.envrc.example` and at 1Password `op://` references.
+
+### Bug Fixes
+
+- The dogfood doorbell now sends once with `it2 session send-text --skip-confirm` instead of retrying into duplicate notices. The journal append script and the journal readers tolerate torn tails per the `@effected/jsonl` envelope model: an append first closes an unterminated fragment so the new snapshot lands on its own line, every reader treats only an envelope frame (string `at` and `event`) as a valid snapshot, and the `dogfood-mail` monitor reads each journal incrementally from a byte cursor, holding back an unterminated tail and re-reading a truncated or replaced journal from zero.
+
+* The `repos-bash-guard` hook now judges `sed -i`, `rm`, `patch` and `dd of=` inside their own clause. A `grep -i` or a `grep` for the word `rm` or `patch` in one clause no longer turns a read of a vendored file in another clause into a denied write. The sed `-i` check also catches `-i.bak` and `--in-place=.bak`, which it missed before. Deletes whose operands come from elsewhere are still denied: `find .repos/x -exec rm` and `-delete`, `... | xargs rm`, an `rm` in a `for` or `while` loop over `.repos/` paths, and an `rm` behind a wrapper flag such as `sudo -u root` or `nice -n 5`. Closes #594 and #853.
+* The hook now resolves each `.repos/` path against the call's directory and denies a write only when the path lands under the project's own `.repos/`. A `.repos/` directory in a scratch tree or another checkout is no longer guarded. The `.repos/config.json` manifest stays writable when spelled `./.repos/config.json` or by absolute path. A path built from `$VAR` or a command substitution still denies, and so does a relative path in a command that runs `cd`, `pushd` or `popd`, because the guard cannot tell which directory that path is relative to. Closes #757.
+
+### Documentation
+
+- The dogfood skill now explains that a `file:` override cannot install while pnpm's `pnprServer` is set, because the pnpr server reports the local target as missing. It shows how to turn pnpr off for a linked install, either in the global config or with an isolated `XDG_CONFIG_HOME`, and lists the spellings that do not work on pnpm 12.x. Closes #808
+
+* The `repos` skill now explains that a `localRegistrationDivergence` paired with an `orphanGitmodulesEntry` for the same path is a mid-add/remove transition, and that one seen right after a branch switch belongs to the checkout, so switching back comes before either remedy.
+
+- The `repos` skill now says that `sync` advances a clean checkout onto a moved gitlink (`advanced`), reports a dirty one as `skippedDirty`, and works from a linked git worktree.
+
 ## 4.5.0
 
 ### Breaking Changes
