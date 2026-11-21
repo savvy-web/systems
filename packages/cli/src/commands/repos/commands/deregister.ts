@@ -29,9 +29,12 @@
  * Left off at a terminal, the section is picked (`Select`) from the stale
  * registrations `ReposDrift.check` reports — a `localRegistrationDivergence`
  * with no manifest value and no `orphanGitmodulesEntry` for the same name
- * (that pairing is a mid-add/remove transition, which this command refuses) —
- * never from the vendored repos, which this command refuses too. Anywhere else, or with nothing stale to pick, a missing section is
- * the usage error it always was, exit 64.
+ * (that pairing is a mid-add/remove transition, which this command refuses;
+ * a section a manifest entry claims by path is reported with that entry's
+ * manifest value, so the first condition already drops it) — never from the
+ * vendored repos, which this command refuses too. Anywhere else, or with
+ * nothing stale to pick, a missing section is the usage error it always was,
+ * exit 64.
  *
  * @example
  * ```bash
@@ -64,8 +67,11 @@ const sectionOrPick = (cwd: string, given: string | undefined) =>
 		if (!(yield* CliInteractive)) return yield* Effect.fail(ReposCli.missingArgument(["deregister"], "section"));
 		const drift = yield* Repos.ReposDrift;
 		const drifts = (yield* drift.check(cwd)).drifts;
-		// A registration whose section `.gitmodules` still declares is paired with
-		// an `orphanGitmodulesEntry` of the same name: a transition, not stale.
+		// A registration whose section `.gitmodules` still declares is either
+		// paired with an `orphanGitmodulesEntry` of the same name (a transition,
+		// not stale) or, when a manifest entry claims that section by path, is
+		// reported as the entry's divergence with a `manifestValue` — both are
+		// refused by the manager, so neither is offered.
 		const transitional = new Set(
 			drifts.filter((item) => item.kind === "orphanGitmodulesEntry").map((item) => item.name),
 		);

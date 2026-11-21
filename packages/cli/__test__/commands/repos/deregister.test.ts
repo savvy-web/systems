@@ -7,7 +7,7 @@ import { Capture } from "../../utils/capture.js";
 import { Interactive } from "../../utils/interactive.js";
 import { ReposStub } from "./fixtures.js";
 
-/** A drift report with one stale registration, one per-entry divergence (not stale), a mid-transition registration (not stale), and an unrelated drift. */
+/** A drift report with one stale registration, two per-entry divergences (not stale, one via a path-claimed section), a mid-transition registration (not stale), and an unrelated drift. */
 const driftReport: Repos.ReposDriftReport = {
 	clean: false,
 	drifts: [
@@ -38,6 +38,15 @@ const driftReport: Repos.ReposDriftReport = {
 			kind: "localRegistrationDivergence",
 			detail: "local git config registers .repos/transitional, which backs a still-declared .gitmodules section",
 			observedValue: ".repos/transitional",
+		},
+		// A registration under a re-slugged section a manifest entry claims by
+		// path: drift reports it as that entry's divergence, with its manifest value.
+		{
+			name: "reslug",
+			kind: "localRegistrationDivergence",
+			detail: "local git config registers .repos/old-reslug, the section manifest entry reslug claims by its path",
+			manifestValue: ".repos/reslug",
+			observedValue: ".repos/old-reslug",
 		},
 	],
 };
@@ -88,6 +97,8 @@ describe("repos deregister", () => {
 			expect(frame).not.toContain("foo");
 			// Nor is a registration backing a still-declared .gitmodules section.
 			expect(frame).not.toContain("transitional");
+			// Nor one backing a section a manifest entry claims by path.
+			expect(frame).not.toContain("reslug");
 			yield* picker.press("enter");
 			yield* Fiber.join(fiber);
 			expect(calls).toEqual([".repos/old"]);

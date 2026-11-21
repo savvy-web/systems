@@ -93,7 +93,12 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 				const localRegistrationDrifts = (
 					root: string,
 					manifestEntries: ReadonlyArray<readonly [string, unknown]>,
-					gitmodulesSectionNames: ReadonlySet<string>,
+					sections: {
+						/** `.gitmodules` sections no manifest entry claims — exactly the ones reported `orphanGitmodulesEntry`. */
+						readonly orphans: ReadonlySet<string>;
+						/** Sections a manifest entry claims by PATH under a diverged name, keyed section name → manifest entry name. */
+						readonly claimedByPath: ReadonlyMap<string, string>;
+					},
 				) =>
 					Effect.gen(function* () {
 						const found: RepoDrift[] = [];
@@ -170,10 +175,22 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							);
 						}
 
-						// A local registration that matches no manifest entry. Two very
-						// different states land here, told apart by `.gitmodules`:
+						// A local registration that matches no manifest entry's canonical
+						// name. Three different states land here, told apart by
+						// `.gitmodules`:
 						//
-						// - The section is STILL DECLARED in `.gitmodules`: the manifest
+						// - The section is CLAIMED BY PATH: a manifest entry re-slugged
+						//   after vendoring still pairs with it through its `path` field
+						//   (the `pathMismatch` above reports the name divergence). The
+						//   registration backs that live entry — it is neither stale nor an
+						//   orphan, and deregister refuses it — so it is reported as the
+						//   ENTRY's divergence (named for the entry, carrying its
+						//   canonical path as `manifestValue`, like the per-entry branch
+						//   above) with the same re-vendor remedy: `remove` finds the
+						//   section by path and `add` re-creates it canonically. This is
+						//   the branch for an UNCLONED worktree; a cloned one is already
+						//   `explained` by its gitdir above.
+						// - The section is STILL DECLARED and unclaimed: the manifest
 						//   and `.gitmodules` disagree (the `orphanGitmodulesEntry` above
 						//   reports that), which is a mid-add/remove transition. The
 						//   registration is backing a live section — it is NOT stale, and
@@ -194,7 +211,21 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							) {
 								continue;
 							}
-							if (gitmodulesSectionNames.has(registeredName)) {
+							const claimant = sections.claimedByPath.get(registeredName);
+							if (claimant !== undefined) {
+								const claimantPath = `${REPOS_DIR}/${claimant}`;
+								found.push(
+									RepoDrift.make({
+										name: claimant,
+										kind: "localRegistrationDivergence",
+										detail: `local git config registers submodule "${registeredName}", the .gitmodules section manifest entry "${claimant}" claims by its path "${claimantPath}" under a diverged name (see pathMismatch) — it backs that live entry rather than a leftover, so do not deregister it; re-vendor the entry to canonicalize both: \`savvy repos remove ${claimant}\`, then \`savvy repos add\` with the orientation the remove result hands back`,
+										manifestValue: claimantPath,
+										observedValue: registeredName,
+									}),
+								);
+								continue;
+							}
+							if (sections.orphans.has(registeredName)) {
 								found.push(
 									RepoDrift.make({
 										name: registeredName,
@@ -262,7 +293,12 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 							// nested-submodule probe is deliberately not run: with nothing
 							// registered, every entry is already reported unregistered
 							// above, which is the dominant signal.
-							drifts.push(...(yield* localRegistrationDrifts(root, manifestEntries, new Set<string>())));
+							drifts.push(
+								...(yield* localRegistrationDrifts(root, manifestEntries, {
+									orphans: new Set<string>(),
+									claimedByPath: new Map<string, string>(),
+								})),
+							);
 							return ReposDriftReport.make({ drifts, clean: drifts.length === 0 });
 						}
 
@@ -458,10 +494,22 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 
 						// Any `.gitmodules` section not claimed by a manifest entry above
 						// is an orphan -- registered with git but unknown to the manifest.
+						// The local-registration check below keys its transition finding
+						// on this SAME set (and its path-claimed finding on the pass-2
+						// pairings), so a detail that says "see orphanGitmodulesEntry"
+						// always has one to see.
+						const orphanSectionNames = new Set<string>();
+						const claimedByPath = new Map<string, string>();
+						for (const [name, paired] of pairedByName) {
+							if (paired.viaPath) {
+								claimedByPath.set(paired.section.name, name);
+							}
+						}
 						for (const section of gitmodules.entries) {
 							if (matchedSectionNames.has(section.name)) {
 								continue;
 							}
+							orphanSectionNames.add(section.name);
 							drifts.push(
 								RepoDrift.make({
 									name: section.name,
@@ -473,11 +521,10 @@ export class ReposDrift extends Context.Service<ReposDrift, ReposDriftShape>()("
 						}
 
 						drifts.push(
-							...(yield* localRegistrationDrifts(
-								root,
-								manifestEntries,
-								new Set(gitmodules.entries.map((entry) => entry.name)),
-							)),
+							...(yield* localRegistrationDrifts(root, manifestEntries, {
+								orphans: orphanSectionNames,
+								claimedByPath,
+							})),
 						);
 
 						// --- One level down: a vendored repo's OWN submodules ----------

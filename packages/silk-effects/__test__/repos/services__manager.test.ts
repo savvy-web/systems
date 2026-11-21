@@ -4354,6 +4354,37 @@ describe("ReposManager.deregister — real git", REAL_GIT_TIMEOUT, () => {
 			}),
 	);
 
+	it.effect(
+		"refuses a section a manifest entry claims by path, naming the re-vendor remedy rather than a transition",
+		() =>
+			Effect.gen(function* () {
+				const host = makeHost();
+				// The entry "foo" was re-slugged after vendoring: its section keeps
+				// the old name but its path pairs it with "foo", so the registration
+				// backs that live entry.
+				writeFileSync(
+					join(host, ".gitmodules"),
+					'[submodule ".repos/old-foo"]\n\tpath = .repos/foo\n\turl = https://example.com/foo.git\n',
+				);
+				git(host, "config", "submodule..repos/old-foo.url", "https://example.com/foo.git");
+
+				const managerLayer = makeManagerLayer(
+					Effect.succeed({
+						repos: { foo: { url: "https://example.com/foo.git", ref: "1.0.0", purpose: "p" } },
+					} as unknown as ReposManifestFile),
+				);
+				const error = yield* Effect.gen(function* () {
+					const manager = yield* ReposManager;
+					return yield* manager.deregister(host, ".repos/old-foo");
+				}).pipe(Effect.provide(managerLayer), Effect.flip) as Effect.Effect<ReposConfigError | GitSubmoduleError>;
+
+				expect(error).toMatchObject({ _tag: "ReposConfigError", kind: "invalid" });
+				expect(String(error.message)).toContain('manifest entry "foo" claims by its path');
+				expect(String(error.message)).not.toContain("finish or revert");
+				expect(git(host, "config", "--get", "submodule..repos/old-foo.url").trim()).toBe("https://example.com/foo.git");
+			}),
+	);
+
 	it.effect("refuses a section outside .repos/ — a host repo's own submodule registration is not ours to clear", () =>
 		Effect.gen(function* () {
 			const host = makeHost();

@@ -232,7 +232,9 @@ export interface ReposManagerShape {
 	 * manifest and `.gitmodules` disagree mid-add/remove, the registration
 	 * backs a live section rather than a leftover, and the fix is to finish or
 	 * revert that add/remove (an unparsable `.gitmodules` refuses too, rather
-	 * than guessing). Local git config is shared across branches, so a
+	 * than guessing); a declared section a manifest entry claims by its `path`
+	 * under a diverged name is that entry's own, and the refusal names a
+	 * re-vendor instead. Local git config is shared across branches, so a
 	 * registration another branch still vendors is only stale for this
 	 * checkout — switching back is the cheaper fix there. Reconciling a LIVE
 	 * registration is `sync`'s job and unvendoring is `remove`'s, so
@@ -1859,7 +1861,32 @@ export class ReposManager extends Context.Service<ReposManager, ReposManagerShap
 									}),
 							),
 						);
-						if (parsedGitmodules.entries.some((entry) => entry.name === section)) {
+						const declared = parsedGitmodules.entries.find((entry) => entry.name === section);
+						// A declared section whose `path` pairs it with a manifest entry
+						// is that entry's own section under a diverged (re-slugged) name —
+						// the same path-fallback pairing `ReposDrift` makes — so the
+						// remedy is a re-vendor, not finishing an add/remove that never
+						// happened. As in drift's pass 1, an entry that already has its
+						// exact-name section does not claim a second one by path; that
+						// second section is an orphan and keeps the transition refusal.
+						const claimant =
+							declared === undefined
+								? undefined
+								: Object.keys(manifest.repos).find(
+										(name) =>
+											declared.path === `${REPOS_DIR}/${name}` &&
+											!parsedGitmodules.entries.some((entry) => entry.name === `${REPOS_DIR}/${name}`),
+									);
+						if (claimant !== undefined) {
+							return yield* Effect.fail(
+								new ReposConfigError({
+									path: gitmodulesPath,
+									reason: `"${section}" is the .gitmodules section manifest entry "${claimant}" claims by its path ${REPOS_DIR}/${claimant} under a diverged name — deregister clears STALE registrations only; re-vendor the entry instead (remove, then add with the orientation the remove result hands back)`,
+									kind: "invalid",
+								}),
+							);
+						}
+						if (declared !== undefined) {
 							return yield* Effect.fail(
 								new ReposConfigError({
 									path: gitmodulesPath,

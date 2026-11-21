@@ -648,6 +648,50 @@ describe("ReposDrift.check", () => {
 		}),
 	);
 
+	// A section a manifest entry claims BY PATH (re-slugged after vendoring) is
+	// not an orphan: no orphanGitmodulesEntry is emitted for it, so the
+	// registration under its old name must not be described as a transition
+	// pointing at one, and must carry the manifest pairing (manifestValue) so
+	// the deregister picker — which `ReposManager.deregister` would refuse —
+	// never offers it.
+	it.effect(
+		"a registration backing a section claimed by path is the entry's divergence, not an orphan transition",
+		() =>
+			Effect.gen(function* () {
+				const root = makeRoot();
+				const oldSection = `${REPOS_DIR}/old-spec`;
+				writeFileSync(
+					join(root, ".gitmodules"),
+					`[submodule "${oldSection}"]\n\tpath = ${EXPECTED_PATH}\n\turl = ${URL}\n\tshallow = true\n`,
+				);
+				// Worktree NOT cloned: no `.repos/spec/.git`, so the module gitdir
+				// falls back to the canonical name and the per-entry check is silent.
+
+				const report = yield* Effect.gen(function* () {
+					const drift = yield* ReposDrift;
+					return yield* drift.check(root);
+				}).pipe(
+					Effect.provide(
+						driftLayer(healthyManifest(), [statusEntry(EXPECTED_PATH, "uninitialized")], {
+							configEntries: [{ key: `submodule.${oldSection}.url`, value: URL }],
+						}),
+					),
+				);
+
+				expect(report.drifts.some((d) => d.kind === "orphanGitmodulesEntry")).toBe(false);
+				const local = report.drifts.filter((d) => d.kind === "localRegistrationDivergence");
+				expect(local).toHaveLength(1);
+				expect(local[0]).toEqual(
+					expect.objectContaining({ name: NAME, manifestValue: EXPECTED_PATH, observedValue: oldSection }),
+				);
+				expect(local[0]?.detail).not.toContain("orphanGitmodulesEntry");
+				expect(local[0]?.detail).not.toContain("mid-add/remove");
+				expect(local[0]?.detail).not.toContain("savvy repos deregister");
+				expect(local[0]?.detail).toContain("by its path");
+				expect(local[0]?.detail).toContain(`savvy repos remove ${NAME}`);
+			}),
+	);
+
 	it.effect("a canonical local registration is NOT reported (the healthy case stays clean)", () =>
 		Effect.gen(function* () {
 			const root = makeRoot();
