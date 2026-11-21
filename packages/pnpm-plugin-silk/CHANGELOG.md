@@ -1,5 +1,11 @@
 # @savvy-web/pnpm-plugin-silk
 
+## 0.55.0
+
+### Maintenance
+
+- Bumps versions of local tooling
+
 ## 0.54.1
 
 ### Maintenance
