@@ -219,10 +219,44 @@ SCAN=$(printf '%s' "$COMMAND" | awk '
 	}
 ')
 
-# Pass 2: drop quoted segments that contain whitespace (prose), keeping a
-# whitespace-free quoted path such as ".envrc".
-sq="'"
-SCAN=$(printf '%s' "$SCAN" | sed -E "s/\"[^\"]*[[:space:]][^\"]*\"//g; s/${sq}[^${sq}]*[[:space:]][^${sq}]*${sq}//g")
+# Pass 2: drop quoted strings that contain whitespace (prose), keeping a
+# whitespace-free quoted path such as ".envrc". A character walk pairs each
+# quote with the one that really closes it, so the text BETWEEN two strings
+# (`printf "%s\n" ok; cat .envrc; echo "all done"`) is never taken for a
+# string. Double quotes and $'...' honour backslash escapes, single quotes do
+# not, and an unclosed string is kept as it is.
+_strip_quoted_prose() {
+	awk '
+		{ buf = buf (NR > 1 ? "\n" : "") $0 }
+		END {
+			n = length(buf); out = ""; span = ""; q = ""; esc = 0
+			for (i = 1; i <= n; i++) {
+				c = substr(buf, i, 1)
+				if (q == "") {
+					if (c == "\\") { out = out c substr(buf, i + 1, 1); i++; continue }
+					if (c == "\"" || c == "\047") {
+						q = c; esc = (c == "\"")
+						if (c == "\047" && substr(out, length(out), 1) == "$") esc = 1
+						span = c; continue
+					}
+					out = out c; continue
+				}
+				span = span c
+				if (esc && c == "\\") { span = span substr(buf, i + 1, 1); i++; continue }
+				if (c == q) {
+					if (span !~ /[ \t\n]/) out = out span
+					q = ""; span = ""
+				}
+			}
+			printf "%s", out span
+		}
+	'
+}
+SCAN=$(printf '%s' "$SCAN" | _strip_quoted_prose)
+
+# The splitter cuts at every `|`, which would separate the clobber redirect
+# `>|` from its target; spell it as a plain `>` first.
+SCAN="${SCAN//>|/> }"
 
 # Commands that read (or copy, or write) the file named by an argument.
 READERS=" cat tac head tail less more most bat batcat nl sed awk gawk mawk grep egrep fgrep rg ag xxd hexdump od strings base64 cut sort uniq diff cmp paste rev fold cp mv tee source . vi vim nvim nano emacs ed "
@@ -239,12 +273,15 @@ _segment_denied() {
 	[ "${#tokens[@]}" -eq 0 ] && return 1
 
 	# Redirects anywhere in the segment: `<`, `>`, `>>`, `>|`, `&>`, with the
-	# target glued on or in the next token. `<<`/`<<<` are heredocs and
-	# here-strings, never a file.
+	# target glued on or in the next token, and the operator anywhere in its
+	# token (`echo X>.env`, `cat<.envrc`). `<<`/`<<<` are heredocs and
+	# here-strings, `<(` a process substitution, `>&N` a descriptor: never a
+	# file.
 	for i in "${!tokens[@]}"; do
 		tok="${tokens[$i]}"
-		if [[ "$tok" =~ ^[0-9]*\&?(\<|\>\>|\>\||\>)(.*)$ ]] && [[ "$tok" != *'<<'* ]] && [[ "$tok" != *'<('* ]]; then
+		if [[ "$tok" =~ (\<|\>\>|\>\||\>)([^\<\>]*)$ ]] && [[ "$tok" != *'<<'* ]] && [[ "$tok" != *'<('* ]]; then
 			next="${BASH_REMATCH[2]}"
+			next="${next#|}"
 			[[ "$next" == '&'* ]] && continue
 			if [ -z "$next" ]; then
 				next="${tokens[$((i + 1))]:-}"

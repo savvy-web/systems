@@ -199,6 +199,58 @@ EOF
 	done
 }
 
+@test "Bash redirect glued to the preceding word: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	local cmd
+	while IFS= read -r cmd; do
+		_probe_bash "$cmd"
+		_assert_denied || { echo "command: $cmd" >&2; return 1; }
+	done <<'EOF'
+echo X>.env
+echo FOO=1>>.envrc
+cat<.envrc
+echo X>|.env.local
+echo X&>.dev.vars
+EOF
+	done
+}
+
+@test "Bash quoted strings around a reader are paired correctly: deny" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	local cmd
+	while IFS= read -r cmd; do
+		_probe_bash "$cmd"
+		_assert_denied || { echo "command: $cmd" >&2; return 1; }
+	done <<'EOF'
+printf "%s\n" ok; cat .envrc; echo "all done"
+echo "x"; cat .envrc; echo "y z"
+printf '%s\n' ok; cat .envrc; echo 'all done'
+echo "it's"; cat .env; echo 'a "b" c'
+EOF
+	done
+}
+
+@test "Bash ordinary quoting and plain redirects: allowed" {
+	for SILK_TARGET in $SILK_TARGETS; do
+	silk_setup "$SILK_TARGET"
+	local cmd
+	while IFS= read -r cmd; do
+		_probe_bash "$cmd"
+		_assert_allowed || { echo "command: $cmd" >&2; return 1; }
+		[ -z "$output" ] || { echo "command: $cmd, output: $output" >&2; return 1; }
+	done <<'EOF'
+echo "a b" > out.txt
+git commit -m "fix .env docs"
+echo 'see .envrc docs' >notes.txt
+printf "%s\n" "cat .envrc is denied"; echo done
+pnpm test 2>&1 | grep env
+echo X>out.env.txt
+EOF
+	done
+}
+
 @test "Bash heredoc writing .envrc: deny (the redirect is on the intro line)" {
 	for SILK_TARGET in $SILK_TARGETS; do
 	silk_setup "$SILK_TARGET"
