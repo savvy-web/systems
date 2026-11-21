@@ -15,7 +15,10 @@ import { Effect, Option } from "effect";
 import { Argument, Command, Flag } from "effect/cli";
 
 /** Repeated file path arguments. */
-const filesArg = Argument.File("files", { mustExist: true }).pipe(Argument.variadic());
+const filesArg = Argument.File("files", { mustExist: true }).pipe(
+	Argument.variadic(),
+	Argument.withDescription("Files to format in place"),
+);
 
 /**
  * Formatting options forwarded from `Lint.Yaml.fmtCommand`.
@@ -41,7 +44,7 @@ const packageJsonCommand = Command.make("package-json", { files: filesArg }, ({ 
 			}
 		}
 	}),
-);
+).pipe(Command.withDescription("Sort package.json files with sort-package-json"));
 
 /** Sort and format pnpm-workspace.yaml. */
 const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
@@ -61,7 +64,7 @@ const pnpmWorkspaceCommand = Command.make("pnpm-workspace", {}, () =>
 		const formatted = yield* Effect.promise(() => Lint.PnpmWorkspace.formatContent(sorted));
 		writeFileSync(filepath, formatted, "utf-8");
 	}),
-);
+).pipe(Command.withDescription("Sort and format pnpm-workspace.yaml in the current directory"));
 
 /** Format YAML files with @effected/yaml. */
 const yamlCommand = Command.make("yaml", { files: filesArg, format: yamlFormatOption }, ({ files, format }) =>
@@ -71,11 +74,14 @@ const yamlCommand = Command.make("yaml", { files: filesArg, format: yamlFormatOp
 			Lint.Yaml.formatFile(filepath, options);
 		}
 	}),
-);
+).pipe(Command.withDescription("Format YAML files with @effected/yaml"));
 
 /** Parent fmt command with formatting subcommands. */
 const _fmtCommand = Command.make("fmt").pipe(
 	Command.withSubcommands([packageJsonCommand, pnpmWorkspaceCommand, yamlCommand]),
+	Command.withDescription(
+		"Format files in place (package-json, pnpm-workspace, yaml) so lint-staged can re-stage them",
+	),
 );
 
 /**
