@@ -10,17 +10,17 @@ sources:
     resource: ../../plugin/hooks/pre-tool-use/dogfood-guard.sh
 generated:
   by: okfit/claude-code
-  at: 2026-10-07T16:26:44Z
+  at: 2026-11-21T01:08:21Z
 integrity:
   generated:
-    body: 8e5b70ae3e86d142
+    body: 18cd3c89c72369b9
 ---
 
 # Run an @effected dogfood round through the mailbox protocol
 
 Check the `overrides:` block in `pnpm-workspace.yaml` for an `@effected` `file:` entry before assuming a dogfood round is open or closed — that block also carries unrelated pins, so look specifically for `@effected/<name>` keys, not for the presence of `overrides:` itself. When every manifest resolves from the registry, no round is open.
 
-Link a kit package under active dogfooding as `"@effected/<name>": "file:../../spencerbeggs/effected/packages/<name>/dist/prod/npm/pkg"` (the manifest lives under `pkg/`, not `npm/`) — the sibling checkout at `../../spencerbeggs/effected`. Keep package manifests on ordinary registry semver ranges; the `overrides:` entries do the linking, and removing them relinks to the registry with no manifest edit. Cover the full transitive `@effected` closure by re-deriving it from the lockfile, never from memory.[^plugin-dogfood]
+Link a kit package under active dogfooding as `"@effected/<name>": "file:../../spencerbeggs/effected/packages/<name>/dist/prod/npm/pkg"` (the manifest lives under `pkg/`, not `npm/`) — the sibling checkout at `../../spencerbeggs/effected`. Keep package manifests on ordinary registry semver ranges; the `overrides:` entries do the linking, and removing them relinks to the registry with no manifest edit. Cover the full transitive `@effected` closure by re-deriving it from the lockfile, never from memory. A `file:` override cannot install through a pnpr `pnprServer`, which resolves on the server and reports the local target as missing, so disable `pnprServer` for every linked install (the dogfood skill gives the working spelling, savvy-web/systems#808).[^plugin-dogfood]
 
 Verify a kit signature against the sibling checkout's `../../spencerbeggs/effected/packages/<name>/src` or the installed `.d.ts` under `node_modules/@effected/<name>/` — never trust a summary of kit behavior relayed from an earlier session or a different agent. For `effect` core itself, the authority stays the vendored `.repos/effect` checkout pinned to the catalog tag, unaffected by any dogfood link.[^plugin-dogfood]
 

@@ -3,6 +3,7 @@
 ## 2026-11-21
 
 * Updated silk-effects
+* Updated Run an @effected dogfood round through the mailbox protocol
 
 ## 2026-11-12
 
