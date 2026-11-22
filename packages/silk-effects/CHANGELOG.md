@@ -1,5 +1,16 @@
 # @savvy-web/silk-effects
 
+## 14.0.1
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @savvy-web/silk-core | dependency | updated | 0.7.0 | 0.7.1 |
+| @effected/git | peerDependency | updated | ^0.33.0 | ^0.34.0 |
+| @effected/github | peerDependency | updated | ^0.33.0 | ^0.34.0 |
+| @effected/workspaces | peerDependency | updated | ^0.48.0 | ^0.49.0 |
+
 ## 14.0.0
 
 ### Breaking Changes
