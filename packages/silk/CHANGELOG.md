@@ -1,5 +1,17 @@
 # @savvy-web/silk
 
+## 5.1.10
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/github | dependency | updated | 0.34.0 | 0.34.1 |
+| @effected/workspaces | dependency | updated | 0.49.0 | 0.49.1 |
+| @savvy-web/changelog | dependency | updated | 1.0.39 | 1.0.40 |
+| @savvy-web/cli | dependency | updated | 3.9.1 | 3.9.2 |
+| @savvy-web/mcp | dependency | updated | 3.6.7 | 3.6.8 |
+
 ## 5.1.9
 
 ### Dependencies
