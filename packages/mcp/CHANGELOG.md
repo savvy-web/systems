@@ -1,5 +1,16 @@
 # @savvy-web/mcp
 
+## 3.6.9
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/changesets | dependency | updated | 0.6.2 | 0.7.0 |
+| @effected/markdown | dependency | updated | 0.29.0 | 0.30.0 |
+| @effected/markdown-lint | dependency | updated | 0.2.0 | 0.3.0 |
+| @savvy-web/silk-effects | dependency | updated | 14.0.1 | 14.0.2 |
+
 ## 3.6.8
 
 ### Dependencies
