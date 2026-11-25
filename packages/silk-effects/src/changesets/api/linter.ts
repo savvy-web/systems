@@ -230,6 +230,9 @@ export class ChangesetLinter {
 			name: filePath,
 			packages: options?.packages,
 			rules: CHANGESET_RULES,
+			// A changeset is submitted content under a gate: its own inline
+			// markdownlint comments must not silence the CSH/CF findings.
+			noInlineConfig: true,
 		}).map((diagnostic) => {
 			const rule = diagnostic.ruleNames[0];
 			return {

@@ -26,6 +26,13 @@ describe("ChangesetLinter.validateContent", () => {
 		expect(messages.length).toBeGreaterThan(0);
 	});
 
+	it("ignores inline markdownlint comments, so a changeset cannot silence its own findings", () => {
+		for (const directive of ["<!-- markdownlint-disable -->", "<!-- markdownlint-disable-file -->"]) {
+			const [m] = ChangesetLinter.validateContent(`---\n"@x/y": patch\n---\n\n${directive}\n\nStray paragraph\n`);
+			expect(m?.rule).toBe("changeset-uncategorized-content");
+		}
+	});
+
 	it("returns no messages for valid content", () => {
 		const content = '---\n"@savvy-web/changesets": minor\n---\n\n## Features\n\n- Added lint rules\n';
 		const messages = ChangesetLinter.validateContent(content);
