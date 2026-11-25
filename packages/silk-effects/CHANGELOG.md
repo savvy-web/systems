@@ -1,5 +1,20 @@
 # @savvy-web/silk-effects
 
+## 14.0.2
+
+### Bug Fixes
+
+- `ChangesetLinter` now lints with `noInlineConfig`, so a changeset's own `<!-- markdownlint-disable -->` comments cannot silence its CSH and CF findings. `@effected/markdown-lint` 0.3.0 began honouring inline comments by default; this keeps the validation gate as strict as it was before.
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/glob | dependency | updated | 0.23.0 | 0.23.1 |
+| @effected/markdown | dependency | updated | 0.29.0 | 0.30.0 |
+| @effected/markdown-lint | dependency | updated | 0.2.0 | 0.3.0 |
+| @effected/changesets | peerDependency | updated | ^0.6.0 | ^0.7.0 |
+
 ## 14.0.1
 
 ### Dependencies
