@@ -17,7 +17,7 @@ verified:
     at: 2026-10-07T16:50:25Z
   - by: human:spencer
     at: 2026-10-13T17:19:17Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 382ff4a8783c13ce
   verified:

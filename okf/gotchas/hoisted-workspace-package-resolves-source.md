@@ -16,7 +16,7 @@ sources:
     resource: ../../package.json
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
-integrity:
+x-okfit-integrity:
   generated:
     body: 97104e4adf72e0fc
 ---

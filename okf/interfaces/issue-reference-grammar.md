@@ -3,7 +3,7 @@ type: Interface
 title: Issue reference grammar
 description: "The single GitHub closing-keyword and #N grammar every call site in this repo parses issue references with, so no two parsers disagree with each other or with GitHub."
 status: draft
-kind: api
+x-okfit-kind: api
 resource: ../../packages/silk-effects/src/changesets/utils/issue-refs.ts
 tags: [tooling, release]
 sources:
@@ -16,7 +16,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 3ab85f2985079ac7
 ---

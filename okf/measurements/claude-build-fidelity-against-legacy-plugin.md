@@ -5,7 +5,7 @@ description: "Compared 2026-10-06/07 at pluginfinity 0.3.0: plugin/builds/claude
 status: draft
 tags: [tooling, build]
 stale_after: 2027-01-05T00:00:00Z
-justifies:
+x-okfit-justifies:
   - ../decisions/adopt-pluginfinity-one-source-two-hosts.md
 sources:
   - id: fidelity-diff
@@ -23,7 +23,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 7bc6a0c297dabb5f
 ---

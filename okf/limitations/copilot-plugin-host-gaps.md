@@ -3,7 +3,7 @@ type: Limitation
 title: The Copilot build of silk drops context nudges, monitors and project discovery
 description: "On GitHub Copilot the silk plugin's denies work, but PreToolUse advice, the Stop changeset nudge, the monitors and the it2 skill do not exist, savvy-mcp cannot learn the project, and session values never reach the model's shell."
 status: draft
-bounds: ../modules/silk-plugin.md
+x-okfit-bounds: ../modules/silk-plugin.md
 tags: [tooling, compat]
 sources:
   - id: copilot-build
@@ -13,7 +13,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-21T01:23:57Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 8c32519d8c647f63
 ---

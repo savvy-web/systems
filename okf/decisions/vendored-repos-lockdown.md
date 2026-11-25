@@ -12,7 +12,7 @@ sources:
     resource: ../../packages/silk-effects/src/repos/services/lockdown.ts
   - id: plugin-repos
     resource: ../../plugin/hooks/pre-tool-use/repos-fs-guard.sh
-integrity:
+x-okfit-integrity:
   generated:
     body: 20d8d8ac0796bcf4
   verified:

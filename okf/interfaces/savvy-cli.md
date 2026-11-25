@@ -3,7 +3,7 @@ type: Interface
 title: savvy command tree
 description: "The savvy binary's command tree, flags, and exit-code contract from the caller's side — what a script or agent invoking savvy may depend on staying stable."
 status: draft
-kind: cli
+x-okfit-kind: cli
 resource: ../../packages/cli/src/cli/index.ts
 tags: [tooling]
 sources:
@@ -28,7 +28,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-10T21:25:56Z
-integrity:
+x-okfit-integrity:
   generated:
     body: f9d350850ddae1f5
 ---

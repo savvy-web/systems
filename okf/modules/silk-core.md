@@ -2,7 +2,7 @@
 type: Module
 title: silk-core
 description: L1 domain core of the Silk package graph — platform-free schemas, tagged errors, and the frozen PrBody contract.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/silk-core
 status: stable
 tags: [architecture]
@@ -12,18 +12,20 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-12T03:36:35Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 789455d75af197bc
   verified:
     by: human:spencer
-    at: 2026-11-12T03:50:40Z
-    content: 4d7094d04600d691
+    at: 2026-11-25T19:23:10Z
+    content: 7429baca012ae48f
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:51Z
   - by: human:spencer
     at: 2026-11-12T03:50:40Z
+  - by: human:spencer
+    at: 2026-11-25T19:23:10Z
 ---
 
 # silk-core

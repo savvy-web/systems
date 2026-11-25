@@ -2,7 +2,7 @@
 type: Module
 title: silk-effects
 description: L2 engine of the Silk package graph — the shared, platform-agnostic Effect library holding Silk's policy and the business logic of six dev-tooling namespaces.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/silk-effects
 status: stable
 tags: [architecture]
@@ -24,13 +24,13 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-21T01:12:26Z
-integrity:
+x-okfit-integrity:
   generated:
     body: a51b745fc8e947d6
   verified:
     by: human:spencer
-    at: 2026-11-12T03:50:40Z
-    content: b83a8ba9563dea76
+    at: 2026-11-25T19:23:10Z
+    content: a9f2b5db2fff749d
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:50Z
@@ -38,6 +38,8 @@ verified:
     at: 2026-11-10T21:24:50Z
   - by: human:spencer
     at: 2026-11-12T03:50:40Z
+  - by: human:spencer
+    at: 2026-11-25T19:23:10Z
 ---
 
 # silk-effects

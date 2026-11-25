@@ -3,7 +3,7 @@ type: Interface
 title: Copilot plugin marketplace
 description: "The GitHub Copilot marketplace file at .github/plugin/marketplace.json, which lists the silk plugin from plugin/builds/copilot at a pinned commit sha that CI advances on release."
 status: draft
-kind: config
+x-okfit-kind: config
 resource: ../../.github/plugin/marketplace.json
 tags: [tooling, release, github]
 sources:
@@ -19,7 +19,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:43:24Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 8753185584725e9a
 ---

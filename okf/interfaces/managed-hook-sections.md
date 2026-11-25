@@ -3,7 +3,7 @@ type: Interface
 title: Managed hook sections
 description: "The BEGIN/END MANAGED SECTION marker contract that lets multiple Silk tools own adjacent blocks inside one shared husky hook file without clobbering each other or user content."
 status: draft
-kind: api
+x-okfit-kind: api
 resource: ../../packages/silk-core/src/schemas/SavvySections.ts
 tags: [tooling]
 sources:
@@ -18,7 +18,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-25T19:39:30Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 846b6f3ec8d2e052
 ---

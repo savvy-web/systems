@@ -3,7 +3,7 @@ type: Module
 status: draft
 title: "@savvy-web/silk"
 description: The single install-target package that carries the savvy/savvy-mcp bins and a thin config-integration shim surface over silk-effects.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/silk
 tags: [architecture, tooling]
 generated:
@@ -26,7 +26,7 @@ sources:
     resource: ../../packages/silk/__test__/boundaries.test.ts
   - id: silk-deps
     resource: ../../packages/silk/package.json
-integrity:
+x-okfit-integrity:
   generated:
     body: 53f5c32fae5edc8b
 ---

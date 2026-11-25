@@ -2,7 +2,7 @@
 type: Decision
 title: The savvy tool closure pins its kit and in-repo edges exactly
 description: "silk, cli, mcp and changelog (the tools) and silk-effects and silk-core (the engine they run) write every regular effect, @effect/* and @effected/* dependency as catalog:effected:exact and every in-repo edge as workspace:*, while the engine's kit peers stay catalog:effected:peers ranges, so a released savvy runs exactly what it was tested with."
-status: draft
+status: stable
 tags: [deps, release, architecture]
 sources:
   - id: guard
@@ -35,9 +35,18 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-12T03:51:22Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 897cb6cd2cf7dee4
+  verified:
+    by: human:spencer
+    at: 2026-11-25T20:32:47Z
+    content: e632b7e042ddc798
+verified:
+  - by: human:spencer
+    at: 2026-11-25T20:09:50Z
+  - by: human:spencer
+    at: 2026-11-25T20:32:47Z
 ---
 
 # The savvy tool closure pins its kit and in-repo edges exactly

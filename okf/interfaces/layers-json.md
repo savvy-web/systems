@@ -3,7 +3,7 @@ type: Interface
 title: layers.json
 description: "The single source of truth for which layer each app package sits in, a @effected/workspaces LayerPolicy read by silk's package-layering test to hold the live dependency graph to the declared layering."
 status: draft
-kind: config
+x-okfit-kind: config
 resource: ../../packages/silk/layers.json
 tags: [architecture, testing]
 sources:
@@ -17,7 +17,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: c3ff85e723a48334
 ---

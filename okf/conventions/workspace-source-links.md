@@ -17,7 +17,7 @@ sources:
     resource: ../../packages/cli/src/bin.ts
   - id: vitest-setup
     resource: ../../vitest.setup.ts
-integrity:
+x-okfit-integrity:
   generated:
     body: b27296a63c1df322
   verified:

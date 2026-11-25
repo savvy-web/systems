@@ -14,7 +14,7 @@ sources:
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/build/target-groups.ts
   - id: issue-824
     resource: https://github.com/savvy-web/systems/issues/824
-integrity:
+x-okfit-integrity:
   generated:
     body: 84540b4501a5a013
 ---

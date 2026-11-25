@@ -23,7 +23,7 @@ sources:
   - id: fix-commit-rest
     resource: https://github.com/savvy-web/systems/commit/76a27fb6e67eaec29d76a51d9b5062c574c6aafe
     title: "fix(github-action-builder,tsdown-plugins): import platform-node by subpath"
-integrity:
+x-okfit-integrity:
   generated:
     body: 4a5db84e866827c7
 ---

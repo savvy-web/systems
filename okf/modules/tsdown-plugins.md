@@ -3,7 +3,7 @@ type: Module
 status: deprecated
 title: "@savvy-web/tsdown-plugins"
 description: The interface-only plugin pack holding every build behavior @savvy-web/bundler orchestrates — entry detection, the build loop, dts emission, dual-format output, targets, exe, meta, config validation.
-kind: package
+x-okfit-kind: package
 resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins
 tags: [build]
 generated:
@@ -28,7 +28,7 @@ sources:
     resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/exe
   - id: tp-config-validation
     resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/tsdown-plugins/src/config-validation
-integrity:
+x-okfit-integrity:
   generated:
     body: 45e87dc38ffde667
 ---

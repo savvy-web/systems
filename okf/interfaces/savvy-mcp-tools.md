@@ -3,7 +3,7 @@ type: Interface
 title: savvy-mcp tool surface
 description: "The ten savvy-mcp tools an agent calls: purpose, inputs, what each returns, and whether it is read-only or mutating — the consumer-visible contract, independent of the silk-effects service behind each one."
 status: draft
-kind: mcp
+x-okfit-kind: mcp
 resource: ../../packages/mcp/src/toolkit.ts
 tags: [tooling]
 sources:
@@ -22,7 +22,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-10T21:34:34Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 472f112df02f5528
 ---

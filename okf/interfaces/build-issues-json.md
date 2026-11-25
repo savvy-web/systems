@@ -3,7 +3,7 @@ type: Interface
 title: dist/<target>/issues.json
 description: "The structured, machine-readable diagnostics artifact every dev and prod build writes: what a reader may rely on staying stable, gated on buildOk."
 status: deprecated
-kind: wire
+x-okfit-kind: wire
 resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/src/report/issues-artifact.ts
 tags: [build, tooling]
 sources:
@@ -20,7 +20,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 1b5c3bcd16a7062f
 ---

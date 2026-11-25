@@ -2,7 +2,7 @@
 type: Module
 title: silk-plugin
 description: "The silk agent plugin: one pluginfinity source at plugin/ (the private workspace package @savvy-web/ai-plugins) built into a Claude Code plugin and a GitHub Copilot plugin, carrying the workflow skills, agents, hooks, monitors and server launchers behind the savvy bin and the shared savvy-mcp server; builds and TSDoc belong to the effected kit, not this plugin."
-kind: plugin
+x-okfit-kind: plugin
 resource: ../../plugin
 status: draft
 tags: [tooling, build]
@@ -40,7 +40,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-21T01:23:55Z
-integrity:
+x-okfit-integrity:
   generated:
     body: de4a5c1c44d94dd7
 ---

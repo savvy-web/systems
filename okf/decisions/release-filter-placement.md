@@ -14,7 +14,7 @@ sources:
     resource: "npm:@effected/workspaces/VersioningStrategy"
   - id: resolve-targets
     resource: "npm:@effected/plugin"
-integrity:
+x-okfit-integrity:
   generated:
     body: 26b32dfe72d71d0e
   verified:

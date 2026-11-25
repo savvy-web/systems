@@ -3,7 +3,7 @@ type: Interface
 title: "@savvy-web/pnpm-plugin-silk catalog names"
 description: "The catalog names a consumer manifest may reference after adding this config dependency, what the plugin hoists, and what a consumer must not assume about catalog contents."
 status: stable
-kind: config
+x-okfit-kind: config
 resource: ../../packages/pnpm-plugin-silk/lib/build/pnpm-config.plugin.ts
 tags: [release, build]
 sources:
@@ -12,18 +12,20 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-10T17:22:40Z
-integrity:
+x-okfit-integrity:
   generated:
     body: d5cbb02e0b7761ac
   verified:
     by: human:spencer
-    at: 2026-11-10T17:22:29Z
-    content: d6e61f9574ef8764
+    at: 2026-11-25T19:23:10Z
+    content: 3376199125eea0c1
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:52Z
   - by: human:spencer
     at: 2026-11-10T17:22:29Z
+  - by: human:spencer
+    at: 2026-11-25T19:23:10Z
 ---
 
 # @savvy-web/pnpm-plugin-silk catalog names

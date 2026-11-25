@@ -3,7 +3,7 @@ type: Module
 status: draft
 title: "e2e"
 description: "The private, never-published harness area — now only @e2e/silk, the packed-install proof with no owning package — plus the in-package e2e suites under packages/<pkg>/__test__/e2e/ that reach each package's BUILT dist/prod artifact by path."
-kind: workspace
+x-okfit-kind: workspace
 resource: ../../e2e
 tags: [testing]
 generated:
@@ -24,7 +24,7 @@ sources:
     resource: ../../packages/pnpm-plugin-silk/__test__/e2e/pnpmfile-contract.e2e.test.ts
   - id: regen-catalog
     resource: ../../packages/cli/__test__/e2e/regen-catalog.e2e.test.ts
-integrity:
+x-okfit-integrity:
   generated:
     body: 60ddc8573b5e6ee9
 ---

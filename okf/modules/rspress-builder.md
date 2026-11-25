@@ -2,7 +2,7 @@
 type: Module
 title: rspress-builder
 description: Thin bundler sibling that builds RSPress plugin packages as a dual-bundle (node plugin + browser runtime) preset over @savvy-web/bundler.
-kind: package
+x-okfit-kind: package
 resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/rspress-builder
 status: deprecated
 tags: [build]
@@ -12,7 +12,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 0ba684a88a24b405
 ---

@@ -3,7 +3,7 @@ type: Interface
 title: PrBody contract
 description: "The managed-region contract shared by every writer of a Silk PR description: what survives regeneration, the two closing-reference spellings, and the frozen silk-release marker grammar."
 status: draft
-kind: api
+x-okfit-kind: api
 resource: ../../packages/silk-core/src/pr-body/index.ts
 tags: [tooling, release]
 sources:
@@ -16,7 +16,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-09-13T01:18:00Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 3a4d5cfc842d0754
 ---

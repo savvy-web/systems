@@ -2,7 +2,7 @@
 type: Module
 title: mcp
 description: The savvy-mcp server — a standalone, spawnable, tools-only MCP server serving Silk Suite tooling to coding agents as structured tools.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/mcp
 status: draft
 tags: [architecture, tooling]
@@ -26,7 +26,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-12T03:36:35Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 5c3314467ee537a0
 ---

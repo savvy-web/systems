@@ -2,7 +2,7 @@
 type: Module
 title: github-action-builder
 description: Zero-config Effect-first build tool that bundles TypeScript into single-file Node.js 24 GitHub Actions, validates action.yml, and syncs output for act testing.
-kind: package
+x-okfit-kind: package
 resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/github-action-builder
 status: deprecated
 tags: [build, ci]
@@ -12,7 +12,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 9b4898202cf4ebf9
 ---

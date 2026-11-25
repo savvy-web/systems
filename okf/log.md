@@ -1,5 +1,80 @@
 # Log
 
+## 2026-11-25
+
+* Updated @savvy-web/bundler
+* Updated @savvy-web/changelog
+* Updated @savvy-web/pnpm-plugin-silk catalog names
+* Updated @savvy-web/silk
+* Updated @savvy-web/silk export map
+* Updated @savvy-web/tsdown-plugins
+* Updated A patch-level bundler bump that adds ae-forgotten-export errors is TypeScript 7.1 emitting typeof references, not a bundler regression
+* Updated A public-hoisted workspace package resolves to its source tree, not its built artifact
+* Updated An Effect-native MCP server
+* Updated Author silk plugin hooks, scripts, skills and tests on the pluginfinity libraries
+* Updated Build each workspace-dependency package via its own prepare script
+* Updated Build every package with the kit's effected package build, linked to source
+* Updated Build the silk plugin from one pluginfinity source for two hosts
+* Updated Carrier-pattern package graph
+* Updated Catalog and workspace resolution coverage lives only in e2e/
+* Updated Committed shell scripts land as 100644, never 100755
+* Updated Copilot plugin marketplace
+* Updated Copilot reports SessionStart source new and gives an MCP server no project
+* Updated Deny Biome by whether the command reaches the binary, not by script name
+* Updated Edit the plugin source, never plugin/builds/; rebuild and commit the builds with it
+* Updated Emit declarations through TypeScript 7.1's compiler API, pinned exactly in tsdown-plugins
+* Updated Enforce vendored-repo read-only via OS permissions, not guards alone
+* Updated Every package versions independently
+* Updated Handling vendored reference repos under .repos/
+* Updated Issue reference grammar
+* Updated Kit Effect peers supplied via the effected catalog
+* Updated Managed hook sections
+* Updated OG image renders are cached only under a named salt
+* Updated Pin typescript to ^6.0.3 in tsdown-plugins for declaration emission
+* Updated PrBody contract
+* Updated Resolve workspace packages from source; never re-add install-time builds
+* Updated Respect the four-layer package graph and the non-import invariant
+* Updated Run Biome only through biome_check or the three sanctioned root scripts
+* Updated Run an @effected dogfood round through the mailbox protocol
+* Updated Shape and test a savvy-mcp tool
+* Updated Spell dependency ranges through purpose-scoped catalogs
+* Updated Split commit messages and PR descriptions on document, not command
+* Updated Split the build orchestrator from the plugin pack
+* Updated The @effect/platform-node root import needs redis, and only Yarn 1 shows it
+* Updated The Copilot build of silk drops context nudges, monitors and project discovery
+* Updated The it2 dogfood doorbell's --retry delivers the notice several times
+* Updated The lint-staged boundary stays plain-function and shares tool discovery through the kit's sync facades
+* Updated The per-target release filter runs outside the PublishabilityDetector
+* Updated The plugin package @savvy-web/ai-plugins versions independently of @savvy-web/silk
+* Updated The pluginfinity Claude build matches plugins/silk except for listed, intended differences
+* Updated The repo-wide build ignore rule hides any plugin directory named build while build --check stays green
+* Updated The savvy CLI carries ink and react as regular dependencies, loaded only to draw
+* Updated The savvy front ends adopt the effected front-end kit
+* Updated The savvy tool closure pins its kit and in-repo edges exactly
+* Updated Use @effect/vitest per file, not per package
+* Updated What Claude Code passes to a plugin's monitors and the Bash tool (2.1.291/2.1.292)
+* Updated Write Effect v4 code in the house style
+* Updated bundler tsconfig preset
+* Updated cli
+* Updated dist/<target>/issues.json
+* Updated e2e
+* Updated github-action-builder
+* Updated layers.json
+* Updated markdownlint --fix renumbers a list split by a column-0 host-block marker
+* Updated mcp
+* Updated pkill on a monitor script name kills every session's monitor
+* Updated pnpm-plugin-silk
+* Updated rspress-builder
+* Updated savvy command tree
+* Updated savvy-mcp tool surface
+* Updated savvy.build.ts contract
+* Updated silk pins siblings as dependencies, never peers
+* Updated silk-core
+* Updated silk-effects
+* Updated silk-plugin
+* Updated systems
+* Updated templates
+
 ## 2026-11-21
 
 * Updated silk-effects

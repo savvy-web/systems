@@ -20,7 +20,7 @@ sources:
     resource: https://github.com/spencerbeggs/effected/pull/1101
   - id: yaml-review
     resource: https://github.com/savvy-web/systems/pull/467
-integrity:
+x-okfit-integrity:
   generated:
     body: ed331de84c935a6f
   verified:

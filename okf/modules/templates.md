@@ -2,7 +2,7 @@
 type: Module
 title: templates
 description: Pure-function project scaffolding library — stateless functions that turn typed options into generated file content, with no I/O of its own.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/templates
 status: draft
 tags: [tooling]
@@ -12,7 +12,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: be0fecf774167c5f
 ---

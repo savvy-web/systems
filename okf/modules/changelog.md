@@ -3,7 +3,7 @@ type: Module
 status: draft
 title: "@savvy-web/changelog"
 description: The standalone changesets changelog generator; a one-file host adapter over silk-effects' Changesets.makeChangelogFunctions, and the canonical .changeset/config.json changelog id.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/changelog
 tags: [release]
 generated:
@@ -16,7 +16,7 @@ sources:
     resource: ../../packages/changelog/effected.toml
   - id: changelog-manifest
     resource: ../../packages/changelog/package.json
-integrity:
+x-okfit-integrity:
   generated:
     body: 935c3865bb76a8c0
 ---

@@ -3,7 +3,7 @@ type: Convention
 title: Committed shell scripts land as 100644, never 100755
 description: "Do not restore the executable bit lint-staged strips from staged .sh files, do not flag the 755-to-644 mode change in review, and do not open an issue about it; chmod +x locally only when you need to run the script yourself."
 status: draft
-stale_after: 2026-11-11T00:00:00Z
+stale_after: 2027-02-23T00:00:00Z
 tags: [tooling, ci]
 sources:
   - id: lint-staged-config
@@ -17,7 +17,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 00ff5d685107b79a
 ---

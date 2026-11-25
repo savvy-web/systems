@@ -5,7 +5,7 @@ description: "Measured by pluginfinity on Copilot CLI 1.0.92 (2026-10-07): a fre
 status: draft
 tags: [tooling, compat]
 stale_after: 2027-01-05T00:00:00Z
-justifies:
+x-okfit-justifies:
   - ../decisions/adopt-pluginfinity-one-source-two-hosts.md
 sources:
   - id: pluginfinity-probe
@@ -18,7 +18,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T16:26:44Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 451cf61d9cffc8df
 ---

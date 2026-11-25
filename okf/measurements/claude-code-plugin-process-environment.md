@@ -5,7 +5,7 @@ description: "Measured 2026-10-06/07: a Claude Code monitor process runs in the 
 status: draft
 tags: [tooling, compat]
 stale_after: 2027-01-05T00:00:00Z
-justifies:
+x-okfit-justifies:
   - ../decisions/adopt-pluginfinity-one-source-two-hosts.md
 sources:
   - id: owner-brief
@@ -19,7 +19,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-10-07T19:16:22Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 4a73b786301b95ec
 ---

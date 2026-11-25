@@ -2,7 +2,7 @@
 type: Module
 title: pnpm-plugin-silk
 description: The single pnpm config dependency that distributes the Silk Suite's shared workspace configuration — catalogs, overrides, build/hoist/peer rules, and release-age gating — to every consuming repository.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/pnpm-plugin-silk
 status: stable
 tags: [release, tooling]
@@ -14,13 +14,13 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-12T03:51:22Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 237320316f871e8a
   verified:
     by: human:spencer
-    at: 2026-11-12T03:50:40Z
-    content: ef77756bd884e1c7
+    at: 2026-11-25T19:23:10Z
+    content: c1b1d6d2f3dbda5e
 verified:
   - by: human:spencer
     at: 2026-11-10T15:59:51Z
@@ -28,6 +28,8 @@ verified:
     at: 2026-11-10T17:22:29Z
   - by: human:spencer
     at: 2026-11-12T03:50:40Z
+  - by: human:spencer
+    at: 2026-11-25T19:23:10Z
 ---
 
 # pnpm-plugin-silk

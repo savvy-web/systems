@@ -4,7 +4,7 @@ title: Build every package with the kit's effected package build, linked to sour
 description: "Every package builds with `effected package build` from @effected/plugin; workspace links resolve to src/ through exports and tsx, nothing builds on install, and the in-repo bundler, tsdown-plugins, rspress-builder and github-action-builder are deleted with no final release."
 status: stable
 tags: [build, architecture, deps]
-supersedes: per-package-prepare-builds.md
+x-okfit-supersedes: per-package-prepare-builds.md
 generated:
   by: okfit/claude-code
   at: 2026-11-10T17:22:40Z
@@ -23,18 +23,20 @@ sources:
     resource: https://github.com/spencerbeggs/effected/blob/main/plugin/skills/effected-renovate/references/ledger/0001-effected-package-build.md
   - id: kit-ledger-runtime-subdir
     resource: https://github.com/spencerbeggs/effected/blob/main/plugin/skills/effected-renovate/references/ledger/0038-adopt-runtime-subdir-override.md
-integrity:
+x-okfit-integrity:
   generated:
     body: 641a601cce133896
   verified:
     by: human:spencer
-    at: 2026-11-10T17:22:29Z
-    content: 3308013541a94f81
+    at: 2026-11-25T19:23:10Z
+    content: 1dc2c3701b4911fc
 verified:
   - by: human:spencer
     at: 2026-11-10T15:52:01Z
   - by: human:spencer
     at: 2026-11-10T17:22:29Z
+  - by: human:spencer
+    at: 2026-11-25T19:23:10Z
 ---
 
 # Build every package with the kit's effected package build, linked to source

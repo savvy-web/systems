@@ -3,7 +3,7 @@ type: Interface
 title: savvy.build.ts contract
 description: "The build() front door and defineBuild/runBuild config surface every package's savvy.build.ts is written against — what a consumer can depend on staying stable across a bundler release."
 status: deprecated
-kind: config
+x-okfit-kind: config
 resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/config.ts
 tags: [build]
 sources:
@@ -16,7 +16,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 19b9558e90461ebe
 ---

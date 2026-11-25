@@ -3,7 +3,7 @@ type: Module
 status: deprecated
 title: "@savvy-web/bundler"
 description: The tsdown-based build orchestrator every Silk Suite TypeScript package builds through — a thin driver over @savvy-web/tsdown-plugins.
-kind: package
+x-okfit-kind: package
 resource: https://github.com/savvy-web/systems/tree/3cb3a9ff/packages/bundler
 tags: [build]
 generated:
@@ -18,7 +18,7 @@ sources:
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/index.ts
   - id: bundler-og
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/src/og.ts
-integrity:
+x-okfit-integrity:
   generated:
     body: cc787cb86a780edb
 ---

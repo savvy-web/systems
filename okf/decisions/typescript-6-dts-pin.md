@@ -12,7 +12,7 @@ sources:
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/tsdown-plugins/package.json
   - id: tsconfig-preset
     resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/public/tsconfig/ecma.json
-integrity:
+x-okfit-integrity:
   generated:
     body: 09d566976e5cf40d
   verified:

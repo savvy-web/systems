@@ -2,7 +2,7 @@
 type: Module
 title: cli
 description: The savvy binary — the single command host for the Silk Suite's everyday dev tooling.
-kind: package
+x-okfit-kind: package
 resource: ../../packages/cli
 status: draft
 tags: [architecture, tooling]
@@ -38,7 +38,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-12T03:36:35Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 333b05c522c5087d
 ---

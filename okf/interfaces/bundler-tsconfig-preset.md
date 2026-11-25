@@ -3,7 +3,7 @@ type: Interface
 title: bundler tsconfig preset
 description: "The self-contained TypeScript base every plain Node library package extends, and the rule that keeps every shipped preset in the suite free of extends chains."
 status: deprecated
-kind: config
+x-okfit-kind: config
 resource: https://github.com/savvy-web/systems/blob/3cb3a9ff/packages/bundler/public/tsconfig/ecma.json
 tags: [build]
 sources:
@@ -12,7 +12,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-09T19:54:23Z
-integrity:
+x-okfit-integrity:
   generated:
     body: 01d1a248503f4912
 ---

@@ -4,7 +4,7 @@ title: Emit declarations through TypeScript 7.1's compiler API, pinned exactly i
 description: "@savvy-web/tsdown-plugins pins typescript 7.1.0-beta exactly (not catalog:silk) and forces dts.generator: tsgo with an explicit tsgo.moduleUrl, while @microsoft/api-extractor keeps its own TypeScript 6 through the existing override."
 status: deprecated
 tags: [build, deps, compat]
-supersedes: typescript-6-dts-pin.md
+x-okfit-supersedes: typescript-6-dts-pin.md
 generated:
   by: okfit/claude-code
   at: 2026-11-10T16:02:50Z
@@ -34,7 +34,7 @@ verified:
     at: 2026-11-02T21:03:43Z
   - by: human:spencer
     at: 2026-11-10T15:51:58Z
-integrity:
+x-okfit-integrity:
   generated:
     body: e509183f79007166
   verified:

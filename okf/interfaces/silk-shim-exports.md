@@ -3,7 +3,7 @@ type: Interface
 title: "@savvy-web/silk export map"
 description: "The subpath exports a config file imports from @savvy-web/silk: the module shape each shim promises to reproduce, stable independent of how silk-effects implements it."
 status: draft
-kind: api
+x-okfit-kind: api
 resource: ../../packages/silk/package.json
 tags: [tooling]
 sources:
@@ -12,7 +12,7 @@ sources:
 generated:
   by: okfit/claude-code
   at: 2026-11-10T21:25:56Z
-integrity:
+x-okfit-integrity:
   generated:
     body: b608e0cc97035973
 ---
