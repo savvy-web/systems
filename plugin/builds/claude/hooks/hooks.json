@@ -1,4 +1,5 @@
 {
+	"description": "Companion plugin for @savvy-web/silk — changeset, commit, lint, and Turborepo conventions, skills, and agents for the Silk Suite",
 	"hooks": {
 		"SessionStart": [
 			{
@@ -97,7 +98,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/biome-direct-deny.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -113,7 +115,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-bash-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -144,7 +147,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-mcp-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -175,7 +179,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -191,7 +196,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/dogfood-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -207,7 +213,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/repos-fs-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -223,7 +230,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			},
@@ -239,7 +247,8 @@
 							"bash",
 							"${CLAUDE_PLUGIN_ROOT}/hooks/pre-tool-use/env-file-guard.sh"
 						],
-						"timeout": 5
+						"timeout": 5,
+						"onFailure": "block"
 					}
 				]
 			}
