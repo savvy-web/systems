@@ -47,7 +47,7 @@
 		"@okfit/plugin": "^0.6.0",
 		"@savvy-web/changelog": "workspace:*",
 		"@savvy-web/silk": "workspace:*",
-		"@vitest-agent/plugin": "^6.1.1",
+		"@vitest-agent/plugin": "^6.2.1",
 		"tsx": "catalog:effected:build"
 	},
 	"engines": {
