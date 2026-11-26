@@ -1,5 +1,13 @@
 # @savvy-web/silk-effects
 
+## 14.0.3
+
+### Dependencies
+
+| Dependency | Type | Action | From | To |
+| --- | --- | --- | --- | --- |
+| @effected/walker | dependency | updated | 0.30.0 | 0.31.0 |
+
 ## 14.0.2
 
 ### Bug Fixes
