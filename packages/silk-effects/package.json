@@ -58,7 +58,7 @@
 		"@types/node": "catalog:effected:build",
 		"@types/shell-quote": "^1.7.5",
 		"effect": "catalog:effected",
-		"fast-check": "^4.10.3",
+		"fast-check": "^4.11.0",
 		"tsx": "catalog:effected:build",
 		"typescript": "catalog:effected:build",
 		"vitest": "catalog:test"
